@@ -286,6 +286,13 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   ok(!OM.graceAllowed('2026-11-10', ['2026-10-23']) && OM.graceAllowed('2026-11-23', ['2026-10-23']), 'early access once every 30 days');
   ok(OM.nextPeriod('2026-11-20', '2026-11-23').start === '2026-11-23' && OM.nextPeriod('2026-12-01', '2026-11-23').start === '2026-12-01', 'renewal continues from the end date');
   ok(!/[*_~]/.test(OM.waSafe('a*b_c~d')), 'links never contain WhatsApp formatting marks');
+  ok(P.paypal === 'Cargill.brown@gmail.com', 'PayPal address set');
+  ok(JSON.stringify(OM.proPayMethods()) === (P.lynk ? (P.showBank ? '["lynk","bns","pp"]' : '["lynk","pp"]') : '["bns","pp"]'), 'payment options follow the settings');
+  const keep = [P.lynk, P.showBank];
+  P.lynk = 'omgym'; P.showBank = false;
+  ok(JSON.stringify(OM.proPayMethods()) === '["lynk","pp"]', 'with Lynk set, bank details can be switched off');
+  ok(/J\$1,596\.50/.test(OM.proProofText(inv, 'lynk')) && /Paid by: Lynk/.test(OM.proProofText(inv, 'lynk')) && OM.parseProof(OM.proProofText(inv, 'lynk')).method === 'lynk', 'Lynk proof message');
+  P.lynk = keep[0]; P.showBank = keep[1];
 }
 const proSig = (async () => {
   const sb = globalThis.crypto.subtle;

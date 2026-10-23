@@ -36,6 +36,7 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   const invTxt = await page.locator('#invoice').innerText();
   ok(/90605 000606999/.test(invTxt) && /CARGILL BROWN/.test(invTxt) && /Scotiabank/.test(invTxt) && /J\$1,596\.50/.test(invTxt) && /US\$10\.00/.test(invTxt), 'invoice: Scotiabank details, J$ at BOJ rate, US$10');
   ok(!/GCT|tax/i.test(invTxt.replace(/Terms[\s\S]*/, '')), 'no tax lines on the invoice');
+  ok(/Cargill\.brown@gmail\.com/.test(invTxt), 'PayPal address on the invoice');
   const invNo = invTxt.match(/PRO-\d{4}-[A-Z2-9]{6}-\d+/)[0];
   ok(invNo.includes(proId), 'invoice number includes the PRO ID');
   // proof on WhatsApp starts early access

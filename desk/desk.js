@@ -29,10 +29,10 @@
       h += '<div class="grid2"><label class="f"><span>Name</span><input type="text" id="f-name" value="' + esc(f.name) + '"></label><label class="f"><span>PRO ID (6 letters/numbers)</span><input type="text" id="f-id" value="' + esc(f.id) + '" maxlength="6" autocapitalize="characters"></label>';
       h += '<label class="f"><span>Invoice</span><input type="text" id="f-no" value="' + esc(f.no) + '"></label><label class="f"><span>PRO starts</span><input type="date" id="f-start" value="' + esc(f.start) + '"></label>';
       h += '<label class="f"><span>Months paid</span><select id="f-months">' + [1, 2, 3, 6, 12].map(function (m) { return '<option value="' + m + '"' + (m === f.months ? ' selected' : '') + '>' + m + ' (US$' + (m * OM.PRO.priceUsd) + ')</option>'; }).join('') + '</select></label><label class="f"><span>Paid by</span><select id="f-method">' + Object.keys(OM.PRO_METHODS).map(function (m) { return '<option value="' + m + '"' + (m === f.method ? ' selected' : '') + '>' + OM.PRO_METHODS[m] + '</option>'; }).join('') + '</select></label>';
-      if (f.method === 'bns') h += '<label class="f"><span>J$ received</span><input type="number" step="0.01" id="f-jmd" value="' + esc(f.jmd) + '"><span class="small muted">Expected ' + jmdFmt(OM.proJmd(OM.PRO.priceUsd * f.months, OM.PRO.boj.rate)) + ' at J$' + OM.PRO.boj.rate + ' (' + nice(OM.PRO.boj.date) + '). The rate on their payment day may differ slightly.</span></label>';
+      if (f.method === 'bns' || f.method === 'lynk') h += '<label class="f"><span>J$ received</span><input type="number" step="0.01" id="f-jmd" value="' + esc(f.jmd) + '"><span class="small muted">Expected ' + jmdFmt(OM.proJmd(OM.PRO.priceUsd * f.months, OM.PRO.boj.rate)) + ' at J$' + OM.PRO.boj.rate + ' (' + nice(OM.PRO.boj.date) + '). The rate on their payment day may differ slightly.</span></label>';
       h += '<label class="f"><span>Payment date</span><input type="date" id="f-paid" value="' + esc(f.paid) + '"></label></div>';
       h += '<p class="small">PRO runs <strong>' + nice(f.start) + '</strong> to <strong>' + nice(until) + '</strong>.</p>';
-      h += '<label class="tick small"><input type="checkbox" id="f-check"' + (f.checked ? ' checked' : '') + '> I checked my ' + (f.method === 'pp' ? 'PayPal' : f.method === 'cash' ? 'cash' : 'Scotiabank account') + ' and the money is there.</label>';
+      h += '<label class="tick small"><input type="checkbox" id="f-check"' + (f.checked ? ' checked' : '') + '> I checked my ' + (f.method === 'pp' ? 'PayPal' : f.method === 'cash' ? 'cash' : f.method === 'lynk' ? 'Lynk wallet' : 'Scotiabank account') + ' and the money is there.</label>';
       h += '<div class="row"><button class="btn" data-act="sign"' + (f.checked ? '' : ' disabled') + '>Make unlock link</button><button class="btn ghost" data-act="clear">Clear</button></div>';
     }
     if (result) h += resultHtml(result);
@@ -100,7 +100,7 @@
       var f = { id: form.id, s: OM.compactDate(form.start), u: OM.compactDate(until), inv: form.no, n: form.name, m: form.method, amt: (OM.PRO.priceUsd * form.months).toFixed(2), cur: 'USD', pd: OM.compactDate(form.paid) };
       t.disabled = true;
       sign(f).then(function (link) {
-        var e = makeEntry(f, link, { jmd: form.method === 'bns' ? Number(form.jmd || 0) : 0 });
+        var e = makeEntry(f, link, { jmd: form.method === 'bns' || form.method === 'lynk' ? Number(form.jmd || 0) : 0 });
         result = e; form = null; error = ''; saveEntry(e); render();
       }).catch(function () { error = 'Signing failed. Reload the page and try again.'; render(); });
     } else if (a === 'copymsg') { copy(unlockMessage(result), 'Message copied'); }

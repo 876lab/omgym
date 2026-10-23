@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-23: PayPal address and Lynk support for PRO
+- PRO invoices show the owner's PayPal (Cargill.brown@gmail.com) with a note on buyer protection.
+- Lynk support: when the owner adds his Lynk username, invoices offer Lynk first (J$ at the Bank of Jamaica rate), and the Scotiabank details can be switched off. The PRO Desk records Lynk payments with the J$ received.
+- Sources: Jamaica Observer (Lynk serves 300,000 users, 10 Apr 2026); JIS on LynkBiz (sole traders can sign up with a personal account); Ezy Web Pro on PayPal withdrawals in Jamaica (Apr 2026).
+
 ## 2026-10-23: OMGym PRO
 - PRO section (header button) for lifters with 3+ years of training: cut (0.5/0.75/1% a week, protein 2.3 g/kg), lean bulk (~0.15 or 0.25% a week, 2.0 g/kg) or maintain (2.2 g/kg); harder training weeks (Build RIR 2, Push RIR 0–1, Deload; 5–8 reps on a cut); weekly sets per muscle; weekly calorie check-ins.
 - Payments: invoice in the app with Scotiabank JMD details and the J$ amount at the Bank of Jamaica rate (J$159.65, 22 Oct 2026); proof sent on WhatsApp; 3-day early access once every 30 days; signed unlock link that doubles as the receipt; renewal reminder 5 days before the end; terms (no automatic renewal, no refunds for part months, full refund if not unlocked within 3 working days or paid twice).

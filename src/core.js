@@ -832,7 +832,9 @@ var OM = (function () {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
     boj: { rate: 159.65, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
-    paypal: '', // PayPal email or paypal.me link; until set, customers ask on WhatsApp
+    paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
+    lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first
+    showBank: true, // owner can switch off the Scotiabank details once Lynk is set
     whatsapp: '16582184432', seller: 'OMGym (Cargill Brown)',
     siteBase: 'https://876lab.github.io/omgym/',
     publicKey: {"kty":"EC","crv":"P-256","x":"oVa72ChdJEDPKrJlMC9_0KOg1JTQjz3Rb7_WrtnZAIs","y":"ga295EpCdNJYf1qRQquywceMLBTEzi3Y78K6w5KIRm4"},
@@ -845,7 +847,9 @@ var OM = (function () {
       'Keep your payment screenshot until PRO is unlocked. OMGym deletes it once the payment is checked.'
     ]
   };
-  var PRO_METHODS = { bns: 'Scotiabank transfer', pp: 'PayPal', cash: 'Cash' };
+  var PRO_METHODS = { lynk: 'Lynk', bns: 'Scotiabank transfer', pp: 'PayPal', cash: 'Cash' };
+  // payment options the customer sees, in order
+  function proPayMethods() { var m = []; if (PRO.lynk) m.push('lynk'); if (PRO.showBank || !PRO.lynk) m.push('bns'); m.push('pp'); return m; }
   function compact(d) { return d.replace(/-/g, ''); }
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function niceDay(dateStr) { var d = parseYmd(dateStr); return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
@@ -864,7 +868,7 @@ var OM = (function () {
     var jmd = proJmd(PRO.priceUsd, PRO.boj.rate);
     return 'OMGym PRO payment\nName: ' + inv.name + '\nInvoice: ' + inv.no + '\nPRO ID: ' + inv.id +
       '\nPeriod: ' + niceDay(inv.start) + ' to ' + niceDay(inv.until) + '\nAmount: US$' + PRO.priceUsd.toFixed(2) +
-      (method === 'bns' ? ' (J$' + jmd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' at the Bank of Jamaica rate of J$' + PRO.boj.rate + ', ' + niceDay(PRO.boj.date) + ')' : '') +
+      (method === 'bns' || method === 'lynk' ? ' (J$' + jmd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' at the Bank of Jamaica rate of J$' + PRO.boj.rate + ', ' + niceDay(PRO.boj.date) + ')' : '') +
       '\nPaid by: ' + (PRO_METHODS[method] || method) + '\nMy payment screenshot is attached.\n\nRef: OMPRO.' + inv.id + '.' + compact(inv.start) + '.' + compact(inv.until) + '.' + inv.no + '.' + method;
   }
   // Read a customer's message (pasted into the PRO Desk).
@@ -971,7 +975,7 @@ var OM = (function () {
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();

@@ -1100,7 +1100,9 @@ var OM = (function () {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
     boj: { rate: 159.65, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
-    paypal: '', // PayPal email or paypal.me link; until set, customers ask on WhatsApp
+    paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
+    lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first
+    showBank: true, // owner can switch off the Scotiabank details once Lynk is set
     whatsapp: '16582184432', seller: 'OMGym (Cargill Brown)',
     siteBase: 'https://876lab.github.io/omgym/',
     publicKey: {"kty":"EC","crv":"P-256","x":"oVa72ChdJEDPKrJlMC9_0KOg1JTQjz3Rb7_WrtnZAIs","y":"ga295EpCdNJYf1qRQquywceMLBTEzi3Y78K6w5KIRm4"},
@@ -1113,7 +1115,9 @@ var OM = (function () {
       'Keep your payment screenshot until PRO is unlocked. OMGym deletes it once the payment is checked.'
     ]
   };
-  var PRO_METHODS = { bns: 'Scotiabank transfer', pp: 'PayPal', cash: 'Cash' };
+  var PRO_METHODS = { lynk: 'Lynk', bns: 'Scotiabank transfer', pp: 'PayPal', cash: 'Cash' };
+  // payment options the customer sees, in order
+  function proPayMethods() { var m = []; if (PRO.lynk) m.push('lynk'); if (PRO.showBank || !PRO.lynk) m.push('bns'); m.push('pp'); return m; }
   function compact(d) { return d.replace(/-/g, ''); }
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function niceDay(dateStr) { var d = parseYmd(dateStr); return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
@@ -1132,7 +1136,7 @@ var OM = (function () {
     var jmd = proJmd(PRO.priceUsd, PRO.boj.rate);
     return 'OMGym PRO payment\nName: ' + inv.name + '\nInvoice: ' + inv.no + '\nPRO ID: ' + inv.id +
       '\nPeriod: ' + niceDay(inv.start) + ' to ' + niceDay(inv.until) + '\nAmount: US$' + PRO.priceUsd.toFixed(2) +
-      (method === 'bns' ? ' (J$' + jmd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' at the Bank of Jamaica rate of J$' + PRO.boj.rate + ', ' + niceDay(PRO.boj.date) + ')' : '') +
+      (method === 'bns' || method === 'lynk' ? ' (J$' + jmd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' at the Bank of Jamaica rate of J$' + PRO.boj.rate + ', ' + niceDay(PRO.boj.date) + ')' : '') +
       '\nPaid by: ' + (PRO_METHODS[method] || method) + '\nMy payment screenshot is attached.\n\nRef: OMPRO.' + inv.id + '.' + compact(inv.start) + '.' + compact(inv.until) + '.' + inv.no + '.' + method;
   }
   // Read a customer's message (pasted into the PRO Desk).
@@ -1239,7 +1243,7 @@ var OM = (function () {
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
@@ -1607,8 +1611,10 @@ if (typeof module !== 'undefined') module.exports = OM;
     if (paid) {
       h += '<p class="paidline"><strong>Paid</strong> by ' + esc(OM.PRO_METHODS[paid.m] || paid.m) + ', US$' + esc(paid.amt) + '. Confirmed by OMGym on ' + esc(dmy(OM.expandDate(paid.pd))) + '.</p>';
     } else {
-      h += '<h3>How to pay</h3><div class="payopt"><strong>Scotiabank transfer (J$)</strong><dl class="small"><dt>Name</dt><dd>' + esc(B.holder) + '</dd><dt>Bank</dt><dd>' + esc(B.bank) + '</dd><dt>Account type</dt><dd>' + esc(B.type) + '</dd><dt>Account number</dt><dd class="num">' + esc(B.number) + '</dd><dt>Currency</dt><dd>' + esc(B.currency) + '</dd><dt>Reference</dt><dd>' + esc(inv.no) + '</dd><dt>Amount</dt><dd class="num"><strong>J$' + money2(jmd) + '</strong></dd></dl><p class="small muted">US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + '). If you pay on another day, use that day\'s Bank of Jamaica rate.</p><button class="btn ghost small" data-act="copybank" data-no="' + esc(inv.no) + '">Copy bank details</button></div>';
-      h += '<div class="payopt"><strong>PayPal (US$)</strong><p class="small">' + (OM.PRO.paypal ? 'Send US$' + money2(OM.PRO.priceUsd) + ' to <strong>' + esc(OM.PRO.paypal) + '</strong> with ' + esc(inv.no) + ' in the note.' : 'Ask OMGym on WhatsApp for the PayPal address, then send US$' + money2(OM.PRO.priceUsd) + ' with ' + esc(inv.no) + ' in the note.') + '</p></div>';
+      h += '<h3>How to pay</h3>';
+      if (OM.PRO.lynk) h += '<div class="payopt"><strong>Lynk (J$)</strong><p class="small">Send <strong class="num">J$' + money2(jmd) + '</strong> to <strong>' + esc(OM.PRO.lynk) + '</strong> in the Lynk app, with ' + esc(inv.no) + ' in the note. US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + ').</p><button class="btn ghost small" data-act="copylynk">Copy Lynk username</button></div>';
+      if (OM.PRO.showBank || !OM.PRO.lynk) h += '<div class="payopt"><strong>Scotiabank transfer (J$)</strong><dl class="small"><dt>Name</dt><dd>' + esc(B.holder) + '</dd><dt>Bank</dt><dd>' + esc(B.bank) + '</dd><dt>Account type</dt><dd>' + esc(B.type) + '</dd><dt>Account number</dt><dd class="num">' + esc(B.number) + '</dd><dt>Currency</dt><dd>' + esc(B.currency) + '</dd><dt>Reference</dt><dd>' + esc(inv.no) + '</dd><dt>Amount</dt><dd class="num"><strong>J$' + money2(jmd) + '</strong></dd></dl><p class="small muted">US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + '). If you pay on another day, use that day\'s Bank of Jamaica rate.</p><button class="btn ghost small" data-act="copybank" data-no="' + esc(inv.no) + '">Copy bank details</button></div>';
+      h += '<div class="payopt"><strong>PayPal (US$)</strong><p class="small">' + (OM.PRO.paypal ? 'Send US$' + money2(OM.PRO.priceUsd) + ' to <strong>' + esc(OM.PRO.paypal) + '</strong> with ' + esc(inv.no) + ' in the note. Choose "Friends and family" only if you know the seller; otherwise "Goods and services" protects you.' : 'Ask OMGym on WhatsApp for the PayPal address, then send US$' + money2(OM.PRO.priceUsd) + ' with ' + esc(inv.no) + ' in the note.') + '</p></div>';
     }
     h += '<details><summary class="small">Terms</summary><ul class="lines small">' + OM.PRO.terms.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
     if (isPages()) h += '<div class="noprint"><button class="btn ghost small" data-act="printinv">Print or save as PDF</button></div>';
@@ -1645,10 +1651,10 @@ if (typeof module !== 'undefined') module.exports = OM;
       h += '<p class="small muted">PRO plans run harder than the standard plan. If you\'re newer to training, the standard plan will serve you better.</p>';
       h += '<div><button class="btn" data-act="pronew">Create my invoice</button></div>';
     } else {
-      h += '<p>Invoice <strong>' + esc(open.no) + '</strong> is ready. Pay by Scotiabank transfer or PayPal, then send OMGym your payment screenshot on WhatsApp.</p>';
+      h += '<p>Invoice <strong>' + esc(open.no) + '</strong> is ready. Pay by ' + OM.proPayMethods().map(function (m) { return OM.PRO_METHODS[m]; }).join(' or ').replace(' or ', OM.proPayMethods().length > 2 ? ', ' : ' or ') + ', then send OMGym your payment screenshot on WhatsApp.</p>';
       h += renderInvoice(open);
-      h += '<div class="formrow"><span class="f">How did you pay?</span><div class="seg" role="group">' + ['bns', 'pp'].map(function (m) { return '<button class="chip" data-act="promethod" data-m="' + m + '" aria-pressed="' + ((open.method || 'bns') === m) + '">' + OM.PRO_METHODS[m] + '</button>'; }).join('') + '</div></div>';
-      var txt = OM.proProofText(Object.assign({}, open, { start: open.start, until: open.until }), open.method || 'bns');
+      h += '<div class="formrow"><span class="f">How did you pay?</span><div class="seg" role="group">' + OM.proPayMethods().map(function (m) { return '<button class="chip" data-act="promethod" data-m="' + m + '" aria-pressed="' + ((open.method || OM.proPayMethods()[0]) === m) + '">' + OM.PRO_METHODS[m] + '</button>'; }).join('') + '</div></div>';
+      var txt = OM.proProofText(Object.assign({}, open, { start: open.start, until: open.until }), open.method || OM.proPayMethods()[0]);
       h += '<a class="btn wa" id="pro-proof" data-act="proproof" data-no="' + esc(open.no) + '" href="https://wa.me/' + OM.PRO.whatsapp + '?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">I\'ve paid: send proof on WhatsApp</a>';
       h += '<p class="small muted">WhatsApp opens with your details filled in. Attach the screenshot of your transfer before you send. ' + (OM.graceAllowed(TODAY, PD.graceLog) ? 'PRO opens for ' + OM.PRO.graceDays + ' days straight away while OMGym checks your payment (usually 1–3 days).' : 'PRO unlocks when OMGym confirms your payment (usually 1–3 days).') + '</p>';
       h += '<div><button class="linkbtn small" data-act="provoid" data-no="' + esc(open.no) + '">Cancel this invoice</button></div>';
@@ -1685,7 +1691,7 @@ if (typeof module !== 'undefined') module.exports = OM;
     PD.name = (nm && nm.trim()) || PD.name || (S.profile && S.profile.name) || '';
     var per = OM.nextPeriod(TODAY, st.lastUntil, 1);
     var seq = PD.invoices.length + 1;
-    PD.invoices.push({ no: OM.invoiceNo(PD.id, per.start, seq), id: PD.id, name: PD.name, start: per.start, until: per.until, method: 'bns', created: TODAY, status: 'unpaid' });
+    PD.invoices.push({ no: OM.invoiceNo(PD.id, per.start, seq), id: PD.id, name: PD.name, start: per.start, until: per.until, method: OM.proPayMethods()[0], created: TODAY, status: 'unpaid' });
     proSave(); proView = null; tab = 'pro'; render();
     var el = document.getElementById('pro-start'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
   }
@@ -1986,6 +1992,7 @@ if (typeof module !== 'undefined') module.exports = OM;
       case 'provoid': PD.invoices = PD.invoices.filter(function (i) { return i.no !== t.dataset.no; }); proSave(); render(); break;
       case 'showinv': proView = proView === t.dataset.no ? null : t.dataset.no; render(); var iv = document.getElementById('invoice'); if (iv && proView && iv.scrollIntoView) iv.scrollIntoView({ block: 'start' }); break;
       case 'printinv': try { window.print(); } catch (e) { } break;
+      case 'copylynk': try { navigator.clipboard.writeText(OM.PRO.lynk).then(function () { toast('Lynk username copied'); }, function () { toast('Press and hold to copy'); }); } catch (e) { toast('Press and hold to copy'); } break;
       case 'copybank':
         var B = OM.PRO.bank, btxt = 'Name: ' + B.holder + '\nBank: ' + B.bank + '\nAccount type: ' + B.type + '\nAccount number: ' + B.number + '\nCurrency: ' + B.currency + '\nReference: ' + t.dataset.no + '\nAmount: J$' + money2(OM.proJmd(OM.PRO.priceUsd, OM.PRO.boj.rate));
         try { navigator.clipboard.writeText(btxt).then(function () { toast('Bank details copied'); }, function () { toast('Press and hold the details to copy'); }); } catch (e) { toast('Press and hold the details to copy'); }

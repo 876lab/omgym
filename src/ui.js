@@ -359,8 +359,10 @@
     if (paid) {
       h += '<p class="paidline"><strong>Paid</strong> by ' + esc(OM.PRO_METHODS[paid.m] || paid.m) + ', US$' + esc(paid.amt) + '. Confirmed by OMGym on ' + esc(dmy(OM.expandDate(paid.pd))) + '.</p>';
     } else {
-      h += '<h3>How to pay</h3><div class="payopt"><strong>Scotiabank transfer (J$)</strong><dl class="small"><dt>Name</dt><dd>' + esc(B.holder) + '</dd><dt>Bank</dt><dd>' + esc(B.bank) + '</dd><dt>Account type</dt><dd>' + esc(B.type) + '</dd><dt>Account number</dt><dd class="num">' + esc(B.number) + '</dd><dt>Currency</dt><dd>' + esc(B.currency) + '</dd><dt>Reference</dt><dd>' + esc(inv.no) + '</dd><dt>Amount</dt><dd class="num"><strong>J$' + money2(jmd) + '</strong></dd></dl><p class="small muted">US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + '). If you pay on another day, use that day\'s Bank of Jamaica rate.</p><button class="btn ghost small" data-act="copybank" data-no="' + esc(inv.no) + '">Copy bank details</button></div>';
-      h += '<div class="payopt"><strong>PayPal (US$)</strong><p class="small">' + (OM.PRO.paypal ? 'Send US$' + money2(OM.PRO.priceUsd) + ' to <strong>' + esc(OM.PRO.paypal) + '</strong> with ' + esc(inv.no) + ' in the note.' : 'Ask OMGym on WhatsApp for the PayPal address, then send US$' + money2(OM.PRO.priceUsd) + ' with ' + esc(inv.no) + ' in the note.') + '</p></div>';
+      h += '<h3>How to pay</h3>';
+      if (OM.PRO.lynk) h += '<div class="payopt"><strong>Lynk (J$)</strong><p class="small">Send <strong class="num">J$' + money2(jmd) + '</strong> to <strong>' + esc(OM.PRO.lynk) + '</strong> in the Lynk app, with ' + esc(inv.no) + ' in the note. US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + ').</p><button class="btn ghost small" data-act="copylynk">Copy Lynk username</button></div>';
+      if (OM.PRO.showBank || !OM.PRO.lynk) h += '<div class="payopt"><strong>Scotiabank transfer (J$)</strong><dl class="small"><dt>Name</dt><dd>' + esc(B.holder) + '</dd><dt>Bank</dt><dd>' + esc(B.bank) + '</dd><dt>Account type</dt><dd>' + esc(B.type) + '</dd><dt>Account number</dt><dd class="num">' + esc(B.number) + '</dd><dt>Currency</dt><dd>' + esc(B.currency) + '</dd><dt>Reference</dt><dd>' + esc(inv.no) + '</dd><dt>Amount</dt><dd class="num"><strong>J$' + money2(jmd) + '</strong></dd></dl><p class="small muted">US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + '). If you pay on another day, use that day\'s Bank of Jamaica rate.</p><button class="btn ghost small" data-act="copybank" data-no="' + esc(inv.no) + '">Copy bank details</button></div>';
+      h += '<div class="payopt"><strong>PayPal (US$)</strong><p class="small">' + (OM.PRO.paypal ? 'Send US$' + money2(OM.PRO.priceUsd) + ' to <strong>' + esc(OM.PRO.paypal) + '</strong> with ' + esc(inv.no) + ' in the note. Choose "Friends and family" only if you know the seller; otherwise "Goods and services" protects you.' : 'Ask OMGym on WhatsApp for the PayPal address, then send US$' + money2(OM.PRO.priceUsd) + ' with ' + esc(inv.no) + ' in the note.') + '</p></div>';
     }
     h += '<details><summary class="small">Terms</summary><ul class="lines small">' + OM.PRO.terms.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
     if (isPages()) h += '<div class="noprint"><button class="btn ghost small" data-act="printinv">Print or save as PDF</button></div>';
@@ -397,10 +399,10 @@
       h += '<p class="small muted">PRO plans run harder than the standard plan. If you\'re newer to training, the standard plan will serve you better.</p>';
       h += '<div><button class="btn" data-act="pronew">Create my invoice</button></div>';
     } else {
-      h += '<p>Invoice <strong>' + esc(open.no) + '</strong> is ready. Pay by Scotiabank transfer or PayPal, then send OMGym your payment screenshot on WhatsApp.</p>';
+      h += '<p>Invoice <strong>' + esc(open.no) + '</strong> is ready. Pay by ' + OM.proPayMethods().map(function (m) { return OM.PRO_METHODS[m]; }).join(' or ').replace(' or ', OM.proPayMethods().length > 2 ? ', ' : ' or ') + ', then send OMGym your payment screenshot on WhatsApp.</p>';
       h += renderInvoice(open);
-      h += '<div class="formrow"><span class="f">How did you pay?</span><div class="seg" role="group">' + ['bns', 'pp'].map(function (m) { return '<button class="chip" data-act="promethod" data-m="' + m + '" aria-pressed="' + ((open.method || 'bns') === m) + '">' + OM.PRO_METHODS[m] + '</button>'; }).join('') + '</div></div>';
-      var txt = OM.proProofText(Object.assign({}, open, { start: open.start, until: open.until }), open.method || 'bns');
+      h += '<div class="formrow"><span class="f">How did you pay?</span><div class="seg" role="group">' + OM.proPayMethods().map(function (m) { return '<button class="chip" data-act="promethod" data-m="' + m + '" aria-pressed="' + ((open.method || OM.proPayMethods()[0]) === m) + '">' + OM.PRO_METHODS[m] + '</button>'; }).join('') + '</div></div>';
+      var txt = OM.proProofText(Object.assign({}, open, { start: open.start, until: open.until }), open.method || OM.proPayMethods()[0]);
       h += '<a class="btn wa" id="pro-proof" data-act="proproof" data-no="' + esc(open.no) + '" href="https://wa.me/' + OM.PRO.whatsapp + '?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">I\'ve paid: send proof on WhatsApp</a>';
       h += '<p class="small muted">WhatsApp opens with your details filled in. Attach the screenshot of your transfer before you send. ' + (OM.graceAllowed(TODAY, PD.graceLog) ? 'PRO opens for ' + OM.PRO.graceDays + ' days straight away while OMGym checks your payment (usually 1–3 days).' : 'PRO unlocks when OMGym confirms your payment (usually 1–3 days).') + '</p>';
       h += '<div><button class="linkbtn small" data-act="provoid" data-no="' + esc(open.no) + '">Cancel this invoice</button></div>';
@@ -437,7 +439,7 @@
     PD.name = (nm && nm.trim()) || PD.name || (S.profile && S.profile.name) || '';
     var per = OM.nextPeriod(TODAY, st.lastUntil, 1);
     var seq = PD.invoices.length + 1;
-    PD.invoices.push({ no: OM.invoiceNo(PD.id, per.start, seq), id: PD.id, name: PD.name, start: per.start, until: per.until, method: 'bns', created: TODAY, status: 'unpaid' });
+    PD.invoices.push({ no: OM.invoiceNo(PD.id, per.start, seq), id: PD.id, name: PD.name, start: per.start, until: per.until, method: OM.proPayMethods()[0], created: TODAY, status: 'unpaid' });
     proSave(); proView = null; tab = 'pro'; render();
     var el = document.getElementById('pro-start'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
   }
@@ -738,6 +740,7 @@
       case 'provoid': PD.invoices = PD.invoices.filter(function (i) { return i.no !== t.dataset.no; }); proSave(); render(); break;
       case 'showinv': proView = proView === t.dataset.no ? null : t.dataset.no; render(); var iv = document.getElementById('invoice'); if (iv && proView && iv.scrollIntoView) iv.scrollIntoView({ block: 'start' }); break;
       case 'printinv': try { window.print(); } catch (e) { } break;
+      case 'copylynk': try { navigator.clipboard.writeText(OM.PRO.lynk).then(function () { toast('Lynk username copied'); }, function () { toast('Press and hold to copy'); }); } catch (e) { toast('Press and hold to copy'); } break;
       case 'copybank':
         var B = OM.PRO.bank, btxt = 'Name: ' + B.holder + '\nBank: ' + B.bank + '\nAccount type: ' + B.type + '\nAccount number: ' + B.number + '\nCurrency: ' + B.currency + '\nReference: ' + t.dataset.no + '\nAmount: J$' + money2(OM.proJmd(OM.PRO.priceUsd, OM.PRO.boj.rate));
         try { navigator.clipboard.writeText(btxt).then(function () { toast('Bank details copied'); }, function () { toast('Press and hold the details to copy'); }); } catch (e) { toast('Press and hold the details to copy'); }
