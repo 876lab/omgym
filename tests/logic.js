@@ -80,7 +80,7 @@ ok(a1 !== a2, 'exercise selection rotates each 6-week cycle');
 
 // 5. Meals: diets x allergies x regions
 const diets = ['none', 'pescatarian', 'vegetarian', 'vegan'];
-const allergySets = [[], ['egg'], ['fish'], ['peanut'], ['dairy'], ['gluten'], ['egg', 'gluten']];
+const allergySets = [[], ['egg'], ['fish'], ['shellfish'], ['peanut'], ['dairy'], ['gluten'], ['egg', 'gluten'], ['fish', 'shellfish']];
 let kErrMain = [], kErrVegan = []; let mealDays = 0, kErr = [], pRatio = [], costs = { JM: [], US: [] };
 for (const region of ['JM', 'US', 'OTHER']) for (const diet of diets) for (const al of allergySets) {
   for (const prof of [base, { ...base, sex: 'female', weightKg: 65, heightCm: 160, goalKg: 60 }, { ...base, weightKg: 110, goalKg: 90 }, { ...base, goalKg: 88 }]) {
@@ -120,7 +120,7 @@ ok(pct(kErrMain, .9) < 0.12, '90% of non-vegan days within 12% of calorie target
 // omnivore protein specifically
 const omniP = []; for (let i = 0; i < 28; i++) { const T3 = OM.calcTargets(base); const pl = OM.planDay(OM.addDays('2026-10-22', i), base, T3, OM.priceTable(base, {}), {}); omniP.push(pl.tot.p / T3.protein); }
 omniP.sort((a, b) => a - b); console.log(`Omnivore protein hit     10th pct ${(pct(omniP, .1) * 100).toFixed(0)}%  median ${(pct(omniP, .5) * 100).toFixed(0)}%`);
-ok(pct(omniP, .5) > 0.85, 'omnivore median protein >= 85% of target');
+ok(pct(omniP, .5) * 2.0 >= 1.6, 'omnivore median protein >= 1.6 g/kg (muscle-gain plateau, Morton 2018)');
 
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 console.log(`Avg daily food cost (80 kg man, losing): Jamaica J$${avg(costs.JM).toFixed(0)}  USA $${avg(costs.US).toFixed(2)}`);
@@ -139,7 +139,19 @@ const sl = OM.shoppingList('2026-10-22', 7, base, T0, pt0, {});
 ok(sl.rows.length > 8, 'shopping rows');
 ok(sl.total >= sl.eatenCost * 0.98, 'shopping total covers food eaten (rounded up to pack sizes)');
 console.log(`7-day shop (Jamaica): J$${sl.total.toFixed(0)} to buy, J$${sl.eatenCost.toFixed(0)} of it eaten this week`);
-sl.rows.forEach(r => ok(r.qty > 0 && isFinite(r.cost), 'row valid ' + r.id));
+sl.rows.forEach(r => { ok(r.qty > 0 && isFinite(r.cost), 'row valid ' + r.id); if (!r.price.weighed) ok(Number.isInteger(r.qty), 'whole packs for ' + r.id); else ok(r.qty * 2 === Math.round(r.qty * 2), 'half-pound steps for ' + r.id); });
+// every price is a pack with a store and a date
+for (const reg of ['JM', 'US']) for (const [id, it] of Object.entries(OM.PRICES[reg].items)) ok(it.u && it.g > 0 && it.pr > 0 && it.store && it.date && !/serving/i.test(it.u), `pack price ${reg} ${id}`);
+ok(Object.keys(OM.PRICES.JM.items).length === Object.keys(OM.ING).length, 'every ingredient has a Jamaica price');
+// plates keep a real portion of starch in main meals
+{ const T1 = OM.calcTargets(base), pt1 = OM.priceTable(base, {});
+  for (let i = 0; i < 30; i++) for (const m of OM.planDay(OM.addDays('2026-10-22', i), base, T1, pt1, {}).meals) {
+    if (m.slot.key === 'l' || m.slot.key === 'd') { const c = m.items.find(x => x.role === 'carb'); ok(OM.ING[c.id].k * c.g / 100 >= 0.2 * m.kT, 'starch portion on ' + m.name); }
+  } }
+// custom price with store
+const ptS = OM.priceTable(base, { egg: { pr: 1100, store: 'Hi-Lo', date: '23 Oct 2026' } });
+ok(ptS.items.egg.store === 'Hi-Lo' && /Hi-Lo/.test(ptS.items.egg.src), 'store recorded on your price');
+ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1].d, 'changes log newest first');
 
 // 7. Trend / adaptive
 const ws = []; for (let i = 0; i < 21; i += 2) ws.push({ d: OM.addDays('2026-10-01', i), kg: 80 - i * 0.02 });

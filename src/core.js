@@ -381,70 +381,74 @@ var OM = (function () {
     rbanana: { name: 'Ripe banana', k: 89, p: 1.1, c: 23, f: 0.3, y: 0.65, grp: 'Vegetables & fruit', each: 100 }
   };
 
-  // price records: u = how it is sold, g = grams in that unit, pr = price, loose = sold by weight, src, date, conf
+  // Prices are quoted per pack, the way a supermarket sells it.
+  // u = pack, g = grams in the pack, pr = pack price, weighed = sold by the pound at the counter,
+  // store = where the price was seen, src = evidence, date, conf = survey | store | market | estimate
   var PRICES = {
     JM: {
       currency: 'JMD', symbol: 'J$', decimals: 0, label: 'Jamaica',
+      stores: ['PriceSmart', 'Hi-Lo', 'Loshusan', 'Another store'],
       items: {
-        rice: { u: '1 kg bulk', g: 1000, pr: 180, loose: true, src: 'Consumer Affairs Commission grocery survey (J$157–200/kg)', date: 'Jul 2026', conf: 'survey' },
-        oats: { u: '800 g bag', g: 800, pr: 662, src: 'Loshusan Supermarket online (Foska)', date: 'Oct 2026', conf: 'retail' },
-        cornmeal: { u: '400 g bag', g: 400, pr: 169, src: 'Loshusan Supermarket online (Foska)', date: 'Oct 2026', conf: 'retail' },
-        flour: { u: '1 kg bag', g: 1000, pr: 340, src: 'CAC survey, JF Mills counter flour (J$322–350)', date: 'Jul 2026', conf: 'survey' },
-        bread: { u: '2 lb loaf', g: 907, pr: 560, src: 'CAC survey, National hardo loaf (same price at all 9 outlets)', date: 'Jul 2026', conf: 'survey' },
-        sweetpot: { u: 'per lb', g: 454, pr: 450, loose: true, src: 'Jamaica Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        yam: { u: 'per lb', g: 454, pr: 500, loose: true, src: 'Jamaica Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
-        gbanana: { u: 'per hand (~1.4 kg)', g: 1400, pr: 400, src: 'Jamaica Observer Market Bag, Spanish Town Market (hand weight is our estimate)', date: 'Jul 2026', conf: 'market' },
-        ipotato: { u: 'per lb', g: 454, pr: 300, loose: true, src: 'Jamaica Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        redpeas: { u: 'per lb', g: 454, pr: 650, loose: true, src: 'Estimate from online grocers (J$250–882/lb); check your shop', date: 'Oct 2026', conf: 'estimate' },
-        broadbeans: { u: '400 g tin', g: 400, pr: 290, src: 'CAC survey, Lasco broad beans (J$267–314)', date: 'Jul 2026', conf: 'survey' },
-        chicken: { u: 'per kg (whole, frozen)', g: 1000, pr: 950, loose: true, src: 'CAC survey, Grade A whole chicken (J$849–1,033/kg)', date: 'Jul 2026', conf: 'survey' },
-        egg: { u: 'dozen', g: 600, pr: 900, src: 'Cost-of-living trackers (J$617–854) plus 2026 inflation', date: 'Oct 2026', conf: 'estimate' },
-        mackerel: { u: '155 g tin', g: 155, pr: 135, src: 'CAC survey, Grace mackerel (J$120–144)', date: 'Jul 2026', conf: 'survey' },
-        sardines: { u: '106 g tin', g: 106, pr: 225, src: 'CAC survey, Grace sardines (J$211–242)', date: 'Jul 2026', conf: 'survey' },
-        tuna: { u: '142 g tin', g: 142, pr: 200, src: 'CAC survey, Brunswick tuna (J$197–205)', date: 'Jul 2026', conf: 'survey' },
-        pb: { u: '40 oz jar (1.13 kg)', g: 1134, pr: 1273, src: 'Loshusan Supermarket online (Members Select)', date: 'Oct 2026', conf: 'retail' },
-        oil: { u: '500 ml bottle', g: 460, pr: 455, src: 'CAC survey, Lider vegetable oil (J$431–477)', date: 'Jul 2026', conf: 'survey' },
-        milk: { u: '1 L carton', g: 1030, pr: 700, src: 'Traveller price guide', date: 'Mar 2026', conf: 'estimate' },
-        callaloo: { u: 'per kg', g: 1000, pr: 640, loose: true, src: 'MyVoice crop price tracker (retail)', date: '13 Oct 2026', conf: 'market' },
-        cabbage: { u: 'per kg', g: 1000, pr: 1380, loose: true, src: 'MyVoice crop price tracker (green, local)', date: '13 Oct 2026', conf: 'market' },
-        carrot: { u: 'per lb', g: 454, pr: 500, loose: true, src: 'Jamaica Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        tomato: { u: 'per lb', g: 454, pr: 500, loose: true, src: 'Jamaica Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        onion: { u: 'per lb', g: 454, pr: 300, loose: true, src: 'Jamaica Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        scallion: { u: 'per lb', g: 454, pr: 400, loose: true, src: 'Jamaica Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        pumpkin: { u: 'per lb', g: 454, pr: 400, loose: true, src: 'Jamaica Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
-        rbanana: { u: 'dozen (~1.4 kg)', g: 1400, pr: 1000, src: 'Jamaica Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' }
+        rice: { u: '2 kg bag', g: 2000, pr: 480, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey: bulk white rice J$157–200/kg at 9 supermarkets incl. Hi-Lo Constant Spring; bagged price estimated from it', date: 'Jul 2026', conf: 'estimate' },
+        oats: { u: '800 g bag (Foska)', g: 800, pr: 662, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
+        cornmeal: { u: '400 g bag (Foska)', g: 400, pr: 169, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
+        flour: { u: '1 kg bag (JF Mills)', g: 1000, pr: 369, store: 'Loshusan', src: 'Loshusan online J$368.58; CAC survey J$322–350', date: 'Oct 2026', conf: 'store' },
+        bread: { u: '2 lb loaf (National hardo)', g: 907, pr: 560, store: 'Hi-Lo and 8 other supermarkets', src: 'CAC survey: same price at all 9 outlets incl. Hi-Lo', date: 'Jul 2026', conf: 'survey' },
+        sweetpot: { u: 'per lb, weighed', g: 454, pr: 450, weighed: true, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
+        yam: { u: 'per lb, weighed', g: 454, pr: 500, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
+        gbanana: { u: 'per lb, weighed', g: 454, pr: 150, weighed: true, store: 'Market', src: 'Spanish Town Market J$400 a hand (about 1.4 kg), converted', date: 'Jul 2026', conf: 'market' },
+        ipotato: { u: 'per lb, weighed', g: 454, pr: 300, weighed: true, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
+        redpeas: { u: '1 lb bag', g: 454, pr: 650, store: 'Estimate', src: 'Online grocers J$250–882/lb; check your supermarket', date: 'Oct 2026', conf: 'estimate' },
+        broadbeans: { u: '400 g tin (Lasco)', g: 400, pr: 290, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$267–314', date: 'Jul 2026', conf: 'survey' },
+        chicken: { u: 'whole frozen chicken (about 1.8 kg)', g: 1800, pr: 1710, store: 'Hi-Lo, Loshusan, PriceSmart and others', src: 'CAC survey J$849–1,033/kg (Jul 2026); agriculture ministry supermarket survey incl. Hi-Lo, Loshusan and PriceSmart J$849–950/kg', date: 'Jul 2026', conf: 'survey' },
+        egg: { u: 'dozen, Grade A large', g: 600, pr: 950, store: 'Estimate', src: 'Price trackers J$617–854 earlier in 2026, plus inflation; check your supermarket', date: 'Oct 2026', conf: 'estimate' },
+        mackerel: { u: '155 g tin (Grace)', g: 155, pr: 135, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$120–144', date: 'Jul 2026', conf: 'survey' },
+        sardines: { u: '106 g tin (Grace)', g: 106, pr: 225, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$211–242', date: 'Jul 2026', conf: 'survey' },
+        tuna: { u: '142 g tin (Brunswick)', g: 142, pr: 200, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$197–205', date: 'Jul 2026', conf: 'survey' },
+        pb: { u: '40 oz jar (Members Select)', g: 1134, pr: 1273, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
+        oil: { u: '500 ml bottle (Lider)', g: 460, pr: 455, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$431–477', date: 'Jul 2026', conf: 'survey' },
+        milk: { u: '1 L carton', g: 1030, pr: 700, store: 'Estimate', src: 'Price guide, March 2026; check your supermarket', date: 'Mar 2026', conf: 'estimate' },
+        callaloo: { u: '1 bundle (about 450 g)', g: 450, pr: 290, store: 'Estimate', src: 'MyVoice crop tracker J$638/kg retail', date: '13 Oct 2026', conf: 'estimate' },
+        cabbage: { u: '1 head (about 1 kg)', g: 1000, pr: 900, store: 'Estimate', src: 'Reported J$500–1,400 a head in October (drought)', date: 'Oct 2026', conf: 'estimate' },
+        carrot: { u: '1 lb bag', g: 454, pr: 500, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
+        tomato: { u: 'per lb, weighed', g: 454, pr: 500, weighed: true, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
+        onion: { u: '3 lb bag', g: 1361, pr: 850, store: 'Estimate', src: 'J$300/lb at Mandeville Market, converted', date: '16 Oct 2026', conf: 'estimate' },
+        scallion: { u: '1 bundle (about 100 g)', g: 100, pr: 100, store: 'Estimate', src: 'J$400/lb at Mandeville Market, converted', date: '16 Oct 2026', conf: 'estimate' },
+        pumpkin: { u: 'per lb, weighed', g: 454, pr: 400, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
+        rbanana: { u: '1 hand (about 6, 700 g)', g: 700, pr: 500, store: 'Estimate', src: 'J$1,000 a dozen at Coronation Market, converted', date: 'Aug 2026', conf: 'estimate' }
       }
     },
     US: {
       currency: 'USD', symbol: '$', decimals: 2, label: 'United States',
+      stores: ['Walmart', 'Aldi', 'Kroger', 'Another store'],
       items: {
-        rice: { u: 'per lb', g: 454, pr: 1.12, loose: true, src: 'BLS average price, long-grain white rice', date: 'Sep 2026', conf: 'survey' },
-        oats: { u: '18 oz canister', g: 510, pr: 3.49, src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
-        cornmeal: { u: '2 lb bag', g: 907, pr: 2.99, src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
-        flour: { u: 'per lb', g: 454, pr: 0.55, loose: true, src: 'BLS average price, all-purpose flour', date: 'Sep 2026', conf: 'survey' },
-        bread: { u: '1 lb loaf', g: 454, pr: 1.83, src: 'BLS average price, white pan bread', date: 'Sep 2026', conf: 'survey' },
-        sweetpot: { u: 'per lb', g: 454, pr: 1.49, loose: true, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        yam: { u: 'per lb', g: 454, pr: 2.49, loose: true, src: 'Typical Caribbean grocer price', date: 'Oct 2026', conf: 'estimate' },
-        gbanana: { u: 'per lb', g: 454, pr: 0.66, loose: true, src: 'BLS average price, bananas', date: 'Sep 2026', conf: 'survey' },
-        ipotato: { u: 'per lb', g: 454, pr: 0.99, loose: true, src: 'BLS average price, white potatoes', date: 'Sep 2026', conf: 'survey' },
-        redpeas: { u: 'per lb', g: 454, pr: 1.70, loose: true, src: 'BLS average price, dried beans', date: 'Feb 2026', conf: 'survey' },
-        broadbeans: { u: '15 oz can', g: 425, pr: 1.29, src: 'Typical store price, canned fava beans', date: 'Oct 2026', conf: 'estimate' },
-        chicken: { u: 'per lb (legs)', g: 454, pr: 1.74, loose: true, src: 'BLS average price, chicken legs', date: 'Sep 2026', conf: 'survey' },
-        egg: { u: 'dozen', g: 600, pr: 2.27, src: 'BLS average price, Grade A large eggs', date: 'Sep 2026', conf: 'survey' },
-        mackerel: { u: '15 oz can', g: 425, pr: 3.49, src: 'Typical store price, jack mackerel', date: 'Oct 2026', conf: 'estimate' },
-        sardines: { u: '3.75 oz can', g: 106, pr: 1.79, src: 'Typical store price', date: 'Oct 2026', conf: 'estimate' },
-        tuna: { u: '5 oz can', g: 142, pr: 1.39, src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
-        pb: { u: '16 oz jar', g: 454, pr: 2.89, src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
-        oil: { u: '48 oz bottle', g: 1360, pr: 4.99, src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
-        milk: { u: 'gallon', g: 3900, pr: 4.11, src: 'BLS average price, whole milk', date: 'Sep 2026', conf: 'survey' },
-        callaloo: { u: '10 oz bag spinach or callaloo', g: 284, pr: 2.49, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        cabbage: { u: 'per lb', g: 454, pr: 0.89, loose: true, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        carrot: { u: 'per lb', g: 454, pr: 1.19, loose: true, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        tomato: { u: 'per lb', g: 454, pr: 1.99, loose: true, src: 'BLS average price, field-grown tomatoes', date: 'Sep 2026', conf: 'survey' },
-        onion: { u: 'per lb', g: 454, pr: 1.29, loose: true, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        scallion: { u: 'bunch (~100 g)', g: 100, pr: 0.99, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        pumpkin: { u: 'per lb (squash)', g: 454, pr: 1.49, loose: true, src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
-        rbanana: { u: 'per lb', g: 454, pr: 0.66, loose: true, src: 'BLS average price, bananas', date: 'Sep 2026', conf: 'survey' }
+        rice: { u: '2 lb bag', g: 907, pr: 2.24, store: 'US average', src: 'BLS average price $1.12/lb, long-grain white rice', date: 'Sep 2026', conf: 'survey' },
+        oats: { u: '18 oz canister', g: 510, pr: 3.49, store: 'Estimate', src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
+        cornmeal: { u: '2 lb bag', g: 907, pr: 2.99, store: 'Estimate', src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
+        flour: { u: '5 lb bag', g: 2268, pr: 2.75, store: 'US average', src: 'BLS average price $0.55/lb, all-purpose flour', date: 'Sep 2026', conf: 'survey' },
+        bread: { u: '1 lb loaf', g: 454, pr: 1.83, store: 'US average', src: 'BLS average price, white bread', date: 'Sep 2026', conf: 'survey' },
+        sweetpot: { u: 'per lb, weighed', g: 454, pr: 1.49, weighed: true, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        yam: { u: 'per lb, weighed', g: 454, pr: 2.49, weighed: true, store: 'Estimate', src: 'Typical Caribbean grocer price', date: 'Oct 2026', conf: 'estimate' },
+        gbanana: { u: 'per lb, weighed', g: 454, pr: 0.66, weighed: true, store: 'US average', src: 'BLS average price, bananas', date: 'Sep 2026', conf: 'survey' },
+        ipotato: { u: '5 lb bag', g: 2268, pr: 4.95, store: 'US average', src: 'BLS average price $0.99/lb, white potatoes', date: 'Sep 2026', conf: 'survey' },
+        redpeas: { u: '1 lb bag', g: 454, pr: 1.70, store: 'US average', src: 'BLS average price, dried beans', date: 'Feb 2026', conf: 'survey' },
+        broadbeans: { u: '15 oz can', g: 425, pr: 1.29, store: 'Estimate', src: 'Typical store price, canned fava beans', date: 'Oct 2026', conf: 'estimate' },
+        chicken: { u: 'family pack of legs (about 3 lb)', g: 1361, pr: 5.22, store: 'US average', src: 'BLS average price $1.74/lb, chicken legs', date: 'Sep 2026', conf: 'survey' },
+        egg: { u: 'dozen, Grade A large', g: 600, pr: 2.27, store: 'US average', src: 'BLS average price', date: 'Sep 2026', conf: 'survey' },
+        mackerel: { u: '15 oz can', g: 425, pr: 3.49, store: 'Estimate', src: 'Typical store price, jack mackerel', date: 'Oct 2026', conf: 'estimate' },
+        sardines: { u: '3.75 oz can', g: 106, pr: 1.79, store: 'Estimate', src: 'Typical store price', date: 'Oct 2026', conf: 'estimate' },
+        tuna: { u: '5 oz can', g: 142, pr: 1.39, store: 'Estimate', src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
+        pb: { u: '16 oz jar', g: 454, pr: 2.89, store: 'Estimate', src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
+        oil: { u: '48 oz bottle', g: 1360, pr: 4.99, store: 'Estimate', src: 'Typical store-brand price', date: 'Oct 2026', conf: 'estimate' },
+        milk: { u: 'gallon', g: 3900, pr: 4.11, store: 'US average', src: 'BLS average price, whole milk', date: 'Sep 2026', conf: 'survey' },
+        callaloo: { u: '10 oz bag (spinach or callaloo)', g: 284, pr: 2.49, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        cabbage: { u: '1 head (about 2 lb)', g: 907, pr: 1.78, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        carrot: { u: '1 lb bag', g: 454, pr: 1.19, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        tomato: { u: 'per lb, weighed', g: 454, pr: 1.99, weighed: true, store: 'US average', src: 'BLS average price, field-grown tomatoes', date: 'Sep 2026', conf: 'survey' },
+        onion: { u: '3 lb bag', g: 1361, pr: 3.49, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        scallion: { u: '1 bunch (about 100 g)', g: 100, pr: 0.99, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        pumpkin: { u: 'per lb, weighed (squash)', g: 454, pr: 1.49, weighed: true, store: 'Estimate', src: 'Typical supermarket price', date: 'Oct 2026', conf: 'estimate' },
+        rbanana: { u: 'per lb, weighed', g: 454, pr: 0.66, weighed: true, store: 'US average', src: 'BLS average price, bananas', date: 'Sep 2026', conf: 'survey' }
       }
     }
   };
@@ -476,6 +480,11 @@ var OM = (function () {
     { id: 's_peasdip', slot: 's', plant: true, name: 'Red peas dip with hardo bread or sweet potato', pr: ['redpeas'], cb: ['bread', 'sweetpot'], fx: [['oil', 5]], how: 'Blend cooked red peas with garlic, lime, the oil, salt and scotch bonnet to taste. Keeps 4 days in the fridge.' },
     { id: 's_porridge', slot: 's', name: 'Small bowl of oats with milk', pr: ['milk'], cb: ['oats'], fx: [], how: 'Cook oats in milk 5 min; add cinnamon.' }
   ];
+  // What's new, newest first. The nightly improvement run adds an entry here.
+  var CHANGES = [
+    { d: '2026-10-23', t: 'Supermarket packs and shellfish', b: ['Prices are now quoted per pack (a 2 kg bag of rice, a whole chicken, a tin of mackerel), with the store and date for each.', 'Shellfish added to allergies.', 'A rest timer starts when you tick a set; a week view shows your training days.', 'Each exercise links to demo videos. Plates keep a proper portion of starch.'] },
+    { d: '2026-10-22', t: 'First version', b: ['Workouts, meals, shopping list, weigh-ins and calorie targets.'] }
+  ];
   var SLOTS = [
     { key: 'b', name: 'Breakfast', share: 0.25, pshare: 0.26 },
     { key: 'l', name: 'Lunch', share: 0.30, pshare: 0.33 },
@@ -501,12 +510,16 @@ var OM = (function () {
     var items = {};
     Object.keys(base.items).forEach(function (id) {
       var b = base.items[id];
-      var it = { u: b.u, g: b.g, pr: b.pr, loose: !!b.loose, src: b.src, date: b.date, conf: b.conf };
-      if (region === 'OTHER') { it.conf = 'placeholder'; it.src = 'US price used as a placeholder. Tap to enter your local price.'; }
+      var it = { u: b.u, g: b.g, pr: b.pr, weighed: !!b.weighed, store: b.store, src: b.src, date: b.date, conf: b.conf };
+      if (region === 'OTHER') { it.conf = 'placeholder'; it.store = 'Placeholder'; it.src = 'US price used as a placeholder. Enter what your store charges.'; }
       var c = custom && custom[id];
-      if (c && typeof c.pr === 'number') { it.pr = c.pr; it.conf = 'yours'; it.src = 'Your price'; it.date = c.date || ''; }
+      if (c && typeof c.pr === 'number') {
+        it.pr = c.pr; it.conf = 'yours'; it.store = c.store || 'Your store'; it.src = 'Your price' + (c.store ? ' at ' + c.store : ''); it.date = c.date || '';
+        if (c.u && c.g > 0) { it.u = c.u; it.g = c.g; it.weighed = !!c.weighed; }
+      }
       items[id] = it;
     });
+    meta.stores = (base.stores || []).slice();
     return { region: region, meta: meta, items: items };
   }
   function costPerGram(pt, id) { var it = pt.items[id]; return it.pr / it.g / ING[id].y; } // per edible gram
@@ -531,12 +544,12 @@ var OM = (function () {
     else if (Math.abs(det) > 1e-6) { xp = (K * d - b * Q) / det; } else { xp = pMax; }
     if (!isFinite(xp)) xp = pMax;
     var lean = P.p / P.k >= 0.09; // chicken, tinned fish
-    xp = Math.min(xp, (lean ? 0.85 : 0.65) * K / a); // protein food never crowds out the whole plate
+    xp = Math.min(xp, (lean ? 0.65 : 0.6) * K / a); // protein food never crowds out the whole plate
     xp = Math.max(pMin, Math.min(pMax, xp));
     if (protId === 'egg') { xp = Math.max(50, Math.round(xp / 50) * 50); if (a * xp > 0.7 * K && xp > 50) xp -= 50; }
     xc = (K - a * xp) / b;
     var cMax = carbId === 'bread' ? 160 : carbId === 'rbanana' ? 240 : (C.k > 300 ? 160 : 450);
-    var cMin = carbId === 'bread' ? 40 : 15;
+    var cMin = Math.max(carbId === 'bread' ? 40 : 15, Math.round(0.22 * K / b)); // at least ~22% of the meal from the starch
     xc = Math.max(cMin, Math.min(cMax, xc));
     if (carbId === 'bread') xc = Math.round(xc / 20) * 20;
     else xc = Math.round(xc / 5) * 5;
@@ -584,9 +597,9 @@ var OM = (function () {
       var tpl = opts[k]; usedIds[tpl.id] = 1;
       // cheapest allowed protein per gram of protein
       var prots = tpl.pr.filter(function (id) { return allowedIng(id, ex); }).sort(function (a, b) { return costPerGram(pt, a) / ING[a].p - costPerGram(pt, b) / ING[b].p; });
-      // rotate among options within 1.6x the cheapest cost per gram of protein
+      // rotate among options within 1.35x the cheapest cost per gram of protein
       var cheapest = costPerGram(pt, prots[0]) / ING[prots[0]].p;
-      var near = prots.filter(function (id) { return costPerGram(pt, id) / ING[id].p <= cheapest * 1.6; });
+      var near = prots.filter(function (id) { return costPerGram(pt, id) / ING[id].p <= cheapest * 1.35; });
       var protId = near[hash(dn * 3 + si) % near.length];
       // carb: rotate among the two cheapest per kcal
       var carbs = tpl.cb.filter(function (id) { return allowedIng(id, ex); }).sort(function (a, b) { return costPerGram(pt, a) / ING[a].k - costPerGram(pt, b) / ING[b].k; });
@@ -624,11 +637,11 @@ var OM = (function () {
     var rows = Object.keys(need).map(function (id) {
       var it = pt.items[id], g = need[id];
       var qty, cost, qtyText;
-      if (it.loose) {
+      if (it.weighed) {
         var lb = g / 453.6;
-        var lbR = Math.max(0.25, Math.ceil(lb * 4) / 4);
+        var lbR = Math.max(0.5, Math.ceil(lb * 2) / 2);
         qty = lbR; cost = lbR * 453.6 * it.pr / it.g;
-        qtyText = lbR.toFixed(2).replace(/\.?0+$/, '') + ' lb (' + Math.round(lbR * 0.4536 * 100) / 100 + ' kg)';
+        qtyText = lbR + ' lb, weighed (' + Math.round(lbR * 0.4536 * 10) / 10 + ' kg)';
       } else {
         qty = Math.max(1, Math.ceil(g / it.g - 0.05));
         cost = qty * it.pr; qtyText = qty + ' × ' + it.u;
@@ -679,7 +692,7 @@ var OM = (function () {
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
 if (typeof module !== 'undefined') module.exports = OM;

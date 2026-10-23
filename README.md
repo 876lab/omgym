@@ -10,12 +10,12 @@ Open the app: https://876lab.github.io/omgym/
 - **Mac:** Safari → File → **Add to Dock**. Chrome or Edge: the install icon at the right of the address bar.
 - **Windows:** Chrome or Edge → install icon in the address bar, then pin it to the taskbar or Start.
 
-Your data is saved in the browser you use, on that device. The claude.ai version of the app saves to your Claude account instead.
+The Home Screen app works offline at the gym. Your data is saved in the browser you use, on that device. The claude.ai version of the app saves to your Claude account instead.
 
 ## Working on it
 - Edit `src/` (`core.js` = plan logic, `ui.js` = screens, `shell.html` = styles and layout).
 - `python3 scripts/build.py` rebuilds `index.html` (the site) and `dist/artifact.html` (the claude.ai artifact).
-- `npm test` runs every check: 549k logic assertions plus a full browser walk-through.
+- `npm test` runs every check: 580k+ logic assertions plus a full browser walk-through.
 - GitHub runs the tests on every push to `main` and checks the live site every morning at 5:41am Jamaica time. A failure emails the repo owner.
 
 General fitness guidance, not medical advice.

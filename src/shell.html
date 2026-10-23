@@ -60,7 +60,7 @@ main { padding-block: 6px 120px; display: grid; gap: 18px; }
 .dayhead { display: grid; gap: 4px; }
 .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .kpi { background: var(--surface); border-radius: var(--r); padding: 10px 12px; }
-.kpi .v { font-family: var(--display); font-weight: 800; font-size: 1.6rem; line-height: 1; }
+.kpi .v { font-family: var(--display); font-weight: 800; font-size: clamp(1.15rem, 5.2vw, 1.6rem); line-height: 1.05; overflow-wrap: anywhere; }
 .kpi .u { font-size: 0.75rem; color: var(--muted); }
 
 .card { background: var(--surface); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
@@ -152,6 +152,16 @@ nav.tabs button[aria-current="page"] { color: var(--iron); }
 .steps i.on { background: var(--iron); }
 .sheetfoot { display: flex; justify-content: space-between; gap: 10px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 50; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 0.9rem; max-width: calc(100% - 32px); }
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.wd { background: var(--surface); border-radius: 8px; padding: 6px 2px; display: grid; justify-items: center; align-content: start; gap: 2px; min-height: 62px; border: 2px solid transparent; }
+.wd .wl { font-size: 0.7rem; font-weight: 700; color: var(--muted); }
+.wd .wn { font-size: 0.62rem; line-height: 1.1; text-align: center; color: var(--muted); overflow-wrap: anywhere; }
+.wd.train .wn { color: var(--fg); font-weight: 700; }
+.wd .wt { font-size: 0.8rem; color: var(--iron); font-weight: 800; min-height: 1em; }
+.wd.now { border-color: var(--iron); }
+.restbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: flex; align-items: center; gap: 12px; background: var(--iron); color: var(--on-iron); border-radius: 999px; padding: 8px 8px 8px 18px; font-family: var(--display); font-weight: 800; font-size: 1.3rem; box-shadow: 0 6px 20px rgba(0,0,0,.18); white-space: nowrap; }
+.restbar .btn.ghost { color: var(--on-iron); box-shadow: inset 0 0 0 1.5px currentColor; font-family: var(--body); }
+.restbar.go { background: var(--mango); color: #1a1205; }
 .confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
 @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .formgrid { grid-template-columns: minmax(0, 1fr); } }
@@ -177,4 +187,5 @@ nav.tabs button[aria-current="page"] { color: var(--iron); }
   </nav>
   <div class="sheet" id="sheet" hidden></div>
   <div class="toast" id="toast" role="status" hidden></div>
+  <div class="restbar" id="rest" role="timer" aria-live="polite" hidden><span id="rest-t" class="num">Rest</span><button class="btn small ghost" data-act="skiprest">Skip</button></div>
 </div>

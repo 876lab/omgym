@@ -38,6 +38,8 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('[data-k=injuries][data-v=knees]');
   await page.click('[data-act=next]');
   await page.click('[data-k=allergies][data-v=peanut]');
+  ok(await page.isVisible('[data-k=allergies][data-v=shellfish]'), 'shellfish allergy option');
+  await page.click('[data-k=allergies][data-v=shellfish]');
   await page.screenshot({ path: OUT + '/shot-setup.png' });
   await page.click('[data-act=next]');
   ok(await page.isHidden('#sheet'), 'sheet closes');
@@ -48,10 +50,15 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   const sets = page.locator('.setbox');
   if (await sets.count()) {
     await sets.first().click(); ok((await sets.first().getAttribute('aria-pressed')) === 'true', 'set box toggles');
+    ok(await page.isVisible('#rest') && /Rest \d:\d\d/.test(await page.innerText('#rest-t')), 'rest timer starts');
+    await page.click('[data-act=skiprest]'); ok(await page.isHidden('#rest'), 'rest timer skips');
+    ok(await page.locator('.ex details a[href*="youtube.com"]').count() > 0, 'demo links');
     const names = await page.locator('.ex .name').allInnerTexts();
     ok(!names.some(n => /lunge|split squat|Tempo bodyweight squat/i.test(n)), 'knee-unfriendly moves excluded: ' + names.join(', '));
     const load = page.locator('input[data-act=load]').first(); if (await load.count()) { await load.fill('20'); await load.press('Tab'); }
   }
+  ok(await page.locator('.week .wd').count() === 7, 'week strip shows 7 days');
+  ok(/week's shop/.test(await page.innerText('.kpis')), 'today shows week shop total');
   await page.click('[data-act=done]'); ok(await page.isVisible('text=Workout logged'), 'workout logged');
   await page.click('[data-act=habit][data-h=water]');
   ok((await page.getAttribute('[data-h=water]', 'aria-pressed')) === 'true', 'habit toggles');
@@ -59,6 +66,8 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('nav [data-tab=food]');
   const txt = await page.locator('#view').innerText();
   ok(!/Peanut butter/i.test(txt), 'peanut allergy respected in meals');
+  ok(/pack you buy/i.test(txt) && /(bag|tin|dozen|loaf|jar|bottle|bundle|head|chicken|per lb)/.test(txt), 'meal tables quote packs');
+  ok(!/costs about/.test(txt), 'no per-serving cost text');
   const before = await page.locator('.card h3').nth(0).innerText();
   await page.click('[data-act=swap][data-slot=b]');
   const after = await page.locator('.card h3').nth(0).innerText();
@@ -70,10 +79,13 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('nav [data-tab=shop]');
   const totalBefore = await page.locator('.kpi .v').first().innerText();
   await page.locator('[data-act=editprice][data-id=rice]').click();
-  await page.fill('#price-rice', '900'); await page.click('[data-act=saveprice][data-id=rice]');
+  await page.fill('#price-rice', '900'); await page.selectOption('#store-rice', 'Hi-Lo'); await page.click('[data-act=saveprice][data-id=rice]');
   const totalAfter = await page.locator('.kpi .v').first().innerText();
   ok(totalBefore !== totalAfter, 'price edit changes total ' + totalBefore + ' -> ' + totalAfter);
   ok(await page.isVisible('.pill.yours'), 'your-price pill');
+  ok(/Your price at Hi-Lo/.test(await page.locator('#view').innerText()), 'store recorded on price');
+  const qtys = await page.locator('.shoprow label .small').allInnerTexts();
+  ok(qtys.every(q => /^\d+ × |lb, weighed/.test(q)), 'shop list in whole packs or weighed lb: ' + qtys.slice(0, 4).join(' | '));
   await page.locator('[data-act=tick]').first().check();
   ok(!(await overflow()), 'no horizontal overflow on shop');
   await page.screenshot({ path: OUT + '/shot-shop.png', fullPage: true });
@@ -91,6 +103,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.screenshot({ path: OUT + '/shot-progress.png', fullPage: true });
   await page.click('nav [data-tab=me]');
   ok(await page.isVisible('text=-150 kcal adjustment') || await page.isVisible('text=−150'), 'plan shows adjustment');
+  ok(await page.isVisible("text=What's new"), "what's new section");
   ok(!(await overflow()), 'no overflow plan tab');
   await page.screenshot({ path: OUT + '/shot-plan.png', fullPage: true });
   // persistence across reload

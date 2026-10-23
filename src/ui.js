@@ -4,6 +4,7 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var LSKEY = 'omgym-state-v1';
   var TODAY = OM.ymd(new Date());
+  function refreshToday() { var t = OM.ymd(new Date()); if (t !== TODAY) { if (foodDate === TODAY) foodDate = t; TODAY = t; render(); } }
 
   /* ---------- state ---------- */
   function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {} }; }
@@ -85,6 +86,8 @@
     else if (imperial()) s += ' (' + (g / 28.35).toFixed(1) + ' oz)';
     return s;
   }
+  function packText(it, pt) { return money(it.pr, pt) + (it.weighed ? ' per lb' : ' · ' + it.u); }
+  function weekShop() { return OM.shoppingList(TODAY, 7, P(), targets(), prices(), S.swaps); }
   function day(d) { if (!S.days[d]) S.days[d] = { sets: {}, done: false, habits: {} }; return S.days[d]; }
   function toast(t) { var el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, 2600); }
   function needSetup() { if (isExample()) { toast('Set up your own plan first'); openSetup(); return true; } return false; }
@@ -102,10 +105,12 @@
     var p = P(), T = targets(), pt = prices();
     var w = OM.buildWorkout(TODAY, p, startDate(), T.caution);
     var plan = OM.planDay(TODAY, p, T, pt, S.swaps);
+    var shop = weekShop();
     var dd = S.days[TODAY] || { sets: {}, habits: {} };
     var h = exampleBanner() + flagsHtml(T);
     h += '<section class="dayhead"><span class="label">' + esc(niceDate(TODAY)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min</span></section>';
-    h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">kcal today</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(plan.tot.cost, pt) + '</div><div class="u">food cost</div></div></section>';
+    h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">kcal today</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(shop.total, pt) + '</div><div class="u">week\'s shop</div></div></section>';
+    h += weekStrip(p);
     // workout
     h += '<section class="card hero">';
     if (!w.rest) h += '<p class="small"><strong>' + esc(w.phase.name) + ':</strong> ' + esc(w.phase.note) + (w.caution ? ' Keep effort moderate until your doctor clears you.' : '') + '</p>';
@@ -117,9 +122,9 @@
         var id = it.ex.id, doneSets = (dd.sets && dd.sets[id]) || 0, lr = S.loads[id], lo = lr && typeof lr === 'object' ? (lr.d === TODAY ? lr.prev : lr) : null, last = lo ? lo.v : '';
         h += '<div class="ex"><div><div class="name">' + esc(it.ex.name) + '</div><div class="rx">' + it.sets + ' × ' + esc(it.reps) + ' · rest ' + it.rest + ' s' + (it.ex.kind === 'c' || it.ex.kind === 'a' ? ' · ' + esc(it.rir) + ' reps in reserve' : '') + '</div></div><div></div>';
         h += '<div class="sets">';
-        for (var i = 1; i <= it.sets; i++) h += '<button class="setbox" data-act="set" data-ex="' + id + '" data-n="' + i + '" aria-pressed="' + (i <= doneSets) + '" aria-label="Set ' + i + ' of ' + esc(it.ex.name) + '">' + i + '</button>';
+        for (var i = 1; i <= it.sets; i++) h += '<button class="setbox" data-act="set" data-ex="' + id + '" data-n="' + i + '" data-rest="' + it.rest + '" aria-pressed="' + (i <= doneSets) + '" aria-label="Set ' + i + ' of ' + esc(it.ex.name) + '">' + i + '</button>';
         if (it.ex.kind === 'c' || it.ex.kind === 'a' || it.ex.kind === 'm') h += '<label class="load"><span class="last">' + (last ? 'Last: ' + esc(last) : 'Weight') + '</span><input id="load-' + id + '" data-act="load" data-ex="' + id + '" type="text" inputmode="decimal" placeholder="' + wUnit() + '" value="' + esc((dd.loads && dd.loads[id]) || '') + '" aria-label="Weight used for ' + esc(it.ex.name) + '"></label>';
-        h += '</div><details><summary>How to do it</summary>' + esc(it.ex.cue) + '</details></div>';
+        h += '</div><details><summary>How to do it</summary>' + esc(it.ex.cue) + ' <a href="https://www.youtube.com/results?search_query=' + encodeURIComponent(it.ex.name + ' exercise proper form') + '" target="_blank" rel="noopener">Watch demos</a></details></div>';
       });
       h += '</div>';
     });
@@ -130,10 +135,21 @@
     // meals summary
     h += '<section class="card"><div class="cardhead"><h3>Today\'s food</h3><button class="linkbtn" data-act="tab" data-tab="food">Recipes & amounts</button></div><div>';
     plan.meals.forEach(function (m) { if (m.empty) return; h += '<div class="mealrow"><span class="label">' + m.slot.name + '</span><span>' + esc(m.name) + '</span><span class="small muted num">' + Math.round(m.tot.k) + ' kcal</span></div>'; });
-    h += '</div><p class="small muted num">' + Math.round(plan.tot.k) + ' kcal · ' + Math.round(plan.tot.p) + ' g protein · ' + money(plan.tot.cost, pt) + '</p></section>';
+    h += '</div><p class="small muted num">' + Math.round(plan.tot.k).toLocaleString() + ' kcal · ' + Math.round(plan.tot.p) + ' g protein</p></section>';
     return h;
   }
 
+  function weekStrip(p) {
+    var dn = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    var mon = OM.addDays(TODAY, -((OM.weekday(TODAY) + 6) % 7));
+    var h = '<section class="week" aria-label="This week">';
+    for (var i = 0; i < 7; i++) {
+      var d = OM.addDays(mon, i), s = OM.sessionFor(d, p, startDate()), done = S.days[d] && S.days[d].done;
+      var nm = s ? OM.buildWorkout(d, p, startDate(), false).title.replace(/ body/, '').replace('Conditioning + core', 'Cardio') : 'Rest';
+      h += '<div class="wd' + (d === TODAY ? ' now' : '') + (s ? ' train' : '') + (done ? ' done' : '') + '"><span class="wl">' + dn[OM.weekday(d)] + '</span><span class="wn">' + esc(nm) + '</span><span class="wt" aria-hidden="true">' + (done ? '✓' : '') + '</span></div>';
+    }
+    return h + '</section>';
+  }
   function macroBar(label, v, target, unit) {
     var pc = Math.min(130, v / target * 100);
     return '<div class="macro"><div class="blockhead"><span class="small"><strong>' + label + '</strong></span><span class="small num muted">' + Math.round(v) + ' / ' + target + ' ' + unit + '</span></div><div class="bar' + (pc > 110 ? ' over' : '') + '"><i style="width:' + Math.min(100, pc) + '%"></i></div></div>';
@@ -143,15 +159,15 @@
     var plan = OM.planDay(foodDate, p, T, pt, S.swaps);
     var h = exampleBanner();
     h += '<section class="datenav"><button class="iconbtn" data-act="fd" data-n="-1" aria-label="Previous day">‹</button><div style="text-align:center"><span class="label">' + (foodDate === TODAY ? 'Today' : esc(niceDate(foodDate, { weekday: 'long' }))) + '</span><h2>' + esc(niceDate(foodDate, { day: 'numeric', month: 'short' })) + '</h2></div><button class="iconbtn" data-act="fd" data-n="1" aria-label="Next day">›</button></section>';
-    h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Food for the day costs about <strong class="num">' + money(plan.tot.cost, pt) + '</strong> at ' + esc(pt.meta.label) + ' prices. Seasonings (salt, thyme, garlic, curry, browning) are not counted.</p>';
+    h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Everything on this page comes from the week\'s shopping list: <strong class="num">' + money(weekShop().total, pt) + '</strong> in packs at ' + esc(pt.meta.label) + ' prices. <button class="linkbtn" data-act="tab" data-tab="shop">See the list</button></p>';
     if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) closes the gap; soya chunks are a cheap plant option.</div>';
     h += '</section>';
     plan.meals.forEach(function (m) {
       if (m.empty) { h += '<section class="card"><h3>' + m.slot.name + '</h3><p class="muted">No meal fits your diet settings for this slot yet.</p></section>'; return; }
       h += '<section class="card"><div class="cardhead"><div><span class="label">' + m.slot.name + '</span><h3 style="margin-top:2px">' + esc(m.name) + '</h3></div><button class="btn ghost small" data-act="swap" data-slot="' + m.slot.key + '"' + (m.options < 2 ? ' disabled' : '') + '>Swap</button></div>';
-      h += '<p class="small num"><strong>' + Math.round(m.tot.k) + ' kcal</strong> · ' + Math.round(m.tot.p) + ' g protein · ' + Math.round(m.tot.c) + ' g carbs · ' + Math.round(m.tot.f) + ' g fat · <strong>' + money(m.tot.cost, pt) + '</strong></p>';
-      h += '<div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Amount</th><th class="r">Cost</th></tr></thead><tbody>';
-      m.items.forEach(function (it) { h += '<tr><td>' + esc(OM.ING[it.id].name) + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="r">' + money(it.cost, pt) + '</td></tr>'; });
+      h += '<p class="small num"><strong>' + Math.round(m.tot.k) + ' kcal</strong> · ' + Math.round(m.tot.p) + ' g protein · ' + Math.round(m.tot.c) + ' g carbs · ' + Math.round(m.tot.f) + ' g fat</p>';
+      h += '<div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Amount</th><th>Pack you buy</th></tr></thead><tbody>';
+      m.items.forEach(function (it) { h += '<tr><td>' + esc(OM.ING[it.id].name) + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="small num">' + esc(packText(pt.items[it.id], pt)) + '</td></tr>'; });
       h += '</tbody></table></div><p class="how">' + esc(m.how) + '</p><p class="small muted">Amounts are raw, edible weight (peeled, off the bone).</p></section>';
     });
     return h;
@@ -162,26 +178,29 @@
     var p = P(), T = targets(), pt = prices();
     var start = shopStart();
     var sl = OM.shoppingList(start, 7, p, T, pt, S.swaps);
+    var packs = sl.rows.reduce(function (a, r) { return a + (r.price.weighed ? 0 : r.qty); }, 0);
     var ticks = S.shopTicks[start] || {};
     var h = exampleBanner();
     h += '<section class="dayhead"><span class="label">' + esc(niceDate(start, { day: 'numeric', month: 'short' })) + ' – ' + esc(niceDate(OM.addDays(start, 6), { day: 'numeric', month: 'short' })) + '</span><h1>Shopping list</h1></section>';
-    if (pt.region === 'OTHER') h += '<div class="flag warn">These are US prices standing in for ' + esc(pt.meta.label) + '. Tap <strong>Edit price</strong> on each item to enter what you pay; the meal costs update straight away.</div>';
-    h += '<section class="kpis"><div class="kpi"><div class="v num">' + money(sl.total, pt) + '</div><div class="u">to buy this week</div></div><div class="kpi"><div class="v num">' + money(sl.eatenCost, pt) + '</div><div class="u">eaten this week</div></div><div class="kpi"><div class="v num">' + money(sl.eatenCost / 7, pt) + '</div><div class="u">per day</div></div></section>';
-    h += '<p class="small muted">"To buy" rounds up to whole tins, bags and jars, so some pantry items last beyond this week. Market produce is listed by the pound.</p>';
+    if (pt.region === 'OTHER') h += '<div class="flag warn">These are US prices standing in for ' + esc(pt.meta.label) + '. Tap <strong>Edit price</strong> on each item to enter what your store charges per pack; the list updates straight away.</div>';
+    h += '<section class="kpis"><div class="kpi"><div class="v num">' + money(sl.total, pt) + '</div><div class="u">to buy this week</div></div><div class="kpi"><div class="v num">' + packs + '</div><div class="u">packs, tins & bags</div></div><div class="kpi"><div class="v num">' + sl.rows.length + '</div><div class="u">items</div></div></section>';
+    h += '<p class="small muted">Prices are per pack as the supermarket sells it. Bigger packs (oil, peanut butter, oats, flour) last more than a week. Produce that is weighed at the counter is listed by the pound.</p>';
     var grp = null;
     h += '<section class="card">';
     sl.rows.forEach(function (r) {
       if (r.grp !== grp) { if (grp) h += '</div>'; grp = r.grp; h += '<div class="shopgrp"><h3 style="margin-top:6px">' + esc(grp) + '</h3>'; }
       var t = !!ticks[r.id];
       h += '<div class="shoprow' + (t ? ' ticked' : '') + '"><input type="checkbox" id="tick-' + r.id + '" data-act="tick" data-id="' + r.id + '"' + (t ? ' checked' : '') + ' aria-label="Bought ' + esc(r.name) + '"><label for="tick-' + r.id + '"><span class="nm"><strong>' + esc(r.name) + '</strong></span><br><span class="small num">' + esc(r.qtyText) + '</span></label><span class="num"><strong>' + money(r.cost, pt) + '</strong></span>';
-      h += '<div class="src"><span class="pill ' + r.price.conf + '">' + ({ survey: 'Gov. survey', market: 'Market', retail: 'Store', estimate: 'Estimate', placeholder: 'Placeholder', yours: 'Your price' }[r.price.conf] || r.price.conf) + '</span><span>' + money(r.price.pr, pt) + ' ' + esc(r.price.u) + ' · ' + esc(r.price.src) + (r.price.date ? ', ' + esc(r.price.date) : '') + '</span><button class="linkbtn small" data-act="editprice" data-id="' + r.id + '">Edit price</button></div>';
+      h += '<div class="src"><span class="pill ' + r.price.conf + '">' + ({ survey: 'Gov. survey', market: 'Market', store: 'Store', estimate: 'Estimate', placeholder: 'Placeholder', yours: 'Your price' }[r.price.conf] || r.price.conf) + '</span><span><strong>' + esc(packText(r.price, pt)) + '</strong> · ' + esc(r.price.store) + ' · ' + esc(r.price.src) + (r.price.date ? ', ' + esc(r.price.date) : '') + '</span><button class="linkbtn small" data-act="editprice" data-id="' + r.id + '">Edit price</button></div>';
       if (editPrice === r.id) {
-        h += '<div class="priceedit"><label class="small" for="price-' + r.id + '">Price ' + esc(r.price.u) + ' (' + esc(pt.meta.symbol) + ')</label><input id="price-' + r.id + '" type="number" inputmode="decimal" min="0" step="any" value="' + r.price.pr + '"><button class="btn small" data-act="saveprice" data-id="' + r.id + '">Save</button>' + (r.price.conf === 'yours' ? '<button class="linkbtn small" data-act="resetprice" data-id="' + r.id + '">Use survey price</button>' : '') + '<button class="linkbtn small" data-act="cancelprice">Cancel</button></div>';
+        var stores = pt.meta.stores && pt.meta.stores.length ? pt.meta.stores : ['My store'];
+        var curStore = r.price.conf === 'yours' ? r.price.store : stores[0];
+        h += '<div class="priceedit"><label class="small" for="price-' + r.id + '">Price ' + (r.price.weighed ? 'per lb' : 'for ' + esc(r.price.u)) + ' (' + esc(pt.meta.symbol) + ')</label><input id="price-' + r.id + '" type="number" inputmode="decimal" min="0" step="any" value="' + r.price.pr + '"><label class="small" for="store-' + r.id + '">at</label><select id="store-' + r.id + '" style="width:auto">' + stores.map(function (s) { return '<option' + (s === curStore ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select><button class="btn small" data-act="saveprice" data-id="' + r.id + '">Save</button>' + (r.price.conf === 'yours' ? '<button class="linkbtn small" data-act="resetprice" data-id="' + r.id + '">Use survey price</button>' : '') + '<button class="linkbtn small" data-act="cancelprice">Cancel</button></div>';
       }
       h += '</div>';
     });
     if (grp) h += '</div>';
-    h += '</section><p class="small muted">Also keep on hand: salt, black pepper, thyme, garlic, curry powder, browning, limes and scotch bonnet. Check the Consumer Affairs Commission price tool for the cheapest supermarket in your parish.</p>';
+    h += '</section><p class="small muted">Also keep on hand: salt, black pepper, thyme, garlic, curry powder, browning, limes and scotch bonnet. Saw a different price at PriceSmart, Hi-Lo or Loshusan? Tap Edit price and pick the store; your price is used everywhere in the app.</p>';
     return h;
   }
 
@@ -271,6 +290,7 @@
     var dn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     h += '<section class="card"><h3>Training setup</h3><p>' + (p.days || []).slice().sort().map(function (d) { return dn[d]; }).join(', ') + ' · ' + ({ weights: 'Weights', mix: 'Weights + cardio', cardio: 'Cardio circuits' }[p.style]) + ' · ' + ({ gym: 'Full gym', dumbbells: 'Dumbbells at home', bodyweight: 'Bodyweight only' }[p.equipment]) + ' · ' + esc(p.experience) + (p.injuries && p.injuries.length ? ' · protecting ' + esc(p.injuries.join(', ')) : '') + '</p><p class="small muted">Each 6-week cycle runs 2 weeks of building, 3 weeks of pushing, then a lighter deload week. Exercises change each cycle. Every session is 45 minutes: 6 warm-up, the main work, 5 cool-down.</p></section>';
     h += '<section class="card"><h3>Food setup</h3><p>' + esc(pt.meta.label) + ' prices (' + esc(pt.meta.symbol) + ') · ' + ({ none: 'Eats everything', pescatarian: 'Pescatarian', vegetarian: 'Vegetarian', vegan: 'Vegan' }[p.diet]) + (p.allergies && p.allergies.length ? ' · avoids ' + esc(p.allergies.join(', ')) : '') + '</p></section>';
+    h += '<section class="card"><h3>What\'s new</h3>' + OM.CHANGES.slice(0, 5).map(function (c) { return '<div><span class="label">' + esc(niceDate(c.d, { day: 'numeric', month: 'short' })) + '</span> <strong>' + esc(c.t) + '</strong><ul class="lines small">' + c.b.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'; }).join('') + '</section>';
     h += '<section class="card"><h3>Where the numbers come from</h3><ul class="sources">' +
       '<li><a href="https://pubmed.ncbi.nlm.nih.gov/15883556/" target="_blank" rel="noopener">Frankenfield et al., 2005</a>: Mifflin-St Jeor was the most reliable resting-calorie equation.</li>' +
       '<li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/" target="_blank" rel="noopener">ISSN protein position stand, 2017</a>: 1.4–2.0 g/kg for active people, more during a diet.</li>' +
@@ -278,7 +298,7 @@
       '<li><a href="https://lida.sport-iat.de/ta/Record/4020931?lng=en" target="_blank" rel="noopener">Garthe et al., 2011</a>: losing about 0.7% of body weight a week kept more muscle than faster loss.</li>' +
       '<li><a href="https://primarycarenotebook.com/en-GB/pages/obesity/waist-to-height-ratio-whr" target="_blank" rel="noopener">NICE NG246</a>: waist-to-height ratio bands.</li>' +
       '<li><a href="https://southlake.ca/wp-content/uploads/2025/02/PARQPlus2025-Form-fillable.pdf" target="_blank" rel="noopener">PAR-Q+ 2025</a>: the seven health screening questions.</li>' +
-      '<li><a href="https://www.cac.gov.jm/portal/index.php" target="_blank" rel="noopener">Consumer Affairs Commission</a>, <a href="https://lastbitefood.com/food-prices/" target="_blank" rel="noopener">Jamaica food price tracker</a>, <a href="https://www.jamaicaobserver.com/2026/10/16/market-bag-farmers-hopeful-rains-will-cool-prices/" target="_blank" rel="noopener">Observer Market Bag</a> and <a href="https://basketreport.com/prices/" target="_blank" rel="noopener">BLS average prices</a> for food costs.</li></ul>' +
+      '<li><a href="https://loshusansupermarket.com/" target="_blank" rel="noopener">Loshusan Supermarket</a>, <a href="https://www.cac.gov.jm/portal/index.php" target="_blank" rel="noopener">Consumer Affairs Commission</a> survey (includes Hi-Lo), <a href="https://lastbitefood.com/food-prices/" target="_blank" rel="noopener">Jamaica food price tracker</a>, <a href="https://www.jamaicaobserver.com/2026/10/16/market-bag-farmers-hopeful-rains-will-cool-prices/" target="_blank" rel="noopener">Observer Market Bag</a> and <a href="https://basketreport.com/prices/" target="_blank" rel="noopener">BLS average prices</a> for food costs.</li></ul>' +
       '<p class="small muted">OMGym gives general fitness guidance, not medical advice.</p></section>';
     if (!isExample()) {
       h += '<section class="card"><h3>Your data</h3><p class="small muted">' + (store.kind === 'db' ? 'Saved privately to your Claude account, so it follows you to any device where you open this page.' : 'Saved in this browser.') + '</p>';
@@ -352,7 +372,7 @@
       h += '<div class="formrow"><span class="f">Where do you shop?</span>' + seg('region', [['JM', 'Jamaica (J$)'], ['US', 'United States ($)'], ['OTHER', 'Somewhere else']], d.region) + '</div>';
       if (d.region === 'OTHER') h += '<div class="formgrid"><div class="formrow"><label class="f" for="regionName">Country or city</label><input id="regionName" data-k="regionName" type="text" value="' + esc(d.regionName || '') + '"></div><div class="formrow"><label class="f" for="currencySymbol">Currency symbol</label><input id="currencySymbol" data-k="currencySymbol" type="text" maxlength="4" value="' + esc(d.currencySymbol || '$') + '"></div></div><p class="small muted">You will enter local prices on the Shop tab. Until then, US prices stand in.</p>';
       h += '<div class="formrow"><span class="f">How do you eat?</span>' + seg('diet', [['none', 'Everything'], ['pescatarian', 'Fish, no meat'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']], d.diet) + '</div>';
-      h += '<div class="formrow"><span class="f">Allergies or foods to avoid</span>' + multi('allergies', [['egg', 'Eggs'], ['fish', 'Fish'], ['peanut', 'Peanuts'], ['dairy', 'Dairy'], ['gluten', 'Gluten']], d.allergies) + '</div>';
+      h += '<div class="formrow"><span class="f">Allergies or foods to avoid</span>' + multi('allergies', [['egg', 'Eggs'], ['fish', 'Fish'], ['shellfish', 'Shellfish'], ['peanut', 'Peanuts'], ['dairy', 'Dairy'], ['gluten', 'Gluten']], d.allergies) + '</div>';
     }
     if (stepErr) h += '<p class="err" role="alert">' + esc(stepErr) + '</p>';
     h += '<div class="sheetfoot"><button class="btn ghost" data-act="back"' + (step === 0 ? ' disabled' : '') + '>Back</button><button class="btn" data-act="next">' + (step === 4 ? 'Build my plan' : 'Next') + '</button></div></div>';
@@ -414,6 +434,25 @@
     if (latest.waistCm) S.profile.waistCm = latest.waistCm;
   }
 
+  /* ---------- rest timer ---------- */
+  var restEnd = 0, restTick = null;
+  function startRest(sec) {
+    restEnd = Date.now() + sec * 1000; clearInterval(restTick);
+    $('#rest').hidden = false; updateRest(); restTick = setInterval(updateRest, 250);
+  }
+  function stopRest() { clearInterval(restTick); restTick = null; $('#rest').hidden = true; $('#rest').classList.remove('go'); }
+  function updateRest() {
+    var left = Math.ceil((restEnd - Date.now()) / 1000), el = $('#rest-t');
+    if (left <= 0) {
+      el.textContent = 'Go: next set'; $('#rest').classList.add('go'); clearInterval(restTick);
+      try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { }
+      var end = restEnd; setTimeout(function () { if (restEnd === end) stopRest(); }, 4000);
+      return;
+    }
+    $('#rest').classList.remove('go');
+    el.textContent = 'Rest ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+  }
+
   /* ---------- events ---------- */
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-act],[data-tab]'); if (!t) return;
@@ -438,7 +477,10 @@
       case 'back': readSheet(); stepErr = ''; step = Math.max(0, step - 1); renderSheet(); break;
       case 'set': if (needSetup()) break;
         var dd = day(TODAY), n = +t.dataset.n, ex = t.dataset.ex;
-        dd.sets[ex] = (dd.sets[ex] || 0) >= n ? n - 1 : n; save(); render(); break;
+        var ticking = (dd.sets[ex] || 0) < n;
+        dd.sets[ex] = ticking ? n : n - 1; save(); render();
+        if (ticking) startRest(+t.dataset.rest || 60); break;
+      case 'skiprest': stopRest(); break;
       case 'done': if (needSetup()) break; day(TODAY).done = true; trim(); save(); render(); toast('Workout logged. Nice work.'); break;
       case 'undone': day(TODAY).done = false; save(); render(); break;
       case 'habit': if (needSetup()) break; var hd = day(TODAY); hd.habits[t.dataset.h] = !hd.habits[t.dataset.h]; save(); render(); break;
@@ -450,7 +492,7 @@
       case 'saveprice':
         var pid = t.dataset.id, pv = parseFloat(document.getElementById('price-' + pid).value);
         if (!(pv >= 0)) { toast('Enter a price of 0 or more'); break; }
-        var reg = P().region; S.prices[reg] = S.prices[reg] || {}; S.prices[reg][pid] = { pr: pv, date: niceDate(TODAY, { day: 'numeric', month: 'short', year: 'numeric' }) };
+        var reg = P().region; S.prices[reg] = S.prices[reg] || {}; var stEl = document.getElementById('store-' + pid); S.prices[reg][pid] = { pr: pv, store: stEl ? stEl.value : '', date: niceDate(TODAY, { day: 'numeric', month: 'short', year: 'numeric' }) };
         editPrice = null; save(); render(); toast('Price saved'); break;
       case 'resetprice': var rg = P().region; if (S.prices[rg]) delete S.prices[rg][t.dataset.id]; editPrice = null; save(); render(); break;
       case 'logw': if (needSetup()) break;
@@ -486,6 +528,10 @@
       save();
     }
   });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { refreshToday(); if (restTick) updateRest(); } });
+  window.addEventListener('focus', refreshToday);
+  setInterval(refreshToday, 60000);
+  if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) { try { navigator.serviceWorker.register('sw.js').catch(function () { }); } catch (e) { } }
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('#sheet').hidden) closeSetup(); });
 
   var h0 = (location.hash || '').slice(1);
