@@ -49,7 +49,16 @@ var OM = (function () {
   var LOSS_RATE = { steady: 0.005, standard: 0.0075, faster: 0.01 };
   var GAIN_RATE = { beginner: 0.0035, intermediate: 0.0025, advanced: 0.0015 };
 
-  function calcTargets(p, kcalAdj) {
+  // PRO phases for lifters with 3+ years of training.
+  // Cut: 0.5–1% of body weight a week (Garthe 2011), protein 2.3 g/kg (ISSN 2017: 2.3–3.1 g/kg for trained lifters in a deficit).
+  // Bulk: slower than the 0.25–0.5%/week used for novices (Iraki 2019); protein 2.0 g/kg (1.6–2.2).
+  var PRO_PHASES = {
+    cut: { goalType: 'lose', label: 'Cut', rates: [0.005, 0.0075, 0.01], def: 0.0075, ppk: 2.3 },
+    bulk: { goalType: 'gain', label: 'Lean bulk', rates: [0.0015, 0.0025], def: 0.0015, ppk: 2.0 },
+    maintain: { goalType: 'maintain', label: 'Maintain', rates: [0], def: 0, ppk: 2.2 }
+  };
+  function proPlanOk(pro) { return !!(pro && PRO_PHASES[pro.phase]); }
+  function calcTargets(p, kcalAdj, pro) {
     kcalAdj = kcalAdj || 0;
     var w = p.weightKg, h = p.heightCm, a = p.age, male = p.sex === 'male';
     var hm = h / 100;
@@ -78,18 +87,25 @@ var OM = (function () {
 
     var diff = goal - w;
     var goalType = forceMaintain ? 'maintain' : (diff < -1 ? 'lose' : (diff > 1 ? 'gain' : 'maintain'));
+    var proPhase = !forceMaintain && proPlanOk(pro) ? pro.phase : null;
+    var proRate = null;
+    if (proPhase) {
+      var ph = PRO_PHASES[proPhase];
+      goalType = ph.goalType;
+      proRate = ph.rates.indexOf(pro.rate) >= 0 ? pro.rate : ph.def;
+    }
     var floor = male ? 1500 : 1200;
     var kcal, plannedRate = 0, floorApplied = false, deficit = 0;
 
     if (goalType === 'lose') {
-      var r = LOSS_RATE[p.pace] || LOSS_RATE.standard;
+      var r = proPhase ? proRate : (LOSS_RATE[p.pace] || LOSS_RATE.standard);
       deficit = w * r * 7700 / 7;
       deficit = Math.min(deficit, 1000, tdee * 0.25);
       kcal = tdee - deficit;
       if (kcal < floor) { kcal = floor; floorApplied = true; }
     } else if (goalType === 'gain') {
-      var g = GAIN_RATE[p.experience] || GAIN_RATE.beginner;
-      var surplus = Math.max(150, Math.min(450, w * g * 7700 / 7));
+      var g = proPhase ? proRate : (GAIN_RATE[p.experience] || GAIN_RATE.beginner);
+      var surplus = proPhase ? Math.max(100, Math.min(tdee * 0.15, w * g * 7700 / 7)) : Math.max(150, Math.min(450, w * g * 7700 / 7));
       kcal = tdee + surplus;
     } else {
       kcal = tdee;
@@ -104,7 +120,7 @@ var OM = (function () {
 
     // protein: per kg of a reference weight (adjusted when BMI >= 30)
     var refW = bmi >= 30 ? 27 * hm * hm : w;
-    var ppk = goalType === 'lose' ? 2.0 : goalType === 'gain' ? 1.8 : 1.6;
+    var ppk = proPhase ? PRO_PHASES[proPhase].ppk : (goalType === 'lose' ? 2.0 : goalType === 'gain' ? 1.8 : 1.6);
     var protein = Math.round(Math.min(refW * ppk, 230));
     var fat = Math.round(Math.max(kcal * 0.27 / 9, 0.6 * refW));
     var carbs = Math.round((kcal - protein * 4 - fat * 9) / 4);
@@ -126,7 +142,7 @@ var OM = (function () {
       bmi: bmi, bmiCat: bmiCategory(bmi), whtr: whtr, whtrCat: whtr ? whtrCategory(whtr) : null,
       bf: bf, bfCat: bf != null ? bfCategory(bf, p.sex) : null,
       leanKg: bf != null ? w * (1 - bf / 100) : null,
-      goalType: goalType, goalKg: goal, kcal: kcal, protein: protein, fat: fat, carbs: carbs,
+      goalType: goalType, pro: proPhase, proRate: proRate, goalKg: goal, kcal: kcal, protein: protein, fat: fat, carbs: carbs,
       plannedWeeklyKg: plannedRate, weeksToGoal: weeks, floorApplied: floorApplied, flags: flags, caution: parqYes || !!p.pregnant,
       refW: refW, ppk: ppk
     };
@@ -234,9 +250,17 @@ var OM = (function () {
     return { name: 'Deload', rir: '3–4', addSet: -1, deload: true, note: 'Lighter week. Use about 80% of last week\'s weights so your body can recover.' };
   }
 
-  function repsFor(e, exp) {
+  // PRO weeks run harder: 2 reps in reserve to build, 0–1 to push, then deload.
+  function proPhaseFor(week) {
+    var w = ((week % 6) + 6) % 6;
+    if (w < 2) return { name: 'Build', rir: '2', addSet: 0, deload: false, note: 'Work up to sets with about 2 reps left. Log every top set.' };
+    if (w < 5) return { name: 'Push', rir: '0–1', addSet: 1, deload: false, note: 'Last set of each lift close to failure. Beat last week\'s weight or reps.' };
+    return { name: 'Deload', rir: '3–4', addSet: -1, deload: true, note: 'Lighter week: about 70–80% of last week\'s weights, fewer sets.' };
+  }
+  function repsFor(e, exp, pro) {
     if (e.kind === 't') return e.id === 'deadbug' || e.id === 'birddog' ? '8 / side' : '30–40 s';
     if (e.kind === 'm') return '30–40 m';
+    if (pro) return e.kind === 'a' ? '10–15' : (pro.phase === 'cut' ? '5–8' : '6–10');
     if (e.kind === 'a') return '12–15';
     return exp === 'advanced' ? '6–10' : exp === 'intermediate' ? '8–12' : '10–12';
   }
@@ -266,7 +290,8 @@ var OM = (function () {
     return { key: key, week: week, cycle: cycle, altShift: altShift, indexInWeek: idx };
   }
 
-  function buildWorkout(dateStr, p, startDate, caution) {
+  function buildWorkout(dateStr, p, startDate, caution, pro) {
+    pro = proPlanOk(pro) ? pro : null;
     var s = sessionFor(dateStr, p, startDate);
     if (!s) {
       return {
@@ -277,9 +302,9 @@ var OM = (function () {
         ]
       };
     }
-    var exp = p.experience || 'beginner';
+    var exp = pro ? 'advanced' : (p.experience || 'beginner');
     var tpl = SESS[s.key];
-    var phase = phaseFor(s.week);
+    var phase = pro && !caution ? proPhaseFor(s.week) : phaseFor(s.week);
     var budgetMain, finisherMin = 0;
     var style = p.style || 'mix';
     if (tpl.cond) { budgetMain = 8 * 60; finisherMin = 26; }
@@ -298,7 +323,7 @@ var OM = (function () {
       used[e.id] = 1;
       var sets = e.kind === 'c' ? baseC + phase.addSet : (e.kind === 'a' ? 3 : 2) + (phase.deload ? -1 : 0);
       sets = Math.max(phase.deload ? 1 : 2, Math.min(5, sets));
-      items.push({ ex: e, sets: sets, reps: repsFor(e, exp), rest: restFor(e, exp), rir: phase.rir });
+      items.push({ ex: e, sets: sets, reps: repsFor(e, exp, pro), rest: restFor(e, exp), rir: phase.rir });
     });
     // circuit format for cardio style: shorter rests
     if (style === 'cardio' && !tpl.cond) items.forEach(function (it) { it.rest = Math.min(it.rest, 30); it.circuit = true; });
@@ -327,7 +352,7 @@ var OM = (function () {
       fi++;
       if (!fl.length) continue;
       var fe = fl[(s.cycle + fi) % fl.length]; used[fe.id] = 1;
-      var fit = { ex: fe, sets: phase.deload ? 2 : (fe.kind === 'c' ? 3 : (fe.kind === 'a' ? 3 : 2)), reps: repsFor(fe, exp), rest: style === 'cardio' ? 30 : restFor(fe, exp), rir: phase.rir, circuit: style === 'cardio' };
+      var fit = { ex: fe, sets: phase.deload ? 2 : (fe.kind === 'c' ? 3 : (fe.kind === 'a' ? 3 : 2)), reps: repsFor(fe, exp, pro), rest: style === 'cardio' ? 30 : restFor(fe, exp), rir: phase.rir, circuit: style === 'cardio' };
       if (fe.kind === 'c') { fit.reps = '10–15'; fit.rest = Math.min(fit.rest, 60); }
       items.push(fit);
       while (total() > budgetMain + 30 && fit.sets > 1) fit.sets--;
@@ -346,7 +371,22 @@ var OM = (function () {
     }
     blocks.push({ title: 'Cool-down', minutes: 5, lines: ['2–3 min easy walk with slow breathing', 'Stretch 30 s each: hip flexors, hamstrings, chest, upper back'] });
     var minutes = blocks.reduce(function (a, b) { return a + b.minutes; }, 0);
-    return { rest: false, key: s.key, title: tpl.name, week: s.week + 1, phase: phase, minutes: minutes, blocks: blocks, caution: !!caution };
+    return { rest: false, key: s.key, title: tpl.name, week: s.week + 1, phase: phase, minutes: minutes, blocks: blocks, caution: !!caution, pro: !!pro };
+  }
+  // Hard sets per muscle group over one week (ACSM 2026: about 10+ sets per muscle a week for growth).
+  var MUSCLES = { squat: ['Quads'], lunge: ['Quads', 'Glutes'], hinge: ['Hamstrings', 'Glutes'], glute: ['Glutes'], push_h: ['Chest', 'Triceps'], push_v: ['Shoulders', 'Triceps'], delt: ['Shoulders'], pull_h: ['Back', 'Biceps'], pull_v: ['Back', 'Biceps'] };
+  var MUSCLE_ORDER = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps'];
+  function weeklyVolume(mondayStr, p, startDate, caution, pro) {
+    var out = {}; MUSCLE_ORDER.forEach(function (m) { out[m] = 0; });
+    for (var i = 0; i < 7; i++) {
+      var w = buildWorkout(addDays(mondayStr, i), p, startDate, caution, pro);
+      if (w.rest) continue;
+      w.blocks.forEach(function (b) { (b.items || []).forEach(function (it) {
+        var seen = {};
+        it.ex.patterns.forEach(function (pt) { (MUSCLES[pt] || []).forEach(function (m) { if (!seen[m]) { seen[m] = 1; out[m] += it.sets; } }); });
+      }); });
+    }
+    return MUSCLE_ORDER.map(function (m) { return { muscle: m, sets: out[m] }; });
   }
 
   /* ---------- foods ---------- */
@@ -483,6 +523,7 @@ var OM = (function () {
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
     { d: '2026-10-23', t: 'Store price check', b: ['Whey prices have gone up in the US: the 5 lb Gold Standard is now about US$115 and the 2 lb about US$65, so their Store prices went up.', 'Seller view now lists where each Amazon price came from and when, and marks the ones to confirm on Amazon before you order.', 'Exchange rate checked with the Bank of Jamaica (22 Oct): still J$162 per US$ with the card fee.'] },
+    { d: '2026-10-23', t: 'OMGym PRO', b: ['New PRO section for lifters with 3+ years of training: choose cut, lean bulk or maintain, with higher protein on a cut, harder training weeks and weekly check-ins.', 'US$10 a month. Tap PRO at the top, create your invoice, pay by Scotiabank transfer or PayPal, and send your proof on WhatsApp.', 'PRO opens for 3 days while OMGym checks your payment, then runs for the month you paid for. Nothing renews by itself.'] },
     { d: '2026-10-23', t: 'Store: flavours, pictures, order links', b: ['Choose your flavour or glove size before adding to the bag.', 'Every Store item has a picture.', 'Your WhatsApp order now includes an order number and a link so OMGym can order exactly what you picked.'] },
     { d: '2026-10-23', t: 'OMGym Store', b: ['New Store tab: protein powder, creatine, pre-workout and gym gear, delivered to Jamaica in about 1–2 weeks.', 'Prices include shipping, customs duty and GCT. Order on WhatsApp.'] },
     { d: '2026-10-23', t: 'Supermarket packs and shellfish', b: ['Prices are now quoted per pack (a 2 kg bag of rice, a whole chicken, a tin of mackerel), with the store and date for each.', 'Shellfish added to allergies.', 'A rest timer starts when you tick a set; a week view shows your training days.', 'Each exercise links to demo videos. Plates keep a proper portion of starch.'] },
@@ -717,6 +758,8 @@ var OM = (function () {
     var conflict = prod.tags.filter(function (t) { return ex.indexOf(t) >= 0; });
     return { hidden: blocked, conflict: conflict };
   }
+  // Encode for links sent on WhatsApp, which treats * _ ~ as formatting marks.
+  function waSafe(x) { return encodeURIComponent(x).replace(/[!'()*~_]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).toUpperCase(); }); }
   // Bag keys are "productId.variantId" ("productId" for items with no choices).
   function productById(id) { return PRODUCTS.filter(function (x) { return x.id === id; })[0]; }
   function variantOf(prod, vid) {
@@ -751,7 +794,7 @@ var OM = (function () {
   function orderUrl(cart, name, id, cfg) {
     cfg = cfg || STORE; var c = normalizeCart(cart);
     var o = Object.keys(c).map(function (k) { var pk = parseKey(k); return pk.prod.id + '.' + (pk.variant ? pk.variant.id : 'x') + '.' + c[k]; }).join(',');
-    return cfg.orderBase + '?o=' + encodeURIComponent(o) + '&id=' + encodeURIComponent(id) + (name ? '&n=' + encodeURIComponent(name.trim().slice(0, 40)) : '');
+    return cfg.orderBase + '?o=' + waSafe(o) + '&id=' + waSafe(id) + (name ? '&n=' + waSafe(name.trim().slice(0, 40)) : '');
   }
   function parseOrder(search) {
     var q = {}; String(search || '').replace(/^\?/, '').split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); try { q[decodeURIComponent(i < 0 ? kv : kv.slice(0, i))] = decodeURIComponent((i < 0 ? '' : kv.slice(i + 1)).replace(/\+/g, ' ')); } catch (e) { } });
@@ -782,6 +825,106 @@ var OM = (function () {
     return { text: text, total: total, count: lines.length, id: id, url: url };
   }
 
+  /* ---------- PRO subscription: invoices, payment proof and signed unlock links ---------- */
+  // The owner confirms each payment and sends a link signed with a private key only he holds.
+  // The app checks the signature with this public key, so links cannot be made up or edited.
+  var PRO = {
+    priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
+    boj: { rate: 159.65, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026' },
+    bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
+    paypal: '', // PayPal email or paypal.me link; until set, customers ask on WhatsApp
+    whatsapp: '16582184432', seller: 'OMGym (Cargill Brown)',
+    siteBase: 'https://876lab.github.io/omgym/',
+    publicKey: {"kty":"EC","crv":"P-256","x":"oVa72ChdJEDPKrJlMC9_0KOg1JTQjz3Rb7_WrtnZAIs","y":"ga295EpCdNJYf1qRQquywceMLBTEzi3Y78K6w5KIRm4"},
+    terms: [
+      'PRO is month to month. Nothing renews by itself: you only pay when you want another month.',
+      'To cancel, just don\'t renew. You keep PRO until the end of the period you paid for.',
+      'No refunds for part of a month already started.',
+      'Full refund if OMGym can\'t unlock PRO within 3 working days of receiving your correct payment, or if you paid twice for the same period.',
+      'If the amount received is different (for example a bank fee), OMGym will contact you to sort out the difference.',
+      'Keep your payment screenshot until PRO is unlocked. OMGym deletes it once the payment is checked.'
+    ]
+  };
+  var PRO_METHODS = { bns: 'Scotiabank transfer', pp: 'PayPal', cash: 'Cash' };
+  function compact(d) { return d.replace(/-/g, ''); }
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function niceDay(dateStr) { var d = parseYmd(dateStr); return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
+  function expand(c) { return /^\d{8}$/.test(c) ? c.slice(0, 4) + '-' + c.slice(4, 6) + '-' + c.slice(6, 8) : ''; }
+  function addMonths(dateStr, n) {
+    var d = parseYmd(dateStr), day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + n);
+    var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last)); return ymd(d);
+  }
+  function newProId(rand) { var a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = ''; for (var i = 0; i < 6; i++) o += a[Math.floor((rand || Math.random)() * 32) % 32]; return o; }
+  function proJmd(usd, rate) { return Math.round(usd * rate * 100) / 100; }
+  function invoiceNo(proId, startStr, seq) { return 'PRO-' + startStr.slice(2, 4) + startStr.slice(5, 7) + '-' + proId + '-' + seq; }
+  // What the customer sends on WhatsApp with their payment screenshot.
+  function proProofText(inv, method) {
+    var jmd = proJmd(PRO.priceUsd, PRO.boj.rate);
+    return 'OMGym PRO payment\nName: ' + inv.name + '\nInvoice: ' + inv.no + '\nPRO ID: ' + inv.id +
+      '\nPeriod: ' + niceDay(inv.start) + ' to ' + niceDay(inv.until) + '\nAmount: US$' + PRO.priceUsd.toFixed(2) +
+      (method === 'bns' ? ' (J$' + jmd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' at the Bank of Jamaica rate of J$' + PRO.boj.rate + ', ' + niceDay(PRO.boj.date) + ')' : '') +
+      '\nPaid by: ' + (PRO_METHODS[method] || method) + '\nMy payment screenshot is attached.\n\nRef: OMPRO.' + inv.id + '.' + compact(inv.start) + '.' + compact(inv.until) + '.' + inv.no + '.' + method;
+  }
+  // Read a customer's message (pasted into the PRO Desk).
+  function parseProof(text) {
+    var m = String(text || '').match(/OMPRO\.([A-Z2-9]{6})\.(\d{8})\.(\d{8})\.(PRO-\d{4}-[A-Z2-9]{6}-\d{1,3})\.([a-z]+)/);
+    if (!m) return null;
+    var nm = String(text).match(/^Name:\s*(.+)$/m);
+    return { id: m[1], start: expand(m[2]), until: expand(m[3]), no: m[4], method: m[5], name: nm ? nm[1].trim().slice(0, 40) : '' };
+  }
+  // The signed facts in an unlock link.
+  var PRO_FIELDS = ['id', 's', 'u', 'inv', 'n', 'm', 'amt', 'cur', 'pd'];
+  function proCanon(f) { return ['OMPRO1'].concat(PRO_FIELDS.map(function (k) { return String(f[k] == null ? '' : f[k]); })).join('|'); }
+  function proLink(f, sigHex) { return PRO.siteBase + '?pro=1&' + PRO_FIELDS.map(function (k) { return k + '=' + waSafe(f[k] == null ? '' : f[k]); }).join('&') + '&sig=' + sigHex; }
+  function parseProLink(search) {
+    var q = {}; String(search || '').replace(/^\?/, '').split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); try { q[decodeURIComponent(i < 0 ? kv : kv.slice(0, i))] = decodeURIComponent((i < 0 ? '' : kv.slice(i + 1)).replace(/\+/g, ' ')); } catch (e) { } });
+    if (q.pro !== '1' || !q.sig) return null;
+    var f = {}; PRO_FIELDS.forEach(function (k) { f[k] = q[k] || ''; }); f.sig = q.sig; return f;
+  }
+  function hexToBytes(h) { if (!/^[0-9a-f]+$/i.test(h) || h.length % 2) return null; var b = new Uint8Array(h.length / 2); for (var i = 0; i < b.length; i++) b[i] = parseInt(h.substr(i * 2, 2), 16); return b; }
+  function bytesToHex(b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  function subtle() { var c = (typeof crypto !== 'undefined' && crypto) || (typeof globalThis !== 'undefined' && globalThis.crypto); return c && c.subtle; }
+  function proVerify(f, jwk) {
+    var sb = subtle(), sig = hexToBytes(f && f.sig || '');
+    if (!sb || !sig || sig.length !== 64) return Promise.resolve(false);
+    if (!/^[A-Z2-9]{6}$/.test(f.id) || !expand(f.s) || !expand(f.u) || f.s > f.u) return Promise.resolve(false);
+    return sb.importKey('jwk', jwk || PRO.publicKey, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])
+      .then(function (k) { return sb.verify({ name: 'ECDSA', hash: 'SHA-256' }, k, sig, new TextEncoder().encode(proCanon(f))); })
+      .catch(function () { return false; });
+  }
+  function proSign(f, privJwk) {
+    var sb = subtle();
+    return sb.importKey('jwk', privJwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'])
+      .then(function (k) { return sb.sign({ name: 'ECDSA', hash: 'SHA-256' }, k, new TextEncoder().encode(proCanon(f))); })
+      .then(bytesToHex);
+  }
+  // PRO status on this phone from verified unlocks and a grace period.
+  // unlocks: verified link fields for this phone's id; grace: {start} or null.
+  function proStatus(todayStr, proId, unlocks, grace) {
+    var t = compact(todayStr), best = null;
+    (unlocks || []).forEach(function (f) { if (f.id === proId && f.s <= t && t <= f.u && (!best || f.u > best.u)) best = f; });
+    var lastUntil = (unlocks || []).filter(function (f) { return f.id === proId; }).reduce(function (a, f) { return f.u > a ? f.u : a; }, '');
+    if (best) {
+      var left = dayNum(expand(best.u)) - dayNum(todayStr);
+      return { active: true, via: 'paid', until: expand(best.u), daysLeft: left, renewSoon: left <= PRO.remindDays, lastUntil: expand(lastUntil) };
+    }
+    if (grace && grace.start) {
+      var end = addDays(grace.start, PRO.graceDays);
+      if (todayStr >= grace.start && todayStr < end) return { active: true, via: 'grace', until: end, daysLeft: dayNum(end) - dayNum(todayStr), renewSoon: false, lastUntil: expand(lastUntil) };
+    }
+    return { active: false, via: null, until: null, lastUntil: expand(lastUntil) };
+  }
+  function graceAllowed(todayStr, graceLog) {
+    return !(graceLog || []).some(function (g) { return dayNum(todayStr) - dayNum(g) < PRO.graceEveryDays; });
+  }
+  // Next PRO period: starts when the current one ends, or today.
+  function nextPeriod(todayStr, lastUntil, months) {
+    var start = lastUntil && lastUntil >= todayStr ? lastUntil : todayStr;
+    return { start: start, until: addMonths(start, months || 1) };
+  }
+
   /* ---------- progress ---------- */
   function trend(weights, todayStr, windowDays) {
     windowDays = windowDays || 21;
@@ -800,6 +943,15 @@ var OM = (function () {
 
   function suggestAdjust(T, tr, w) {
     if (!tr) return null;
+    if (T.pro) {
+      // PRO: weekly check-in against the chosen rate, 100 kcal steps
+      var want = T.goalType === 'lose' ? -T.proRate * w : T.goalType === 'gain' ? T.proRate * w : 0;
+      var gap = tr.perWeek - want, tol = Math.max(0.1, 0.0015 * w);
+      if (T.goalType === 'lose' && T.floorApplied && gap > 0) return null;
+      if (gap > tol) return { delta: -100, why: 'Your 3-week trend is ' + (tr.perWeek >= 0 ? '+' : '') + tr.perWeek.toFixed(2) + ' kg/week against a target of ' + (want >= 0 ? '+' : '') + want.toFixed(2) + '. Remove 100 kcal a day.' };
+      if (gap < -tol) return { delta: 100, why: 'Your 3-week trend is ' + (tr.perWeek >= 0 ? '+' : '') + tr.perWeek.toFixed(2) + ' kg/week against a target of ' + (want >= 0 ? '+' : '') + want.toFixed(2) + '. Add 100 kcal a day.' };
+      return null;
+    }
     var planned = T.plannedWeeklyKg, actual = tr.perWeek;
     if (T.goalType === 'lose') {
       if (actual > planned * 0.4 && !T.floorApplied) return { delta: -150, why: 'You are losing ' + Math.abs(actual).toFixed(2) + ' kg/week against a plan of ' + Math.abs(planned).toFixed(2) + ' kg. A small cut of 150 kcal should get things moving.' };
@@ -819,8 +971,8 @@ var OM = (function () {
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES,
-    STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
 if (typeof module !== 'undefined') module.exports = OM;

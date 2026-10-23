@@ -205,6 +205,20 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 .tick { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
 .tick input { width: 20px; height: 20px; accent-color: var(--iron); }
 .nudge .pic.sm { width: 56px; }
+.topright { display: flex; align-items: center; gap: 10px; }
+.probtn { appearance: none; border: 1.5px solid var(--mango); background: transparent; color: var(--mango-ink); font-family: var(--display); font-weight: 800; letter-spacing: 0.08em; border-radius: 999px; padding: 4px 12px; cursor: pointer; min-height: 32px; }
+.probtn.on { background: var(--mango); color: #1a1205; }
+.pro-word { color: var(--mango); }
+.invoice { box-shadow: inset 0 0 0 1.5px var(--line); }
+.invgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.payopt { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
+.payopt dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; margin: 0; }
+.payopt dt { color: var(--muted); } .payopt dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.paidline { background: var(--good-bg); color: var(--good); padding: 10px 12px; border-radius: 10px; }
+.vol { display: grid; gap: 6px; }
+.volrow { display: grid; grid-template-columns: 84px minmax(0, 1fr) 28px; gap: 10px; align-items: center; }
+@media (max-width: 420px) { .invgrid { grid-template-columns: minmax(0, 1fr); } }
+@media print { nav.tabs, header.top, .noprint, .toast, .restbar, #pro-start > *:not(.invoice), .flag { display: none !important; } body, html { background: #fff; color: #000; } main > *:not(.invoice):not(#pro-start) { display: none !important; } .invoice { box-shadow: none; } }
 .confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
 @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .formgrid { grid-template-columns: minmax(0, 1fr); } }
@@ -215,7 +229,7 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
   <div class="wrap">
     <header class="top">
       <div class="brand" aria-label="OMGym">OM<b>GYM</b></div>
-      <div class="status" id="status">Loading your plan…</div>
+      <div class="topright"><div class="status" id="status">Loading your plan…</div><button class="probtn" id="probtn" data-act="tab" data-tab="pro" aria-label="OMGym PRO">PRO</button></div>
     </header>
     <main id="view" aria-live="polite"></main>
   </div>

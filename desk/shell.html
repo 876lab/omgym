@@ -1,0 +1,59 @@
+<title>OMGym PRO Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow column of working cards, owner-only tool. Same palette as OMGym. */
+:root {
+  --bg: #F3F5F2; --surface: #FFFFFF; --sunk: #E8ECE7; --fg: #14211C; --muted: #56655E; --line: #D5DCD6;
+  --iron: #1D5B48; --on-iron: #FFFFFF; --mango: #E3961B; --mango-ink: #7A4A00;
+  --good: #2C7A4C; --warn: #9C6210; --bad: #B23A2E; --good-bg: #E1F0E6; --warn-bg: #FAEFD9; --bad-bg: #F8E2DF;
+  --display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1512; --surface: #16201C; --sunk: #1D2924; --fg: #E6EEE9; --muted: #9AABA3; --line: #29372F;
+  --iron: #5BBE97; --on-iron: #06120D; --mango: #F2A93B; --mango-ink: #F6C67A;
+  --good: #6CC58F; --warn: #E3A94A; --bad: #EE7A6C; --good-bg: #15291E; --warn-bg: #2D2414; --bad-bg: #33191A; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0E1512; --surface: #16201C; --sunk: #1D2924; --fg: #E6EEE9; --muted: #9AABA3; --line: #29372F;
+  --iron: #5BBE97; --on-iron: #06120D; --mango: #F2A93B; --mango-ink: #F6C67A;
+  --good: #6CC58F; --warn: #E3A94A; --bad: #EE7A6C; --good-bg: #15291E; --warn-bg: #2D2414; --bad-bg: #33191A; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.5; }
+button, input, select, textarea { font: inherit; color: inherit; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1.05; margin: 0; text-wrap: balance; }
+h1 { font-size: 2rem; } h3 { font-size: 1.2rem; }
+p { margin: 0; }
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 60px; display: grid; gap: 16px; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 1.4rem; } .brand b { color: var(--mango); }
+.card { background: var(--surface); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+.label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.small { font-size: 0.85rem; } .muted { color: var(--muted); } .num { font-variant-numeric: tabular-nums; }
+.btn { appearance: none; border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; cursor: pointer; background: var(--iron); color: var(--on-iron); min-height: 44px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.btn.ghost { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.f { display: grid; gap: 4px; } .f > span { font-weight: 600; font-size: 0.88rem; }
+input[type=text], input[type=number], input[type=date], select, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); min-height: 44px; }
+textarea { min-height: 120px; font-size: 0.88rem; }
+.flag { border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; border-left: 4px solid; }
+.flag.warn { background: var(--warn-bg); border-color: var(--warn); } .flag.ok { background: var(--good-bg); border-color: var(--good); } .flag.bad { background: var(--bad-bg); border-color: var(--bad); }
+.tick { display: flex; gap: 8px; align-items: flex-start; font-weight: 600; } .tick input { width: 22px; height: 22px; accent-color: var(--iron); flex: none; }
+.entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.entry:first-child { border-top: 0; }
+.pill { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 999px; padding: 3px 8px; background: var(--sunk); color: var(--muted); }
+.pill.soon { background: var(--warn-bg); color: var(--warn); } .pill.live { background: var(--good-bg); color: var(--good); }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.kpi { background: var(--sunk); border-radius: 10px; padding: 10px; min-width: 0; } .kpi .v { font-family: var(--display); font-weight: 800; font-size: clamp(1rem, 4.6vw, 1.4rem); white-space: nowrap; }
+.out { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sunk); border-radius: 10px; padding: 12px; font-size: 0.85rem; }
+:focus-visible { outline: 3px solid var(--mango); outline-offset: 2px; }
+@media (max-width: 420px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<div class="wrap">
+  <header class="row" style="justify-content:space-between"><div class="brand">OM<b>GYM</b> PRO Desk</div><span class="small muted" id="keystate">Checking your key…</span></header>
+  <main id="desk" style="display:grid;gap:16px"></main>
+</div>

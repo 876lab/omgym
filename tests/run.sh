@@ -7,8 +7,9 @@ python3 scripts/build.py > /dev/null
 git diff --quiet -- index.html 2>/dev/null || { echo "index.html is out of date with src/. Run: python3 scripts/build.py"; [ -n "${CI:-}" ] && exit 1; }
 node tests/extract.js index.html core "$TMP/core.js"
 node tests/extract.js index.html ui "$TMP/ui.js"
-node --check "$TMP/core.js" && node --check "$TMP/ui.js" && echo "syntax ok"
+node --check "$TMP/core.js" && node --check "$TMP/ui.js" && node --check desk/desk.js && echo "syntax ok"
 node tests/logic.js "$TMP/core.js"
 python3 -m json.tool manifest.webmanifest > /dev/null && echo "manifest ok"
 node tests/browser.js
+node tests/pro.js
 echo "ALL CHECKS PASSED"

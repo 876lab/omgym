@@ -19,7 +19,7 @@
   function P() { return S.profile || EXAMPLE; }
   function startDate() { return S.startDate || OM.addDays(TODAY, -3); }
   function weights() { return S.profile ? S.weights : exampleWeights(); }
-  function targets() { return OM.calcTargets(P(), S.profile ? S.kcalAdj : 0); }
+  function targets() { return OM.calcTargets(P(), S.profile ? S.kcalAdj : 0, S.profile ? proPlan() : null); }
   function prices() { return OM.priceTable(P(), S.profile ? (S.prices[P().region] || {}) : {}); }
 
   /* ---------- storage: private per-user doc in the artifact db, browser storage as fallback ---------- */
@@ -95,7 +95,7 @@
 
   /* ---------- views ---------- */
   var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null;
-  var VALID_TABS = ['today', 'food', 'shop', 'store', 'progress', 'me'];
+  var VALID_TABS = ['today', 'food', 'shop', 'store', 'progress', 'me', 'pro'];
   var storeCat = 'all', orderCopied = false;
 
   function exampleBanner() {
@@ -105,12 +105,12 @@
 
   function renderToday() {
     var p = P(), T = targets(), pt = prices();
-    var w = OM.buildWorkout(TODAY, p, startDate(), T.caution);
+    var w = OM.buildWorkout(TODAY, p, startDate(), T.caution, S.profile ? proPlan() : null);
     var plan = OM.planDay(TODAY, p, T, pt, S.swaps);
     var shop = weekShop();
     var dd = S.days[TODAY] || { sets: {}, habits: {} };
     var h = exampleBanner() + flagsHtml(T);
-    h += '<section class="dayhead"><span class="label">' + esc(niceDate(TODAY)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min</span></section>';
+    h += '<section class="dayhead"><span class="label">' + esc(niceDate(TODAY)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min' + (w.pro ? ' · <span class="pill done">PRO ' + esc(OM.PRO_PHASES[proPlan().phase].label) + '</span>' : '') + '</span></section>';
     h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">kcal today</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(shop.total, pt) + '</div><div class="u">week\'s shop</div></div></section>';
     h += weekStrip(p);
     // workout
@@ -151,7 +151,7 @@
     var h = '<section class="week" aria-label="This week">';
     for (var i = 0; i < 7; i++) {
       var d = OM.addDays(mon, i), s = OM.sessionFor(d, p, startDate()), done = S.days[d] && S.days[d].done;
-      var nm = s ? OM.buildWorkout(d, p, startDate(), false).title.replace(/ body/, '').replace('Conditioning + core', 'Cardio') : 'Rest';
+      var nm = s ? OM.buildWorkout(d, p, startDate(), false, S.profile ? proPlan() : null).title.replace(/ body/, '').replace('Conditioning + core', 'Cardio') : 'Rest';
       h += '<div class="wd' + (d === TODAY ? ' now' : '') + (s ? ' train' : '') + (done ? ' done' : '') + '"><span class="wl">' + dn[OM.weekday(d)] + '</span><span class="wn">' + esc(nm) + '</span><span class="wt" aria-hidden="true">' + (done ? '✓' : '') + '</span></div>';
     }
     return h + '</section>';
@@ -318,6 +318,130 @@
     return h;
   }
 
+  /* ---------- PRO ---------- */
+  var PROKEY = 'omgym-pro';
+  function proLoad() { var d = null; try { d = JSON.parse(localStorage.getItem(PROKEY) || 'null'); } catch (e) { } d = d || {}; if (!d.id) d.id = OM.newProId(); d.invoices = d.invoices || []; d.unlocks = d.unlocks || []; d.graceLog = d.graceLog || []; return d; }
+  var PD = proLoad();
+  function proSave() { try { localStorage.setItem(PROKEY, JSON.stringify(PD)); } catch (e) { } }
+  proSave();
+  var proVerified = [], proChecked = false, proNotice = null, proView = null, proLinkError = '';
+  function proStatusNow() { return OM.proStatus(TODAY, PD.id, proVerified, PD.grace); }
+  function proActive() { return proStatusNow().active; }
+  function proPlan() { return proActive() && PD.plan && OM.PRO_PHASES[PD.plan.phase] ? PD.plan : null; }
+  function verifyStored() {
+    return Promise.all(PD.unlocks.map(function (f) { return OM.proVerify(f).then(function (ok) { return ok ? f : null; }); }))
+      .then(function (r) { proVerified = r.filter(Boolean); proChecked = true; });
+  }
+  // add an unlock link (from the address bar or pasted); returns a message for the person
+  function acceptLink(search) {
+    var f = OM.parseProLink(search);
+    if (!f) return Promise.resolve({ ok: false, msg: 'That isn\'t an OMGym PRO unlock link. Copy the whole link from OMGym\'s WhatsApp message.' });
+    return OM.proVerify(f).then(function (ok) {
+      if (!ok) return { ok: false, msg: 'This unlock link has been changed or is damaged. Ask OMGym on WhatsApp to send it again.' };
+      if (f.id !== PD.id) return { ok: false, other: true, f: f, msg: 'This link is for PRO ID ' + f.id + ', but this app\'s PRO ID is ' + PD.id + '.' };
+      if (!PD.unlocks.some(function (u) { return u.sig === f.sig; })) PD.unlocks.push(f);
+      PD.invoices.forEach(function (inv) { if (inv.no === f.inv) inv.status = 'paid'; });
+      if (!PD.invoices.some(function (inv) { return inv.no === f.inv; })) PD.invoices.push({ no: f.inv, id: f.id, name: f.n, start: OM.expandDate(f.s), until: OM.expandDate(f.u), method: f.m, created: OM.expandDate(f.pd), status: 'paid' });
+      PD.grace = null; proSave();
+      return verifyStored().then(function () { return { ok: true, f: f, msg: 'PRO is unlocked until ' + niceDate(OM.expandDate(f.u), { day: 'numeric', month: 'long', year: 'numeric' }) + '. Your receipt is saved below.' }; });
+    });
+  }
+  function money2(v) { return Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function dmy(d) { return niceDate(d, { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function isPages() { return /github\.io$/.test(location.hostname); }
+  function unlockFor(no) { return proVerified.filter(function (f) { return f.inv === no; })[0]; }
+  function renderInvoice(inv) {
+    var paid = unlockFor(inv.no), jmd = OM.proJmd(OM.PRO.priceUsd, OM.PRO.boj.rate), B = OM.PRO.bank;
+    var status = paid ? 'Paid' : inv.status === 'sent' ? 'Awaiting confirmation' : 'Unpaid';
+    var h = '<section class="card invoice" id="invoice"><div class="cardhead"><div><span class="label">' + (paid ? 'Receipt' : 'Invoice') + '</span><h2 class="nowrap">' + esc(inv.no) + '</h2></div><span class="pill ' + (paid ? 'done' : inv.status === 'sent' ? 'estimate' : '') + '">' + status + '</span></div>';
+    h += '<div class="invgrid small"><div><span class="label">Date</span><br>' + esc(dmy(inv.created)) + '</div><div><span class="label">From</span><br>' + esc(OM.PRO.seller) + '<br>WhatsApp +1 (658) 218-4432</div><div><span class="label">Bill to</span><br>' + esc(inv.name || '—') + '<br>PRO ID ' + esc(inv.id) + '</div></div>';
+    h += '<div class="tablewrap"><table><thead><tr><th>Item</th><th class="r">Amount</th></tr></thead><tbody><tr><td>OMGym PRO, 1 month<br><span class="small muted">' + esc(dmy(inv.start)) + ' to ' + esc(dmy(inv.until)) + '</span></td><td class="r">US$' + money2(OM.PRO.priceUsd) + '</td></tr><tr><td><strong>' + (paid ? 'Total paid' : 'Total due') + '</strong></td><td class="r"><strong>US$' + money2(OM.PRO.priceUsd) + '</strong></td></tr></tbody></table></div>';
+    if (paid) {
+      h += '<p class="paidline"><strong>Paid</strong> by ' + esc(OM.PRO_METHODS[paid.m] || paid.m) + ', US$' + esc(paid.amt) + '. Confirmed by OMGym on ' + esc(dmy(OM.expandDate(paid.pd))) + '.</p>';
+    } else {
+      h += '<h3>How to pay</h3><div class="payopt"><strong>Scotiabank transfer (J$)</strong><dl class="small"><dt>Name</dt><dd>' + esc(B.holder) + '</dd><dt>Bank</dt><dd>' + esc(B.bank) + '</dd><dt>Account type</dt><dd>' + esc(B.type) + '</dd><dt>Account number</dt><dd class="num">' + esc(B.number) + '</dd><dt>Currency</dt><dd>' + esc(B.currency) + '</dd><dt>Reference</dt><dd>' + esc(inv.no) + '</dd><dt>Amount</dt><dd class="num"><strong>J$' + money2(jmd) + '</strong></dd></dl><p class="small muted">US$10 at the Bank of Jamaica rate of J$' + OM.PRO.boj.rate + ' (' + esc(dmy(OM.PRO.boj.date)) + '). If you pay on another day, use that day\'s Bank of Jamaica rate.</p><button class="btn ghost small" data-act="copybank" data-no="' + esc(inv.no) + '">Copy bank details</button></div>';
+      h += '<div class="payopt"><strong>PayPal (US$)</strong><p class="small">' + (OM.PRO.paypal ? 'Send US$' + money2(OM.PRO.priceUsd) + ' to <strong>' + esc(OM.PRO.paypal) + '</strong> with ' + esc(inv.no) + ' in the note.' : 'Ask OMGym on WhatsApp for the PayPal address, then send US$' + money2(OM.PRO.priceUsd) + ' with ' + esc(inv.no) + ' in the note.') + '</p></div>';
+    }
+    h += '<details><summary class="small">Terms</summary><ul class="lines small">' + OM.PRO.terms.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
+    if (isPages()) h += '<div class="noprint"><button class="btn ghost small" data-act="printinv">Print or save as PDF</button></div>';
+    return h + '</section>';
+  }
+  function renderPro() {
+    var st = proStatusNow(), h = '';
+    h += '<section class="dayhead"><span class="label">For lifters with 3+ years of training</span><h1>OMGym <span class="pro-word">PRO</span></h1></section>';
+    if (proNotice) h += '<div class="flag ' + (proNotice.ok ? 'info' : 'warn') + '" role="status">' + esc(proNotice.msg) + (proNotice.other ? ' Open OMGym from your Home Screen, go to PRO and paste this link under "Already paid?". <button class="linkbtn" data-act="copyprolink">Copy this link</button>' : '') + '</div>';
+    if (st.active) {
+      h += '<section class="card hero"><div class="cardhead"><h3>' + (st.via === 'grace' ? 'PRO is open while OMGym checks your payment' : 'PRO is active') + '</h3><span class="pill done">PRO</span></div><p>' + (st.via === 'grace' ? 'Early access ends ' + esc(dmy(st.until)) + '. It becomes a full month as soon as OMGym confirms your payment.' : 'Active until <strong>' + esc(dmy(st.until)) + '</strong> (' + st.daysLeft + ' day' + (st.daysLeft === 1 ? '' : 's') + ' left).') + '</p>' + (st.renewSoon ? '<p><strong>Renew now</strong> to keep PRO without a gap. The new month starts when this one ends.</p><button class="btn" data-act="pronew">Renew PRO</button>' : '') + '</section>';
+      if (PD.invoices.some(function (i) { return !unlockFor(i.no) && i.status !== 'void'; })) h += renderProStart(st);
+      h += renderProPlan();
+    } else {
+      h += '<section class="card"><h3>What you get</h3><ul class="lines"><li>Choose your phase: <strong>cut</strong>, <strong>lean bulk</strong> or <strong>maintain</strong>, with the rate set for experienced lifters.</li><li>Higher protein when cutting (2.3 g per kg), from the sports nutrition research for trained lifters.</li><li>Harder training weeks: top sets close to failure, 5–8 reps on a cut to keep strength.</li><li>Weekly sets for every muscle group, and calorie check-ins every week instead of every two.</li></ul><p class="small muted">US$' + money2(OM.PRO.priceUsd) + ' a month. Nothing renews by itself.</p></section>';
+      h += renderProStart(st);
+    }
+    // invoices and receipts
+    if (PD.invoices.length) {
+      h += '<section class="card"><h3>Invoices and receipts</h3>' + PD.invoices.slice().reverse().map(function (inv) { var pd = unlockFor(inv.no); return '<div class="logrow"><span><strong>' + esc(inv.no) + '</strong><br><span class="small muted">' + esc(dmy(inv.start)) + ' to ' + esc(dmy(inv.until)) + '</span></span><span class="pill ' + (pd ? 'done' : 'estimate') + '">' + (pd ? 'Paid' : inv.status === 'sent' ? 'Awaiting' : 'Unpaid') + '</span><button class="linkbtn small" data-act="showinv" data-no="' + esc(inv.no) + '">Open</button></div>'; }).join('') + '</section>';
+      var show = PD.invoices.filter(function (i) { return i.no === proView; })[0];
+      if (show) h += renderInvoice(show);
+    }
+    // paste link
+    h += '<section class="card"><h3>Already paid?</h3><p class="small muted">Paste the unlock link OMGym sent you on WhatsApp.</p><div class="formrow"><label class="small" for="pro-paste">Unlock link</label><input id="pro-paste" type="text" inputmode="url" autocomplete="off" placeholder="https://876lab.github.io/omgym/?pro=1…"></div>' + (proLinkError ? '<p class="err">' + esc(proLinkError) + '</p>' : '') + '<div><button class="btn" data-act="propaste">Unlock PRO</button></div><p class="small muted">Your PRO ID on this phone: <strong class="num">' + esc(PD.id) + '</strong></p></section>';
+    return h;
+  }
+  function renderProStart(st) {
+    var open = PD.invoices.filter(function (i) { return !unlockFor(i.no) && i.status !== 'void'; }).slice(-1)[0];
+    var h = '<section class="card hero" id="pro-start"><h3>Get PRO</h3>';
+    if (!open) {
+      h += '<div class="formrow"><label class="f" for="pro-name">Your name</label><input id="pro-name" type="text" autocomplete="name" value="' + esc(PD.name || (S.profile && S.profile.name) || '') + '"></div>';
+      h += '<label class="tick small"><input type="checkbox" id="pro-years"> I have trained consistently for 3 years or more</label>';
+      h += '<p class="small muted">PRO plans run harder than the standard plan. If you\'re newer to training, the standard plan will serve you better.</p>';
+      h += '<div><button class="btn" data-act="pronew">Create my invoice</button></div>';
+    } else {
+      h += '<p>Invoice <strong>' + esc(open.no) + '</strong> is ready. Pay by Scotiabank transfer or PayPal, then send OMGym your payment screenshot on WhatsApp.</p>';
+      h += renderInvoice(open);
+      h += '<div class="formrow"><span class="f">How did you pay?</span><div class="seg" role="group">' + ['bns', 'pp'].map(function (m) { return '<button class="chip" data-act="promethod" data-m="' + m + '" aria-pressed="' + ((open.method || 'bns') === m) + '">' + OM.PRO_METHODS[m] + '</button>'; }).join('') + '</div></div>';
+      var txt = OM.proProofText(Object.assign({}, open, { start: open.start, until: open.until }), open.method || 'bns');
+      h += '<a class="btn wa" id="pro-proof" data-act="proproof" data-no="' + esc(open.no) + '" href="https://wa.me/' + OM.PRO.whatsapp + '?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">I\'ve paid: send proof on WhatsApp</a>';
+      h += '<p class="small muted">WhatsApp opens with your details filled in. Attach the screenshot of your transfer before you send. ' + (OM.graceAllowed(TODAY, PD.graceLog) ? 'PRO opens for ' + OM.PRO.graceDays + ' days straight away while OMGym checks your payment (usually 1–3 days).' : 'PRO unlocks when OMGym confirms your payment (usually 1–3 days).') + '</p>';
+      h += '<div><button class="linkbtn small" data-act="provoid" data-no="' + esc(open.no) + '">Cancel this invoice</button></div>';
+    }
+    return h + '</section>';
+  }
+  function renderProPlan() {
+    var plan = PD.plan || {}, phases = OM.PRO_PHASES, p = P();
+    var h = '<section class="card"><h3>Your phase</h3><div class="seg" role="group">' + Object.keys(phases).map(function (k) { return '<button class="chip" data-act="prophase" data-ph="' + k + '" aria-pressed="' + (plan.phase === k) + '">' + phases[k].label + '</button>'; }).join('') + '</div>';
+    if (plan.phase && phases[plan.phase].rates.length > 1) {
+      var lab = function (r) { return plan.phase === 'cut' ? (r * 100) + '% a week' : (r === 0.0015 ? 'Lean, ~0.15% a week' : 'Faster, ~0.25% a week'); };
+      h += '<div class="formrow"><span class="f">Rate</span><div class="seg" role="group">' + phases[plan.phase].rates.map(function (r) { var cur = plan.rate || phases[plan.phase].def; return '<button class="chip" data-act="prorate" data-r="' + r + '" aria-pressed="' + (cur === r) + '">' + lab(r) + '</button>'; }).join('') + '</div></div>';
+    }
+    if (!plan.phase) return h + '<p class="small muted">Pick a phase to switch your calories, protein and training to PRO.</p></section>';
+    if (isExample()) return h + '<p class="small muted">Set up your plan first so PRO can use your numbers.</p></section>';
+    var T = targets();
+    if (!T.pro) h += '<div class="flag warn">Your health answers keep your plan at maintenance, so PRO phases are paused. Talk to your doctor first.</div>';
+    h += '<div class="stats"><div class="stat"><span class="label">Calories</span><span class="v num">' + T.kcal.toLocaleString() + '</span><span class="small muted">Maintenance ' + T.tdee.toLocaleString() + '</span></div><div class="stat"><span class="label">Protein</span><span class="v num">' + T.protein + ' g</span><span class="small muted">' + T.ppk + ' g per kg</span></div><div class="stat"><span class="label">Planned change</span><span class="v num">' + (T.plannedWeeklyKg > 0 ? '+' : '') + wt(T.plannedWeeklyKg, 2) + '/wk</span><span class="small muted">' + (T.floorApplied ? 'Held at the safe minimum' : T.goalType === 'lose' && T.plannedWeeklyKg > -T.proRate * p.weightKg + 0.01 ? 'Capped at 25% below maintenance' : 'On target') + '</span></div><div class="stat"><span class="label">Carbs · Fat</span><span class="v num">' + T.carbs + ' · ' + T.fat + ' g</span></div></div>';
+    var mon = OM.addDays(TODAY, -((OM.weekday(TODAY) + 6) % 7));
+    var vol = OM.weeklyVolume(mon, p, startDate(), T.caution, plan);
+    h += '<h3 style="margin-top:6px">Hard sets this week</h3><p class="small muted">About 10 or more sets per muscle a week builds muscle; on a cut, keeping volume up protects it.</p><div class="vol">' + vol.map(function (v) { var pc = Math.min(100, v.sets / 20 * 100); return '<div class="volrow"><span class="small">' + v.muscle + '</span><div class="bar' + (v.sets < 10 ? ' over' : '') + '"><i style="width:' + pc + '%"></i></div><span class="small num">' + v.sets + '</span></div>'; }).join('') + '</div>';
+    if (vol.some(function (v) { return v.sets < 10; })) h += '<p class="small muted">Under 10 sets (orange): add a training day or extra sets for those muscles when you have time.</p>';
+    return h + '</section>';
+  }
+  function startProInvoice() {
+    var nm = (document.getElementById('pro-name') || {}).value, yrs = document.getElementById('pro-years');
+    var st = proStatusNow();
+    if (!st.active || st.via === 'paid' && st.renewSoon) {
+      if (!st.active) {
+        if (!nm || !nm.trim()) { toast('Enter your name for the invoice'); return; }
+        if (yrs && !yrs.checked) { toast('PRO is for 3+ years of training. Tick the box to confirm.'); return; }
+      }
+    }
+    PD.name = (nm && nm.trim()) || PD.name || (S.profile && S.profile.name) || '';
+    var per = OM.nextPeriod(TODAY, st.lastUntil, 1);
+    var seq = PD.invoices.length + 1;
+    PD.invoices.push({ no: OM.invoiceNo(PD.id, per.start, seq), id: PD.id, name: PD.name, start: per.start, until: per.until, method: 'bns', created: TODAY, status: 'unpaid' });
+    proSave(); proView = null; tab = 'pro'; render();
+    var el = document.getElementById('pro-start'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
+  }
+
   /* ---------- order sheet: what to buy on Amazon for one customer order ---------- */
   var ORDER = OM.parseOrder(location.search);
   function orderTicks() { try { return JSON.parse(localStorage.getItem('omgym-orders') || '{}'); } catch (e) { return {}; } }
@@ -368,9 +492,9 @@
     if (!tr) h += '<p class="small muted">The plan checks your trend once you have 4 or more weigh-ins spread over at least 10 days.</p>';
     h += '</section>';
     var sug = OM.suggestAdjust(T, tr, cur);
-    var recentAdj = S.adjDate && OM.dayNum(TODAY) - OM.dayNum(S.adjDate) < 14;
+    var recentAdj = S.adjDate && OM.dayNum(TODAY) - OM.dayNum(S.adjDate) < (T.pro ? 7 : 14);
     if (sug && !recentAdj) h += '<section class="card hero"><h3>Adjust your calories?</h3><p>' + esc(sug.why) + '</p><div class="confirm"><button class="btn" data-act="applyadj" data-d="' + sug.delta + '">' + (sug.delta > 0 ? 'Add ' : 'Remove ') + Math.abs(sug.delta) + ' kcal a day</button><span class="small muted">Now ' + T.kcal + ' kcal</span></div></section>';
-    else if (recentAdj) h += '<p class="small muted">Calories were adjusted on ' + esc(niceDate(S.adjDate, { day: 'numeric', month: 'short' })) + '. Give it two weeks before the next change.</p>';
+    else if (recentAdj) h += '<p class="small muted">Calories were adjusted on ' + esc(niceDate(S.adjDate, { day: 'numeric', month: 'short' })) + '. ' + (T.pro ? 'PRO checks in again a week after that.' : 'Give it two weeks before the next change.') + '</p>';
     // sessions
     var wk = 0, planned = (p.days || []).length, doneN = 0;
     for (var i = 0; i < 7; i++) { var d = OM.addDays(TODAY, -i); if (S.days[d] && S.days[d].done && OM.sessionFor(d, p, startDate())) doneN++; }
@@ -429,10 +553,11 @@
   function render() {
     var v = $('#view');
     if (ORDER) { v.innerHTML = renderOrder(); document.querySelectorAll('nav.tabs button').forEach(function (b) { b.removeAttribute('aria-current'); }); return; }
-    var fn = { today: renderToday, food: renderFood, shop: renderShop, store: renderStore, progress: renderProgress, me: renderMe }[tab];
+    var fn = { today: renderToday, food: renderFood, shop: renderShop, store: renderStore, progress: renderProgress, me: renderMe, pro: renderPro }[tab];
     v.innerHTML = fn();
     document.querySelectorAll('nav.tabs button').forEach(function (b) { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var badge = document.getElementById('bagcount'), n = cartCount(); if (badge) { badge.textContent = n; badge.hidden = !n; }
+    var pb = document.getElementById('probtn'); if (pb) { pb.classList.toggle('on', proActive()); pb.setAttribute('aria-current', tab === 'pro' ? 'page' : 'false'); }
   }
   function go(t) { if (ORDER) closeOrder(); tab = t; render(); window.scrollTo(0, 0); }
   function closeOrder() { ORDER = null; try { history.replaceState(null, '', location.pathname); } catch (e) { } }
@@ -604,6 +729,26 @@
       case 'skiprest': stopRest(); break;
       case 'cartadd': S.cart = S.cart || {}; var ak = t.dataset.key || OM.cartKey(t.dataset.id); S.cart[ak] = Math.min(50, (S.cart[ak] || 0) + 1); orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
       case 'cartdec': var dk = t.dataset.key || t.dataset.id; S.cart[dk] = Math.max(0, (S.cart[dk] || 0) - 1); if (!S.cart[dk]) delete S.cart[dk]; orderCopied = false; save(); render(); break;
+      case 'pronew': startProInvoice(); break;
+      case 'promethod': var oi = PD.invoices.filter(function (i) { return !unlockFor(i.no) && i.status !== 'void'; }).slice(-1)[0]; if (oi) { oi.method = t.dataset.m; proSave(); render(); } break;
+      case 'proproof':
+        var pi = PD.invoices.filter(function (i) { return i.no === t.dataset.no; })[0];
+        if (pi) { pi.status = 'sent'; if (!proStatusNow().active && OM.graceAllowed(TODAY, PD.graceLog)) { PD.grace = { start: TODAY, no: pi.no }; PD.graceLog.push(TODAY); } proSave(); setTimeout(render, 300); }
+        break;
+      case 'provoid': PD.invoices = PD.invoices.filter(function (i) { return i.no !== t.dataset.no; }); proSave(); render(); break;
+      case 'showinv': proView = proView === t.dataset.no ? null : t.dataset.no; render(); var iv = document.getElementById('invoice'); if (iv && proView && iv.scrollIntoView) iv.scrollIntoView({ block: 'start' }); break;
+      case 'printinv': try { window.print(); } catch (e) { } break;
+      case 'copybank':
+        var B = OM.PRO.bank, btxt = 'Name: ' + B.holder + '\nBank: ' + B.bank + '\nAccount type: ' + B.type + '\nAccount number: ' + B.number + '\nCurrency: ' + B.currency + '\nReference: ' + t.dataset.no + '\nAmount: J$' + money2(OM.proJmd(OM.PRO.priceUsd, OM.PRO.boj.rate));
+        try { navigator.clipboard.writeText(btxt).then(function () { toast('Bank details copied'); }, function () { toast('Press and hold the details to copy'); }); } catch (e) { toast('Press and hold the details to copy'); }
+        break;
+      case 'propaste':
+        var raw = (document.getElementById('pro-paste') || {}).value || '', qi = raw.indexOf('?');
+        acceptLink(qi >= 0 ? raw.slice(qi) : raw).then(function (r) { proLinkError = r.ok ? '' : r.msg; proNotice = r.ok ? r : null; if (r.ok) proView = r.f.inv; render(); if (r.ok) toast('PRO unlocked'); });
+        break;
+      case 'copyprolink': try { navigator.clipboard.writeText(location.href.split('#')[0]).then(function () { toast('Link copied'); }, function () { toast('Copy the link from the address bar'); }); } catch (e) { toast('Copy the link from the address bar'); } break;
+      case 'prophase': PD.plan = { phase: t.dataset.ph, rate: OM.PRO_PHASES[t.dataset.ph].def }; proSave(); render(); toast('PRO ' + OM.PRO_PHASES[t.dataset.ph].label + ' is on'); break;
+      case 'prorate': PD.plan.rate = Number(t.dataset.r); proSave(); render(); break;
       case 'emptybag': S.cart = {}; orderCopied = false; save(); render(); break;
       case 'gostore': storeCat = 'all'; go('store'); var el = document.getElementById('var-' + t.dataset.id); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } break;
       case 'closeorder': closeOrder(); go('store'); break;
@@ -682,4 +827,13 @@
   var h0 = (location.hash || '').slice(1);
   if (VALID_TABS.indexOf(h0) >= 0) tab = h0;
   initStore();
+  var proFromUrl = OM.parseProLink(location.search);
+  verifyStored().then(function () {
+    if (!proFromUrl) { render(); return; }
+    return acceptLink(location.search).then(function (r) {
+      proNotice = r; tab = 'pro'; if (r.ok) proView = r.f.inv;
+      if (!r.other) { try { history.replaceState(null, '', location.pathname); } catch (e) { } }
+      render();
+    });
+  });
 })();

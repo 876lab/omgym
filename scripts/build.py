@@ -45,4 +45,7 @@ self.addEventListener('fetch', e => {
 });
 """ % ver
 open(os.path.join(root, "sw.js"), "w", encoding="utf-8").write(sw)
-print("built index.html, sw.js and dist/artifact.html")
+# the owner's private PRO Desk (published as a private claude.ai artifact)
+desk = read("desk/shell.html") + '\n<script id="core">\n' + read("src/core.js") + '</script>\n<script id="desk-js">\n' + read("desk/desk.js") + "</script>\n"
+open(os.path.join(root, "dist/pro-desk.html"), "w", encoding="utf-8").write(desk)
+print("built index.html, sw.js, dist/artifact.html and dist/pro-desk.html")

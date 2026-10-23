@@ -12,10 +12,13 @@ Open the app: https://876lab.github.io/omgym/
 
 The Home Screen app works offline at the gym. Your data is saved in the browser you use, on that device. The claude.ai version of the app saves to your Claude account instead.
 
+## OMGym PRO
+Tap **PRO** at the top of the app. Create your invoice, pay US$10 by Scotiabank transfer (J$ at the Bank of Jamaica rate) or PayPal, and send the proof on WhatsApp. PRO opens for 3 days while OMGym checks the payment, then runs for the month you paid. If you use OMGym from your Home Screen, paste the unlock link OMGym sends you under "Already paid?".
+
 ## Working on it
 - Edit `src/` (`core.js` = plan logic, `ui.js` = screens, `shell.html` = styles and layout).
 - `python3 scripts/build.py` rebuilds `index.html` (the site) and `dist/artifact.html` (the claude.ai artifact).
-- `npm test` runs every check: 580k+ logic assertions plus a full browser walk-through.
+- `npm test` runs every check: 580k+ logic assertions, a full browser walk-through, and the PRO payment flow with a throwaway test key.
 - GitHub runs the tests on every push to `main` and checks the live site every morning at 5:41am Jamaica time. A failure emails the repo owner.
 
 General fitness guidance, not medical advice.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23: OMGym PRO
+- PRO section (header button) for lifters with 3+ years of training: cut (0.5/0.75/1% a week, protein 2.3 g/kg), lean bulk (~0.15 or 0.25% a week, 2.0 g/kg) or maintain (2.2 g/kg); harder training weeks (Build RIR 2, Push RIR 0–1, Deload; 5–8 reps on a cut); weekly sets per muscle; weekly calorie check-ins.
+- Payments: invoice in the app with Scotiabank JMD details and the J$ amount at the Bank of Jamaica rate (J$159.65, 22 Oct 2026); proof sent on WhatsApp; 3-day early access once every 30 days; signed unlock link that doubles as the receipt; renewal reminder 5 days before the end; terms (no automatic renewal, no refunds for part months, full refund if not unlocked within 3 working days or paid twice).
+- Owner's private PRO Desk (claude.ai artifact, owner-only storage): reads the customer's message, signs the unlock link after the owner ticks that the money arrived, keeps the payment log, ending-soon reminders and a new-phone reissue.
+- Links are WhatsApp-safe (no * _ ~). Order links got the same fix.
+- Sources: ISSN position stand on protein and exercise (2017); Garthe et al. 2011; Iraki et al. 2019 (Sports); ACSM resistance training position stand 2026; Bank of Jamaica rate via AllRatesToday / Jamaica Observer.
+
 ## 2026-10-23: Store flavours, pictures and order links
 - Customers pick a flavour (whey, ISO100, Orgain, C4) or glove size before adding to the bag; the bag lists each flavour or size on its own line. Older bags merge into the new format.
 - Simple drawn pictures for every Store item (generic shapes, no brand artwork), also on the add-on prompts.

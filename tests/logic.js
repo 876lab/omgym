@@ -229,6 +229,79 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   near(sum.usd, 114.99 * 2 + 9.99 + 19.99, 0.01, 'Amazon subtotal');
   console.log('Store prices: ' + OM.PRODUCTS.map(x => x.id + ' J$' + OM.landed(x).price.toLocaleString()).join(', '));
 }
+// 9. PRO phases, training and check-ins
+{
+  const adv = { ...base, weightKg: 85, goalKg: 80, experience: 'advanced', days: [1, 2, 4, 5] };
+  const cut = OM.calcTargets(adv, 0, { phase: 'cut', rate: 0.0075 });
+  ok(cut.goalType === 'lose' && cut.pro === 'cut' && Math.abs(cut.protein - Math.round(85 * 2.3)) <= 1, 'PRO cut protein 2.3 g/kg: ' + cut.protein);
+  ok(cut.tdee - cut.kcal <= cut.tdee * 0.25 + 10 && cut.kcal >= 1500, 'PRO cut keeps the deficit cap and floor');
+  const tiny = OM.calcTargets({ ...adv, sex: 'female', weightKg: 52, heightCm: 155, age: 40, activity: 'desk', days: [1] }, 0, { phase: 'cut', rate: 0.01 });
+  ok(tiny.kcal >= 1200, 'PRO cut never below 1,200 kcal for women: ' + tiny.kcal);
+  const lb = OM.calcTargets(adv, 0, { phase: 'bulk', rate: 0.0015 }), sb = OM.calcTargets(adv, 0, { phase: 'bulk', rate: 0.0025 });
+  ok(lb.goalType === 'gain' && lb.kcal - lb.tdee >= 95 && lb.kcal - lb.tdee <= lb.tdee * 0.15 + 10 && sb.kcal > lb.kcal, 'PRO bulk surplus 100 kcal to 15% of maintenance, faster > lean');
+  ok(Math.abs(lb.protein - Math.round(85 * 2.0)) <= 1, 'PRO bulk protein 2.0 g/kg');
+  const mt = OM.calcTargets(adv, 0, { phase: 'maintain' });
+  ok(mt.goalType === 'maintain' && Math.abs(mt.kcal - mt.tdee) <= 10, 'PRO maintain at maintenance');
+  ok(OM.calcTargets({ ...adv, age: 16 }, 0, { phase: 'cut' }).goalType === 'maintain', 'PRO ignored under 18');
+  ok(OM.calcTargets({ ...adv, sex: 'female', pregnant: true }, 0, { phase: 'bulk' }).goalType === 'maintain', 'PRO ignored in pregnancy');
+  ok(OM.calcTargets(adv, 0, { phase: 'nonsense' }).pro === null, 'unknown PRO phase ignored');
+  const wPush = OM.buildWorkout(OM.addDays('2026-10-19', 21), adv, '2026-10-19', false, { phase: 'cut' });
+  const comp = wPush.blocks.flatMap(b => b.items || []).filter(i => i.ex.kind === 'c');
+  ok(wPush.pro && wPush.phase.rir === '0–1' && comp.every(i => i.reps === '5–8'), 'PRO cut push week: 0–1 reps in reserve, 5–8 reps');
+  ok(OM.buildWorkout(OM.addDays('2026-10-19', 21), adv, '2026-10-19', true, { phase: 'cut' }).phase.rir === '1–2', 'health-screen caution keeps standard effort in PRO');
+  for (const eq of ['gym', 'dumbbells', 'bodyweight']) for (const ph of ['cut', 'bulk', 'maintain']) for (let i = 0; i < 42; i += 3) {
+    const w = OM.buildWorkout(OM.addDays('2026-10-19', i), { ...adv, equipment: eq }, '2026-10-19', false, { phase: ph });
+    if (!w.rest) ok(w.minutes >= 38 && w.minutes <= 47, `PRO session length ${w.minutes} ${eq} ${ph}`);
+  }
+  const vol = OM.weeklyVolume('2026-10-19', adv, '2026-10-19', false, { phase: 'bulk' });
+  ok(vol.length === 8 && vol.every(v => v.sets >= 0) && vol.reduce((a, v) => a + v.sets, 0) > 40, 'weekly sets per muscle');
+  const T = OM.calcTargets(adv, 0, { phase: 'cut', rate: 0.0075 }), want = -0.0075 * 85;
+  ok(OM.suggestAdjust(T, { perWeek: want }, 85) === null, 'PRO check-in: on target, no change');
+  ok(OM.suggestAdjust(T, { perWeek: want + 0.4 }, 85).delta === -100, 'PRO check-in: losing too slowly, -100');
+  ok(OM.suggestAdjust(T, { perWeek: want - 0.4 }, 85).delta === 100, 'PRO check-in: losing too fast, +100');
+}
+// 10. PRO payments: dates, invoices, proof messages, signed links, status
+{
+  const P = OM.PRO;
+  ok(P.priceUsd === 10 && P.bank.number === '90605 000606999' && P.bank.holder === 'CARGILL BROWN' && P.bank.currency === 'JMD', 'PRO price and Scotiabank details');
+  ok(P.publicKey.kty === 'EC' && P.publicKey.crv === 'P-256' && P.publicKey.x.length === 43 && !P.publicKey.d, 'app holds only the public key');
+  near(OM.proJmd(10, 159.65), 1596.5, 0.001, 'J$ amount at BOJ rate');
+  ok(OM.addMonths('2026-01-31', 1) === '2026-02-28' && OM.addMonths('2026-12-15', 1) === '2027-01-15' && OM.addMonths('2028-01-31', 1) === '2028-02-29', 'month maths');
+  ok(/^[A-HJ-NP-Z2-9]{6}$/.test(OM.newProId()), 'PRO ID format');
+  ok(OM.invoiceNo('K7Q2XM', '2026-10-23', 2) === 'PRO-2610-K7Q2XM-2', 'invoice number');
+  const inv = { name: 'Kim *Big* B_', no: 'PRO-2610-K7Q2XM-1', id: 'K7Q2XM', start: '2026-10-23', until: '2026-11-23' };
+  const txt = OM.proProofText(inv, 'bns');
+  ok(/J\$1,596\.50/.test(txt) && /23 Oct 2026 to 23 Nov 2026/.test(txt) && /Ref: OMPRO\.K7Q2XM\.20261023\.20261123\.PRO-2610-K7Q2XM-1\.bns/.test(txt), 'proof message: amount, dates, ref');
+  const pp = OM.parseProof('blah\n' + txt + '\nthanks');
+  ok(pp && pp.id === 'K7Q2XM' && pp.start === '2026-10-23' && pp.until === '2026-11-23' && pp.no === inv.no && pp.method === 'bns' && pp.name === inv.name, 'PRO Desk reads the proof message');
+  ok(OM.parseProof('hello') === null, 'no ref, no parse');
+  // proStatus and grace
+  const f = { id: 'K7Q2XM', s: '20261023', u: '20261123' };
+  ok(OM.proStatus('2026-10-30', 'K7Q2XM', [f], null).active && !OM.proStatus('2026-11-24', 'K7Q2XM', [f], null).active, 'paid period starts and ends');
+  ok(OM.proStatus('2026-11-20', 'K7Q2XM', [f], null).renewSoon && !OM.proStatus('2026-11-10', 'K7Q2XM', [f], null).renewSoon, 'renewal reminder in the last 5 days');
+  ok(!OM.proStatus('2026-10-30', 'OTHERX', [f], null).active, 'unlock for another phone ignored');
+  const g = OM.proStatus('2026-10-25', 'K7Q2XM', [], { start: '2026-10-23' });
+  ok(g.active && g.via === 'grace' && g.until === '2026-10-26', 'early access for 3 days');
+  ok(!OM.proStatus('2026-10-26', 'K7Q2XM', [], { start: '2026-10-23' }).active, 'early access ends after 3 days');
+  ok(!OM.graceAllowed('2026-11-10', ['2026-10-23']) && OM.graceAllowed('2026-11-23', ['2026-10-23']), 'early access once every 30 days');
+  ok(OM.nextPeriod('2026-11-20', '2026-11-23').start === '2026-11-23' && OM.nextPeriod('2026-12-01', '2026-11-23').start === '2026-12-01', 'renewal continues from the end date');
+  ok(!/[*_~]/.test(OM.waSafe('a*b_c~d')), 'links never contain WhatsApp formatting marks');
+}
+const proSig = (async () => {
+  const sb = globalThis.crypto.subtle;
+  const kp = await sb.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const priv = await sb.exportKey('jwk', kp.privateKey), pub = await sb.exportKey('jwk', kp.publicKey);
+  const f = { id: 'K7Q2XM', s: '20261023', u: '20261123', inv: 'PRO-2610-K7Q2XM-1', n: 'Kim *Big* B_', m: 'bns', amt: '10.00', cur: 'USD', pd: '20261024' };
+  const link = OM.proLink(f, await OM.proSign(f, priv));
+  ok(!/[*_~]/.test(link.split('?')[1]) && link.startsWith('https://876lab.github.io/omgym/?pro=1&'), 'unlock link safe for WhatsApp');
+  const g = OM.parseProLink(link.split('?')[1]);
+  ok(g.n === 'Kim *Big* B_', 'name survives the link');
+  ok(await OM.proVerify(g, pub), 'signed link verifies');
+  for (const k of ['id', 's', 'u', 'inv', 'n', 'm', 'amt', 'pd']) ok(!(await OM.proVerify({ ...g, [k]: k === 'id' ? 'AAAAAA' : g[k] + '9' }, pub)), 'edited ' + k + ' is rejected');
+  ok(!(await OM.proVerify(g)), 'test signature fails against the real key');
+  ok(!(await OM.proVerify({ ...g, sig: 'abcd' }, pub)), 'short signature rejected');
+  ok(OM.parseProLink('?o=x') === null, 'not a PRO link');
+})();
 console.log(`Workouts generated: ${wcount}, session length ${minM}-${maxM} min`);
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
-if (fail) { console.log([...new Set(fails)].slice(0, 30).join('\n')); process.exit(1); }
+proSig.then(() => { console.log(`PRO signature checks done. PASS ${pass}  FAIL ${fail}`); if (fail) { console.log([...new Set(fails)].slice(0, 30).join('\n')); process.exit(1); } });
