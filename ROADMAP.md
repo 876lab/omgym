@@ -34,7 +34,15 @@
 - Payment: the customer creates an invoice in the app (`PRO-YYMM-<PRO ID>-<n>`), pays Scotiabank JMD (CARGILL BROWN, Chequing, 90605 000606999) at the Bank of Jamaica rate or PayPal, and sends proof on WhatsApp. Early access: 3 days, once every 30 days. The owner confirms in the private **PRO Desk** (https://claude.ai/artifact/AwAwUcCoNJ795xjefZmxC3), which signs an unlock link (ECDSA P-256). The app holds only the public key (`PRO.publicKey`) and re-checks signatures on every load. On iPhone the Home Screen app has its own storage, so customers paste the link under "Already paid?".
 - Rules: never change `PRO.publicKey` (every issued link would stop working) and never put a private key in the repo or the app. Keep the price, bank details and terms unless the owner changes them. The nightly run updates `PRO.boj` to the latest Bank of Jamaica selling rate with its date. PayPal is Cargill.brown@gmail.com. Lynk (`PRO.lynk`) is offered first once the owner sends his username; `PRO.showBank` hides the Scotiabank details.
 
+## Food budgets (added 2026-10-23)
+- Profile fields: `budget` (1 Budget, 2 Standard, 3 Premium; missing = 1), `likes` (ids from `LIKEABLE`), `cuisine` ('auto' follows region: JM → Jamaican, US → American, elsewhere → both), `foodCap` (weekly food budget in local currency, optional).
+- Tiers live on each region's price items (`tier`); a food can be cheap in one country and premium in another (Greek yogurt is tier 1 in the US, tier 3 in Jamaica). Keep Budget plans identical in spirit: local staples, cheapest protein.
+- PRO top-up (`proTopUp`) only runs when PRO is active. Never let likes override diet or allergies.
+
 ## Backlog
+- [ ] Owner: send shelf prices (receipt or photo) for Greek yogurt, cottage cheese, frozen berries, chicken breast, turkey, salmon, pasta and frozen vegetables at PriceSmart, Hi-Lo or Loshusan, and say which stores stock them. Then replace the estimates in `PRICES.JM` and add a "where to buy" line.
+- [ ] Vegetarian and vegan protein is low (about 50% of target): add soya chunks, chickpeas, plant protein powder and Greek-yogurt dishes for vegetarians.
+- [ ] PRO training upgrades (owner agreed in principle): ~10–16 sets per muscle within 45 min using supersets, top set + back-off sets, next-session weights from logged loads, a lagging-muscle focus, PRO rest-day mobility, PRO markers on Today, and a clear note when the health screen limits effort.
 - [x] (2026-10-23) PayPal address for PRO set (`PRO.paypal`).
 - [ ] Lynk username for PRO (`PRO.lynk`): waiting for the owner. Once set, ask whether to switch off the Scotiabank details (`PRO.showBank = false`).
 - [ ] Card payments by payment link (WiPay, Inkress or HandyPay) for PRO and the Store, if the owner wants them (fees about 3.5–4.9%).

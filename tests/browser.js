@@ -89,6 +89,32 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.locator('[data-act=tick]').first().check();
   ok(!(await overflow()), 'no horizontal overflow on shop');
   await page.screenshot({ path: OUT + '/shot-shop.png', fullPage: true });
+  // food budget levels, quick region switch, foods I buy
+  ok(await page.locator('.tiers .tier').count() === 3, 'three budget levels with weekly costs');
+  const tierVals = await page.locator('.tiers .tier .v').allInnerTexts();
+  ok(tierVals.every(v => /^J\$[\d,]+$/.test(v)), 'budget tiles priced in J$: ' + tierVals.join(' '));
+  await page.click('.quick [data-k=budget][data-v="3"]');
+  ok(/Premium/i.test(await page.locator('.tier.on').innerText()), 'Premium level selected');
+  ok(/Greek yogurt|Cottage cheese|berries|Salmon|turkey|Whey/i.test(await page.locator('#view').innerText()), 'Premium list includes premium foods');
+  await page.click('.quick [data-k=region][data-v=US]');
+  const usText = await page.locator('#view').innerText();
+  ok(/^\$[\d,.]+$/.test(await page.locator('.kpi .v').first().innerText()) && /Walmart/.test(usText), 'quick switch to USA: dollars and US stores');
+  await page.click('nav [data-tab=food]');
+  ok(/American/.test(await page.locator('.quick').innerText()), 'USA uses American dishes');
+  ok(!/hardo bread|callaloo|Mackerel/i.test(await page.locator('#view').innerText()), 'no Jamaican-only dishes in the US plan');
+  ok(!(await overflow()), 'no horizontal overflow with the quick bar');
+  await page.click('.quick [data-k=region][data-v=JM]'); await page.click('.quick [data-k=budget][data-v="1"]');
+  await page.click('nav [data-tab=shop]');
+  ok(/^J\$/.test(await page.locator('.kpi .v').first().innerText()), 'switch back to Jamaica');
+  await page.click('[data-act=setupfood]');
+  ok(await page.isVisible('text=Foods I buy'), 'food settings open at the Food step');
+  await page.click('[data-k=likes][data-v=greekyog]'); await page.fill('#foodCap', '5000');
+  await page.click('[data-act=next]');
+  await page.click('nav [data-tab=shop]');
+  const capText = await page.locator('#view').innerText();
+  ok(/over\s+your weekly food budget/i.test(capText), 'over-budget week is flagged');
+  ok(/Greek yogurt/.test(capText), 'Foods I buy appear on the list');
+  await page.screenshot({ path: OUT + '/shot-budget.png', fullPage: true });
   // store
   await page.click('nav [data-tab=store]');
   ok(await page.locator('.prod').count() >= 10, 'store lists products');

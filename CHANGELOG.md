@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-23: Food budgets, foods I buy, US meals, quick region switch, PRO protein top-up
+- Food budget levels (profile `budget` 1/2/3): each region marks pricier foods tier 2 (Standard) or 3 (Premium) in `PRICES`; Budget keeps today's plans. Standard and Premium rotate among more proteins but keep to protein-dense choices in each dish. The List shows a week of food eaten at each level (`weekCostByTier`) and an optional weekly limit (`foodCap`) with a one-tap switch to a level that fits.
+- "Foods I buy" (`likes`): Greek yogurt, cottage cheese, berries, whey, chicken breast, lean beef, turkey, salmon, whole-wheat bread, pasta, frozen veg, oats, eggs, tuna. Used about two days in three whatever the level; never overrides diet or allergies.
+- 12 new ingredients (USDA values) and 17 new dishes: yogurt and cottage-cheese bowls, protein shake, chicken breast bowls, salmon, beef or turkey pasta; US dishes (chili, stir-fry, sheet-pan chicken, tuna pasta salad, burrito bowl, bean pasta, egg or peanut-butter toast). Jamaican dishes are tagged `cu: 'jm'`; dish style follows the region unless the person picks Jamaican, American or Both (`cuisine`).
+- US prices from Walmart.com (23 Oct 2026) and BLS (chicken breast US$4.20/lb, Sep 2026). Jamaica: Chobani Greek yogurt J$2,700 + GCT at JA Deals; beef mince J$1,400–1,693/kg (agriculture ministry survey, Nov 2025); chicken breast J$670 per 500 g (Expatistan, Jun 2026); whey from the OMGym Store price; cottage cheese, berries, turkey, salmon, pasta, frozen veg are estimates until the owner confirms shelf prices.
+- Quick Prices (Jamaica / USA / Elsewhere) and Budget switch at the top of Meals and the List; US shopping names (white sandwich bread, spinach); region-aware seasoning tips; Store notes it delivers in Jamaica only.
+- PRO: daily protein top-up on the snack (tuna, sardines, whey, Greek yogurt, cottage cheese or chicken breast, by budget and foods ticked) with the same calories trimmed from starch elsewhere. PRO cut plans now reach about 93–97% of 2.3 g/kg (was 83%).
+- Tests: 711k logic assertions (meal loop now runs Budget and Premium), 83 browser checks.
+
 ## 2026-10-23: PayPal address and Lynk support for PRO
 - PRO invoices show the owner's PayPal (Cargill.brown@gmail.com) with a note on buyer protection.
 - Lynk support: when the owner adds his Lynk username, invoices offer Lynk first (J$ at the Bank of Jamaica rate), and the Scotiabank details can be switched off. The PRO Desk records Lynk payments with the J$ received.

@@ -14,7 +14,15 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/publicKey: \{[^}]*\},/, 'publicKey: ' + pubStr + ',');
   ok(html.includes(pub.x), 'test copy uses the test key');
   const testPage = path.join(OUT, 'index-pro.html'); fs.writeFileSync(testPage, html);
-  const url = 'file://' + testPage;
+  // Serve the copy over http://127.0.0.1: file:// pages can get fresh, empty storage after a navigation,
+  // which made this test flaky. A real origin keeps localStorage like the live site does.
+  const server = require('http').createServer((req, res) => {
+    const f = path.join(OUT, decodeURIComponent(req.url.split(/[?#]/)[0]).replace(/^\/+/, '') || 'index-pro.html');
+    if (!f.startsWith(OUT) || !fs.existsSync(f)) { res.writeHead(404); return res.end(); }
+    res.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
+  });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  const url = 'http://127.0.0.1:' + server.address().port + '/index-pro.html';
   const errors = [];
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -53,6 +61,10 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   const kcalPro = await page.locator('.stat .v').first().innerText();
   await page.click('nav [data-tab=today]');
   ok(/PRO Cut/i.test(await page.locator('#view').innerText()), 'Today shows PRO Cut');
+  await page.click('nav [data-tab=food]'); let topSeen = false;
+  for (let i = 0; i < 4 && !topSeen; i++) { topSeen = /PRO top-up/.test(await page.locator('#view').innerText()); if (!topSeen) await page.click('[data-act=fd][data-n="1"]'); }
+  ok(topSeen, 'PRO meals include a protein top-up');
+  await page.click('nav [data-tab=today]');
   // owner signs the unlock (what the PRO Desk does) and the customer opens the link
   const parsed = OM.parseProof(proofMsg);
   const f = { id: parsed.id, s: OM.compactDate(parsed.start), u: OM.compactDate(parsed.until), inv: parsed.no, n: parsed.name, m: 'bns', amt: '10.00', cur: 'USD', pd: OM.compactDate(parsed.start) };
@@ -124,5 +136,5 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   ok(/Only the owner can use the PRO Desk/i.test(await np.locator('#desk').innerText()), 'desk is locked without the key');
   ok(errors.length === 0, 'no page errors: ' + errors.join(' | '));
   console.log(`PRO PASS ${pass} FAIL ${fail}`); if (fail) process.exitCode = 1;
-  await browser.close();
+  await browser.close(); server.close();
 })().catch(e => { console.error(e); process.exit(1); });

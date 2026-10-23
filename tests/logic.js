@@ -82,9 +82,9 @@ ok(a1 !== a2, 'exercise selection rotates each 6-week cycle');
 const diets = ['none', 'pescatarian', 'vegetarian', 'vegan'];
 const allergySets = [[], ['egg'], ['fish'], ['shellfish'], ['peanut'], ['dairy'], ['gluten'], ['egg', 'gluten'], ['fish', 'shellfish']];
 let kErrMain = [], kErrVegan = []; let mealDays = 0, kErr = [], pRatio = [], costs = { JM: [], US: [] };
-for (const region of ['JM', 'US', 'OTHER']) for (const diet of diets) for (const al of allergySets) {
+for (const region of ['JM', 'US', 'OTHER']) for (const diet of diets) for (const al of allergySets) for (const budget of [1, 3]) {
   for (const prof of [base, { ...base, sex: 'female', weightKg: 65, heightCm: 160, goalKg: 60 }, { ...base, weightKg: 110, goalKg: 90 }, { ...base, goalKg: 88 }]) {
-    const p = { ...prof, region, diet, allergies: al };
+    const p = { ...prof, region, diet, allergies: al, budget };
     const T2 = OM.calcTargets(p);
     const pt = OM.priceTable(p, {});
     for (let i = 0; i < 7; i++) {
@@ -99,11 +99,11 @@ for (const region of ['JM', 'US', 'OTHER']) for (const diet of diets) for (const
           ok(isFinite(it.g) && it.g > 0 && isFinite(it.cost) && it.cost > 0, `valid amount/cost ${it.id}`);
         }
       }
-      const ids = plan.meals.map(m => m.tpl && m.tpl.id); plan.meals.forEach(m => m.name && ok(!/\{p\}/.test(m.name), 'name filled'));
+      const ids = plan.meals.map(m => m.tpl && m.tpl.id); plan.meals.forEach(m => m.name && ok(!/\{[pcf]\}/.test(m.name), 'name filled'));
       ok(ids[1] !== ids[2], 'lunch differs from dinner');
       kErr.push((plan.tot.k - T2.kcal) / T2.kcal); if (diet !== 'vegan') kErrMain.push(Math.abs(plan.tot.k - T2.kcal) / T2.kcal); else kErrVegan.push(Math.abs(plan.tot.k - T2.kcal) / T2.kcal);
       pRatio.push(plan.tot.p / T2.protein);
-      if (region !== 'OTHER' && diet === 'none' && !al.length && prof === base) costs[region].push(plan.tot.cost);
+      if (region !== 'OTHER' && diet === 'none' && !al.length && prof === base && budget === 1) costs[region].push(plan.tot.cost);
     }
   }
 }
@@ -152,6 +152,52 @@ ok(Object.keys(OM.PRICES.JM.items).length === Object.keys(OM.ING).length, 'every
 const ptS = OM.priceTable(base, { egg: { pr: 1100, store: 'Hi-Lo', date: '23 Oct 2026' } });
 ok(ptS.items.egg.store === 'Hi-Lo' && /Hi-Lo/.test(ptS.items.egg.src), 'store recorded on your price');
 ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1].d, 'changes log newest first');
+
+// 6b. Budget levels, foods I buy, dish style by region, PRO protein top-up
+{
+  for (const reg of ['JM', 'US']) for (const [id, it] of Object.entries(OM.PRICES[reg].items)) ok(!it.tier || [1, 2, 3].includes(it.tier), `tier valid ${reg} ${id}`);
+  ok(Object.keys(OM.PRICES.US.items).length === Object.keys(OM.ING).length, 'every ingredient has a US price');
+  OM.LIKEABLE.forEach(id => ok(!!OM.ING[id], 'likeable food exists ' + id));
+  ok(OM.priceTable({ region: 'JM' }, {}).items.whey.pr === OM.landed(OM.productById('on-whey-5')).price, 'JM whey priced from the OMGym Store');
+  ok(OM.priceTable({ region: 'US' }, {}).items.bread.name === 'White sandwich bread', 'US shopping list uses US names');
+  const tierOf = (pt, id) => pt.items[id].tier || 1;
+  const allIds = p => { const pt = OM.priceTable(p, {}), T = OM.calcTargets(p); const ids = new Set(), tpls = new Set(); let prot = 0;
+    for (let i = 0; i < 21; i++) { const d = OM.planDay(OM.addDays('2026-10-26', i), p, T, pt, {}); d.meals.forEach(m => { if (m.tpl) tpls.add(m.tpl); (m.items || []).forEach(it => ids.add(it.id)); ok(!/\{[pcf]\}/.test(m.name || ''), 'name placeholders filled'); }); prot += d.tot.p / T.protein; }
+    return { ids, tpls, pt, prot: prot / 21 }; };
+  for (const reg of ['JM', 'US']) {
+    const b1 = allIds({ ...base, region: reg, budget: 1 });
+    [...b1.ids].forEach(id => ok(tierOf(b1.pt, id) === 1, `Budget level (${reg}) only uses tier-1 foods: ${id}`));
+    [...b1.tpls].forEach(t => ok(!t.cu || t.cu === (reg === 'JM' ? 'jm' : 'us'), `${reg} plan uses ${reg} dishes: ${t.id}`));
+    const b2 = allIds({ ...base, region: reg, budget: 2 });
+    [...b2.ids].forEach(id => ok(tierOf(b2.pt, id) <= 2, `Standard level (${reg}) stays within tier 2: ${id}`));
+    const b3 = allIds({ ...base, region: reg, budget: 3 });
+    ok([...b3.ids].some(id => tierOf(b3.pt, id) === 3), `Premium (${reg}) uses premium foods`);
+    ok(b3.prot >= b1.prot - 0.03 && b2.prot >= b1.prot - 0.03, `higher budgets keep protein (${reg}: ${b1.prot.toFixed(2)} ${b2.prot.toFixed(2)} ${b3.prot.toFixed(2)})`);
+    const likes = allIds({ ...base, region: reg, budget: 1, likes: ['greekyog', 'berries'] });
+    ok(likes.ids.has('greekyog') && likes.ids.has('berries'), `foods I buy appear on a Budget plan (${reg})`);
+    const mix = allIds({ ...base, region: reg, cuisine: 'mix' });
+    ok([...mix.tpls].some(t => t.cu === 'jm') && [...mix.tpls].some(t => t.cu === 'us'), `"Both" dish style mixes Jamaican and American dishes (${reg})`);
+  }
+  ok(OM.cuisineOf({ region: 'US', cuisine: 'jm' }) === 'jm' && OM.cuisineOf({ region: 'US' }) === 'us' && OM.cuisineOf({ region: 'OTHER' }) === 'mix', 'dish style follows region unless chosen');
+  // likes never override diet or allergies
+  const vg = allIds({ ...base, region: 'US', diet: 'vegan', likes: ['greekyog', 'whey', 'chickbreast'] });
+  ok(!['greekyog', 'whey', 'chickbreast', 'cottage'].some(id => vg.ids.has(id)), 'foods I buy never break a vegan diet');
+  const df = allIds({ ...base, region: 'JM', budget: 3, allergies: ['dairy'], likes: ['greekyog'] });
+  ok(!['greekyog', 'whey', 'cottage', 'milk'].some(id => df.ids.has(id)), 'foods I buy never break a dairy allergy');
+  // weekly cost by level: Budget <= Premium
+  for (const reg of ['JM', 'US']) { const p = { ...base, region: reg }; const w = OM.weekCostByTier('2026-10-26', p, OM.calcTargets(p), OM.priceTable(p, {}), {}); ok(w[1] > 0 && w[1] <= w[3], `Premium week costs more than Budget (${reg}: ${w[1].toFixed(0)} vs ${w[3].toFixed(0)})`); console.log(`Week of food eaten, ${reg}: Budget ${w[1].toFixed(0)}  Standard ${w[2].toFixed(0)}  Premium ${w[3].toFixed(0)}`); }
+  // PRO: protein top-up lifts the cut plan toward 2.3 g/kg without overshooting calories
+  for (const reg of ['JM', 'US']) for (const b of [1, 3]) {
+    const p = { ...base, region: reg, budget: b, experience: 'advanced' }; const pt = OM.priceTable(p, {});
+    const Tp = OM.calcTargets(p, 0, { phase: 'cut', rate: 0.0075 }); let pr = 0, kk = 0, tops = 0;
+    for (let i = 0; i < 14; i++) { const d = OM.planDay(OM.addDays('2026-10-26', i), p, Tp, pt, {}); pr += d.tot.p / Tp.protein; kk += d.tot.k / Tp.kcal; d.meals.forEach(m => (m.items || []).forEach(it => { if (it.role === 'topup') { tops++; ok(OM.TOPUP[it.id] && it.g > 0, 'top-up valid'); } })); }
+    ok(tops > 0, `PRO cut gets a protein top-up (${reg} level ${b})`);
+    ok(pr / 14 >= 0.88, `PRO cut reaches 88%+ of its protein target (${reg} level ${b}: ${(pr / 14 * 100).toFixed(0)}%)`);
+    ok(Math.abs(kk / 14 - 1) < 0.05, `PRO top-up keeps calories within 5% (${reg} level ${b})`);
+  }
+  // standard plans never get a top-up
+  { const pt = OM.priceTable(base, {}), T = OM.calcTargets(base); for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), base, T, pt, {}).meals.forEach(m => (m.items || []).forEach(it => ok(it.role !== 'topup', 'no top-up without PRO'))); }
+}
 
 // 7. Trend / adaptive
 const ws = []; for (let i = 0; i < 21; i += 2) ws.push({ d: OM.addDays('2026-10-01', i), kg: 80 - i * 0.02 });

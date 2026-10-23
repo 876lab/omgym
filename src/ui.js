@@ -81,11 +81,23 @@
     var I = OM.ING[id];
     if (I.each && id === 'egg') { var n = Math.round(g / I.each); return n + (n === 1 ? ' egg' : ' eggs'); }
     var s = Math.round(g) + ' g';
-    if (I.slice) s += ' (' + Math.round(g / I.slice * 2) / 2 + ' slices)';
+    if (I.scoop) s += ' (' + Math.round(g / I.scoop * 2) / 2 + ' scoop' + (Math.round(g / I.scoop * 2) / 2 === 1 ? '' : 's') + ')';
+    else if (I.slice) s += ' (' + Math.round(g / I.slice * 2) / 2 + ' slices)';
     else if (I.tbsp) s += ' (' + Math.round(g / I.tbsp * 2) / 2 + ' tbsp)';
     else if (I.cup) { var c = g / I.cup; s += ' (' + (c < 0.3 ? Math.round(c * 16) + ' tbsp' : (Math.round(c * 4) / 4) + ' cup') + ')'; }
     else if (imperial()) s += ' (' + (g / 28.35).toFixed(1) + ' oz)';
     return s;
+  }
+  var DISHES = { auto: 'Follow my region', jm: 'Jamaican', us: 'American', mix: 'Both' };
+  var LIKE_LABEL = { greekyog: 'Greek yogurt', cottage: 'Cottage cheese', berries: 'Berries', whey: 'Whey protein', chickbreast: 'Chicken breast', beef: 'Lean beef', turkey: 'Ground turkey', salmon: 'Salmon', wwbread: 'Whole-wheat bread', pasta: 'Pasta', broccoli: 'Broccoli', mixveg: 'Frozen veg', oats: 'Oats', egg: 'Eggs', tuna: 'Tuna' };
+  function budgetLabel(p) { return OM.BUDGETS[OM.budgetTier(p)].label; }
+  // one-tap region and budget switch on the Meals and List tabs
+  function quickBar(p) {
+    var reg = p.region === 'US' ? 'US' : p.region === 'JM' ? 'JM' : 'OTHER', b = OM.budgetTier(p);
+    var chip = function (k, v, label, on) { return '<button class="chip" data-act="quick" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + on + '">' + label + '</button>'; };
+    return '<section class="card quick"><div class="qrow"><span class="label">Prices</span><div class="seg" role="group" aria-label="Region">' + chip('region', 'JM', 'Jamaica', reg === 'JM') + chip('region', 'US', 'USA', reg === 'US') + chip('region', 'OTHER', 'Elsewhere', reg === 'OTHER') + '</div></div>' +
+      '<div class="qrow"><span class="label">Budget</span><div class="seg" role="group" aria-label="Food budget">' + [1, 2, 3].map(function (t) { return chip('budget', t, OM.BUDGETS[t].label, b === t); }).join('') + '</div></div>' +
+      '<p class="small muted" style="margin:0">' + esc(OM.BUDGETS[b].note) + ' Dishes: ' + esc({ jm: 'Jamaican', us: 'American', mix: 'Jamaican and American' }[OM.cuisineOf(p)]) + (p.likes && p.likes.length ? ' · you buy ' + esc(p.likes.map(function (id) { return LIKE_LABEL[id] || id; }).join(', ')) : '') + '. <button class="linkbtn small" data-act="setupfood">Change foods</button></p></section>';
   }
   function packText(it, pt) { return money(it.pr, pt) + (it.weighed ? ' per lb' : ' · ' + it.u); }
   function weekShop() { return OM.shoppingList(TODAY, 7, P(), targets(), prices(), S.swaps); }
@@ -165,6 +177,7 @@
     var plan = OM.planDay(foodDate, p, T, pt, S.swaps);
     var h = exampleBanner();
     h += '<section class="datenav"><button class="iconbtn" data-act="fd" data-n="-1" aria-label="Previous day">‹</button><div style="text-align:center"><span class="label">' + (foodDate === TODAY ? 'Today' : esc(niceDate(foodDate, { weekday: 'long' }))) + '</span><h2>' + esc(niceDate(foodDate, { day: 'numeric', month: 'short' })) + '</h2></div><button class="iconbtn" data-act="fd" data-n="1" aria-label="Next day">›</button></section>';
+    h += quickBar(p);
     h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Everything on this page comes from the week\'s shopping list: <strong class="num">' + money(weekShop().total, pt) + '</strong> in packs at ' + esc(pt.meta.label) + ' prices. <button class="linkbtn" data-act="tab" data-tab="shop">See the list</button></p>';
     if (plan.tot.p < T.protein * 0.92) h += nudge(p.diet === 'vegan' || (p.allergies || []).indexOf('dairy') >= 0 ? 'orgain-plant' : 'on-whey-5', 'This day is ' + Math.round(T.protein - plan.tot.p) + ' g short of your protein target. One scoop closes most of the gap.');
     if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) closes the gap; soya chunks are a cheap plant option.</div>';
@@ -174,8 +187,8 @@
       h += '<section class="card"><div class="cardhead"><div><span class="label">' + m.slot.name + '</span><h3 style="margin-top:2px">' + esc(m.name) + '</h3></div><button class="btn ghost small" data-act="swap" data-slot="' + m.slot.key + '"' + (m.options < 2 ? ' disabled' : '') + '>Swap</button></div>';
       h += '<p class="small num"><strong>' + Math.round(m.tot.k) + ' kcal</strong> · ' + Math.round(m.tot.p) + ' g protein · ' + Math.round(m.tot.c) + ' g carbs · ' + Math.round(m.tot.f) + ' g fat</p>';
       h += '<div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Amount</th><th>Pack you buy</th></tr></thead><tbody>';
-      m.items.forEach(function (it) { h += '<tr><td>' + esc(OM.ING[it.id].name) + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="small num">' + esc(packText(pt.items[it.id], pt)) + '</td></tr>'; });
-      h += '</tbody></table></div><p class="how">' + esc(m.how) + '</p><p class="small muted">Amounts are raw, edible weight (peeled, off the bone).</p></section>';
+      m.items.forEach(function (it) { h += '<tr' + (it.role === 'topup' ? ' class="topup"' : '') + '><td>' + esc(OM.ingName(pt, it.id)) + (it.role === 'topup' ? ' <span class="pill pro">PRO top-up</span>' : '') + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="small num">' + esc(packText(pt.items[it.id], pt)) + '</td></tr>'; });
+      h += '</tbody></table></div><p class="how">' + esc(m.how) + (m.topup ? ' <strong>PRO top-up:</strong> add ' + esc(m.topup) + ' to reach your higher protein target; the starch in your other meals is trimmed to make room.' : '') + '</p><p class="small muted">Amounts are raw, edible weight (peeled, off the bone).</p></section>';
     });
     return h;
   }
@@ -189,6 +202,17 @@
     var ticks = S.shopTicks[start] || {};
     var h = exampleBanner();
     h += '<section class="dayhead"><span class="label">' + esc(niceDate(start, { day: 'numeric', month: 'short' })) + ' – ' + esc(niceDate(OM.addDays(start, 6), { day: 'numeric', month: 'short' })) + '</span><h1>Shopping list</h1></section>';
+    h += quickBar(p);
+    var wk = OM.weekCostByTier(start, p, T, pt, S.swaps), bt = OM.budgetTier(p), eaten = sl.eatenCost;
+    h += '<section class="card"><h3>Your food budget</h3><div class="tiers">' + [1, 2, 3].map(function (t) { return '<button class="tier' + (t === bt ? ' on' : '') + '" data-act="quick" data-k="budget" data-v="' + t + '" aria-pressed="' + (t === bt) + '"><span class="label">' + OM.BUDGETS[t].label + '</span><span class="v num">' + money(Math.round(wk[t]), pt) + '</span><span class="small muted">a week</span></button>'; }).join('') + '</div>';
+    if (wk[1] > wk[2] * 1.01 || wk[2] > wk[3] * 1.01) h += '<p class="small">For you, a higher level works out cheaper this week: it leans on protein-rich foods like tuna and chicken breast, which cost less per gram of protein than eggs or mackerel.</p>';
+    h += '<p class="small muted">Cost of the food you actually eat in 7 days at each level, with your foods and prices. The list below rounds up to whole packs, and packs like oil or oats last longer than a week.</p>';
+    if (p.foodCap > 0) {
+      var over = eaten - p.foodCap;
+      h += '<p>' + (over > 0 ? '<strong>' + money(Math.round(over), pt) + ' over</strong> your weekly food budget of ' : 'Within your weekly food budget of ') + '<strong class="num">' + money(p.foodCap, pt) + '</strong> (this week: ' + money(Math.round(eaten), pt) + ').</p>';
+      if (over > 0) { var fit = [3, 2, 1].filter(function (t) { return t < bt && wk[t] <= p.foodCap; })[0]; h += fit ? '<div><button class="btn small" data-act="quick" data-k="budget" data-v="' + fit + '">Switch to ' + OM.BUDGETS[fit].label + ' (' + money(Math.round(wk[fit]), pt) + ')</button></div>' : '<p class="small muted">' + (p.likes && p.likes.length ? 'Your ticked foods add to the cost: untick some under Change foods, or raise the budget a little.' : 'Even the Budget level is above this at your calorie target. Raise the budget a little, or enter your own prices with Edit price.') + '</p>'; }
+    } else if (!isExample()) h += '<p class="small"><button class="linkbtn" data-act="setupfood">Set a weekly food budget</button> and the app tells you when a week goes over.</p>';
+    h += '</section>';
     if (pt.region === 'OTHER') h += '<div class="flag warn">These are US prices standing in for ' + esc(pt.meta.label) + '. Tap <strong>Edit price</strong> on each item to enter what your store charges per pack; the list updates straight away.</div>';
     h += '<section class="kpis"><div class="kpi"><div class="v num">' + money(sl.total, pt) + '</div><div class="u">to buy this week</div></div><div class="kpi"><div class="v num">' + packs + '</div><div class="u">packs, tins & bags</div></div><div class="kpi"><div class="v num">' + sl.rows.length + '</div><div class="u">items</div></div></section>';
     h += '<p class="small muted">Prices are per pack as the supermarket sells it. Bigger packs (oil, peanut butter, oats, flour) last more than a week. Produce that is weighed at the counter is listed by the pound.</p>';
@@ -207,7 +231,7 @@
       h += '</div>';
     });
     if (grp) h += '</div>';
-    h += '</section><p class="small muted">Also keep on hand: salt, black pepper, thyme, garlic, curry powder, browning, limes and scotch bonnet. Saw a different price at PriceSmart, Hi-Lo or Loshusan? Tap Edit price and pick the store; your price is used everywhere in the app.</p>';
+    h += '</section><p class="small muted">' + (pt.region === 'JM' ? 'Also keep on hand: salt, black pepper, thyme, garlic, curry powder, browning, limes and scotch bonnet. Saw a different price at PriceSmart, Hi-Lo or Loshusan? Tap Edit price and pick the store; your price is used everywhere in the app.' : 'Also keep on hand: salt, black pepper, garlic, soy sauce, chili powder, cumin, paprika and lemons or limes. ' + (OM.cuisineOf(p) !== 'us' ? 'For the Jamaican dishes add thyme, curry powder, browning and scotch bonnet. ' : '') + 'Paid a different price? Tap Edit price; your price is used everywhere in the app.') + '</p>';
     return h;
   }
 
@@ -267,9 +291,11 @@
     var addBtn = pr.variants ? '<button class="btn small" data-act="gostore" data-id="' + id + '">Choose ' + esc(pr.vlabel.toLowerCase()) + '</button>' : '<button class="btn small" data-act="cartadd" data-key="' + OM.cartKey(id) + '">Add to bag</button>';
     return '<section class="nudge">' + pic(pr.pic, 'pic sm') + '<div class="nudge-txt"><span class="label">From the OMGym Store</span><strong>' + esc(pr.name) + '</strong><span class="small muted">' + esc(why) + '</span></div><div class="nudge-act"><span class="num nudge-price">' + jm(l.price) + '</span>' + addBtn + '<button class="linkbtn small" data-act="nudgehide" data-key="' + key + '">Not now</button></div></section>';
   }
+  function storeRegionNote() { return P().region !== 'JM' ? '<div class="flag info">The OMGym Store delivers in Jamaica only. Prices are in J$ and include shipping to Jamaica, customs duty and GCT.</div>' : ''; }
   function renderStore() {
     var p = P(), cfg = OM.STORE;
     var h = '<section class="dayhead"><span class="label">Delivered to Jamaica in ' + esc(cfg.leadTime) + '</span><h1>OMGym Store</h1><p class="small muted">Prices include shipping, customs duty and GCT. Pay and arrange delivery with OMGym on WhatsApp.</p></section>';
+    h += storeRegionNote();
     // bag
     S.cart = OM.normalizeCart(S.cart);
     var ord = OM.orderText(S.cart, cfg, S.orderName, TODAY);
@@ -533,7 +559,7 @@
     h += '<p class="small muted">Every formula is an estimate, often off by around 10% for a single person. Your weigh-ins over 2–3 weeks are the real test; the Progress tab suggests changes when the trend drifts from the plan.</p></section>';
     var dn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     h += '<section class="card"><h3>Training setup</h3><p>' + (p.days || []).slice().sort().map(function (d) { return dn[d]; }).join(', ') + ' · ' + ({ weights: 'Weights', mix: 'Weights + cardio', cardio: 'Cardio circuits' }[p.style]) + ' · ' + ({ gym: 'Full gym', dumbbells: 'Dumbbells at home', bodyweight: 'Bodyweight only' }[p.equipment]) + ' · ' + esc(p.experience) + (p.injuries && p.injuries.length ? ' · protecting ' + esc(p.injuries.join(', ')) : '') + '</p><p class="small muted">Each 6-week cycle runs 2 weeks of building, 3 weeks of pushing, then a lighter deload week. Exercises change each cycle. Every session is 45 minutes: 6 warm-up, the main work, 5 cool-down.</p></section>';
-    h += '<section class="card"><h3>Food setup</h3><p>' + esc(pt.meta.label) + ' prices (' + esc(pt.meta.symbol) + ') · ' + ({ none: 'Eats everything', pescatarian: 'Pescatarian', vegetarian: 'Vegetarian', vegan: 'Vegan' }[p.diet]) + (p.allergies && p.allergies.length ? ' · avoids ' + esc(p.allergies.join(', ')) : '') + '</p></section>';
+    h += '<section class="card"><h3>Food setup</h3><p>' + esc(pt.meta.label) + ' prices (' + esc(pt.meta.symbol) + ') · ' + esc(budgetLabel(p)) + ' budget · ' + esc({ jm: 'Jamaican', us: 'American', mix: 'Jamaican and American' }[OM.cuisineOf(p)]) + ' dishes · ' + ({ none: 'Eats everything', pescatarian: 'Pescatarian', vegetarian: 'Vegetarian', vegan: 'Vegan' }[p.diet]) + (p.allergies && p.allergies.length ? ' · avoids ' + esc(p.allergies.join(', ')) : '') + (p.likes && p.likes.length ? ' · buys ' + esc(p.likes.map(function (id) { return LIKE_LABEL[id] || id; }).join(', ')) : '') + (p.foodCap > 0 ? ' · ' + money(p.foodCap, pt) + ' a week' : '') + '</p><div><button class="btn ghost small" data-act="setupfood">Change food settings</button></div></section>';
     h += '<section class="card"><h3>What\'s new</h3>' + OM.CHANGES.slice(0, 5).map(function (c) { return '<div><span class="label">' + esc(niceDate(c.d, { day: 'numeric', month: 'short' })) + '</span> <strong>' + esc(c.t) + '</strong><ul class="lines small">' + c.b.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'; }).join('') + '</section>';
     h += '<section class="card"><h3>Where the numbers come from</h3><ul class="sources">' +
       '<li><a href="https://pubmed.ncbi.nlm.nih.gov/15883556/" target="_blank" rel="noopener">Frankenfield et al., 2005</a>: Mifflin-St Jeor was the most reliable resting-calorie equation.</li>' +
@@ -619,6 +645,13 @@
     } else if (step === 4) {
       h += '<div class="formrow"><span class="f">Where do you shop?</span>' + seg('region', [['JM', 'Jamaica (J$)'], ['US', 'United States ($)'], ['OTHER', 'Somewhere else']], d.region) + '</div>';
       if (d.region === 'OTHER') h += '<div class="formgrid"><div class="formrow"><label class="f" for="regionName">Country or city</label><input id="regionName" data-k="regionName" type="text" value="' + esc(d.regionName || '') + '"></div><div class="formrow"><label class="f" for="currencySymbol">Currency symbol</label><input id="currencySymbol" data-k="currencySymbol" type="text" maxlength="4" value="' + esc(d.currencySymbol || '$') + '"></div></div><p class="small muted">You will enter local prices on the Shop tab. Until then, US prices stand in.</p>';
+      h += '<div class="formrow"><span class="f">Dishes</span>' + seg('cuisine', [['auto', 'Follow my region'], ['jm', 'Jamaican'], ['us', 'American'], ['mix', 'Both']], d.cuisine || 'auto') + '<span class="f-hint">Jamaican dishes in Jamaica and American dishes in the US, unless you pick.</span></div>';
+      var est = null;
+      try { if (d.weightKg && d.heightCm && d.age && d.sex && d.goalKg) { var dt = OM.calcTargets(d, S.profile ? S.kcalAdj : 0, proPlan()); est = OM.weekCostByTier(TODAY, d, dt, OM.priceTable(d, S.prices[d.region] || {}), {}); } } catch (e) { est = null; }
+      var dpt = OM.priceTable(d, S.prices[d.region] || {});
+      h += '<div class="formrow"><span class="f">Food budget</span>' + seg('budget', [1, 2, 3].map(function (t) { return [t, OM.BUDGETS[t].label + (est ? ' · ' + money(Math.round(est[t]), dpt) : '')]; }), OM.budgetTier(d)) + '<span class="f-hint">' + esc(OM.BUDGETS[OM.budgetTier(d)].note) + (est ? ' Amounts are about a week of food at your calorie target.' : '') + '</span></div>';
+      h += '<div class="formrow"><span class="f">Foods I buy (optional)</span>' + multi('likes', OM.LIKEABLE.map(function (id) { return [id, LIKE_LABEL[id] || id]; }), d.likes) + '<span class="f-hint">The plan builds meals around these whatever your budget, about two days in three. Diet and allergy settings still come first.</span></div>';
+      h += '<div class="formgrid">' + numIn('foodCap', 'Weekly food budget (' + esc(dpt.meta.symbol) + ', optional)', d.foodCap || '', 'We flag weeks that go over', '1') + '</div>';
       h += '<div class="formrow"><span class="f">How do you eat?</span>' + seg('diet', [['none', 'Everything'], ['pescatarian', 'Fish, no meat'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']], d.diet) + '</div>';
       h += '<div class="formrow"><span class="f">Allergies or foods to avoid</span>' + multi('allergies', [['egg', 'Eggs'], ['fish', 'Fish'], ['shellfish', 'Shellfish'], ['peanut', 'Peanuts'], ['dairy', 'Dairy'], ['gluten', 'Gluten']], d.allergies) + '</div>';
     }
@@ -642,6 +675,7 @@
     } else if (step === 4) {
       var rn = txt('regionName'); if (rn !== undefined) draft.regionName = rn;
       var cs = txt('currencySymbol'); if (cs !== undefined) draft.currencySymbol = cs || '$';
+      var fc = num('foodCap'); if (fc !== undefined) draft.foodCap = fc && fc > 0 ? fc : null;
     }
   }
   function validate() {
@@ -709,11 +743,19 @@
     switch (a) {
       case 'tab': go(t.dataset.tab); break;
       case 'setup': openSetup(); break;
+      case 'setupfood': if (needSetup()) break; openSetup(); step = 4; renderSheet(); break;
+      case 'quick':
+        var qp = S.profile || EXAMPLE, qk = t.dataset.k;
+        if (qk === 'budget') qp.budget = +t.dataset.v; else if (qk === 'region') qp.region = t.dataset.v;
+        editPrice = null; if (S.profile) save(); render();
+        toast(qk === 'budget' ? OM.BUDGETS[OM.budgetTier(qp)].label + ' budget: meals and list updated' : 'Prices for ' + prices().meta.label + (OM.cuisineOf(qp) === 'us' ? ', American dishes' : OM.cuisineOf(qp) === 'jm' ? ', Jamaican dishes' : ''));
+        break;
       case 'closesetup': closeSetup(); break;
       case 'seg': readSheet();
         var k = t.dataset.k, v = t.dataset.v;
         if (k.indexOf('parq') === 0) draft.parq[+k.slice(4)] = v === 'yes';
         else if (k === 'pregnant') draft.pregnant = v === 'yes';
+        else if (k === 'budget') draft.budget = +v;
         else draft[k] = v;
         renderSheet(); break;
       case 'multi': readSheet();
