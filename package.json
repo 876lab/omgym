@@ -1,0 +1,7 @@
+{
+  "name": "omgym",
+  "private": true,
+  "description": "OMGym test tooling. The app itself is index.html with no build dependencies.",
+  "scripts": { "test": "bash tests/run.sh", "build": "python3 scripts/build.py" },
+  "devDependencies": { "playwright": "1.63.0" }
+}

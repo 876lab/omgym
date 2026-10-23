@@ -1,0 +1,30 @@
+name: Daily health check
+
+# Opens the live app once a day like a phone would: example plan, full setup, meals,
+# shopping list, weigh-ins, dark mode. Stays quiet when all is well; a failure makes
+# GitHub email the repo owner.
+on:
+  schedule:
+    - cron: "41 10 * * *"   # 5:41am in Jamaica
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install the headless browser
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Check the live app
+        env:
+          SITE: https://876lab.github.io/omgym/
+        run: node tests/browser.js

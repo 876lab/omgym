@@ -1,0 +1,494 @@
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var LSKEY = 'omgym-state-v1';
+  var TODAY = OM.ymd(new Date());
+
+  /* ---------- state ---------- */
+  function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {} }; }
+  var S = freshState();
+  var EXAMPLE = {
+    name: 'Example', units: 'metric', sex: 'female', age: 32, heightCm: 165, weightKg: 82, goalKg: 70, neckCm: 34, waistCm: 92, hipCm: 110,
+    activity: 'light', experience: 'beginner', days: [1, 3, 5], style: 'mix', equipment: 'gym', pace: 'standard', injuries: [], parq: [false, false, false, false, false, false, false],
+    pregnant: false, region: 'JM', diet: 'none', allergies: []
+  };
+  function exampleWeights() { var w = []; for (var i = 27; i >= 0; i -= 3) w.push({ d: OM.addDays(TODAY, -i), kg: Math.round((82 + i * 0.07 + ((i * 7) % 5 - 2) * 0.12) * 10) / 10 }); return w; }
+  function isExample() { return !S.profile; }
+  function P() { return S.profile || EXAMPLE; }
+  function startDate() { return S.startDate || OM.addDays(TODAY, -3); }
+  function weights() { return S.profile ? S.weights : exampleWeights(); }
+  function targets() { return OM.calcTargets(P(), S.profile ? S.kcalAdj : 0); }
+  function prices() { return OM.priceTable(P(), S.profile ? (S.prices[P().region] || {}) : {}); }
+
+  /* ---------- storage: private per-user doc in the artifact db, browser storage as fallback ---------- */
+  var store = { kind: 'local', ref: null }, saveTimer = null, saving = false, dirty = false;
+  function setStatus(t) { var el = $('#status'); if (el) el.textContent = t; }
+  function save() {
+    if (!S.profile) return;
+    try { localStorage.setItem(LSKEY, JSON.stringify(S)); } catch (e) { }
+    if (store.kind !== 'db') { setStatus('Saved on this device'); return; }
+    dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 700);
+  }
+  function flush() {
+    if (saving || !dirty) return;
+    saving = true; dirty = false; setStatus('Saving…');
+    store.ref.set(JSON.parse(JSON.stringify(S))).then(function () { saving = false; setStatus('Saved to your account'); if (dirty) flush(); })
+      .catch(function (e) { saving = false; setStatus(e && e.code === 'quota_exceeded' ? 'Storage full. Older days will be trimmed.' : 'Saved on this device only'); if (e && e.code === 'unavailable') { dirty = true; setTimeout(flush, 1500 + Math.random() * 1000); } });
+  }
+  function trim() {
+    // keep the record small: 180 days of day logs
+    var cut = OM.addDays(TODAY, -180);
+    Object.keys(S.days).forEach(function (d) { if (d < cut) delete S.days[d]; });
+    Object.keys(S.swaps).forEach(function (d) { if (d < OM.addDays(TODAY, -14)) delete S.swaps[d]; });
+    Object.keys(S.shopTicks).forEach(function (d) { if (d < OM.addDays(TODAY, -21)) delete S.shopTicks[d]; });
+    if (S.weights.length > 400) S.weights = S.weights.slice(-400);
+  }
+  function adopt(data) { if (data && data.profile) { var f = freshState(); Object.keys(f).forEach(function (k) { if (data[k] != null) f[k] = data[k]; }); S = JSON.parse(JSON.stringify(f)); } }
+  function initStore() {
+    var local = null;
+    try { var raw = localStorage.getItem(LSKEY); if (raw) local = JSON.parse(raw); } catch (e) { }
+    if (local) adopt(local);
+    render();
+    var c = window.claude;
+    if (!c || typeof c.use !== 'function') { setStatus(S.profile ? 'Saved on this device' : 'Example plan'); return; }
+    Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (!db || !user) { setStatus(S.profile ? 'Saved on this device' : 'Example plan'); return null; }
+      return user.id().then(function (id) {
+        if (!id) { setStatus('Sign in to sync across devices'); return; }
+        store = { kind: 'db', ref: db.doc('data/users/' + id + '/state') };
+        return store.ref.get().then(function (snap) {
+          if (snap.exists) { adopt(snap.data()); setStatus('Synced to your account'); render(); }
+          else if (S.profile) { dirty = true; flush(); }
+          else setStatus('Example plan');
+        });
+      });
+    }).catch(function () { setStatus(S.profile ? 'Saved on this device' : 'Example plan'); });
+  }
+
+  /* ---------- formatting ---------- */
+  function money(v, pt) { pt = pt || prices(); var m = pt.meta; return m.symbol + Number(v).toLocaleString('en-US', { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals }); }
+  function imperial() { return P().units === 'imperial'; }
+  function wt(kg, dp) { dp = dp == null ? 1 : dp; return imperial() ? (kg * 2.20462).toFixed(dp) + ' lb' : kg.toFixed(dp) + ' kg'; }
+  function wtv(kg) { return imperial() ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10; }
+  function wUnit() { return imperial() ? 'lb' : 'kg'; }
+  function len(cm) { return imperial() ? (cm / 2.54).toFixed(1) + ' in' : Math.round(cm) + ' cm'; }
+  function niceDate(s, opts) { return OM.parseYmd(s).toLocaleDateString('en-GB', opts || { weekday: 'long', day: 'numeric', month: 'long' }); }
+  function amount(id, g) {
+    var I = OM.ING[id];
+    if (I.each && id === 'egg') { var n = Math.round(g / I.each); return n + (n === 1 ? ' egg' : ' eggs'); }
+    var s = Math.round(g) + ' g';
+    if (I.slice) s += ' (' + Math.round(g / I.slice * 2) / 2 + ' slices)';
+    else if (I.tbsp) s += ' (' + Math.round(g / I.tbsp * 2) / 2 + ' tbsp)';
+    else if (I.cup) { var c = g / I.cup; s += ' (' + (c < 0.3 ? Math.round(c * 16) + ' tbsp' : (Math.round(c * 4) / 4) + ' cup') + ')'; }
+    else if (imperial()) s += ' (' + (g / 28.35).toFixed(1) + ' oz)';
+    return s;
+  }
+  function day(d) { if (!S.days[d]) S.days[d] = { sets: {}, done: false, habits: {} }; return S.days[d]; }
+  function toast(t) { var el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, 2600); }
+  function needSetup() { if (isExample()) { toast('Set up your own plan first'); openSetup(); return true; } return false; }
+
+  /* ---------- views ---------- */
+  var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null;
+  var VALID_TABS = ['today', 'food', 'shop', 'progress', 'me'];
+
+  function exampleBanner() {
+    return isExample() ? '<div class="banner example"><div><strong>You are looking at an example plan.</strong><div class="small muted">A 32-year-old woman, 82 kg, aiming for 70 kg, training 3 days a week in Jamaica.</div></div><button class="btn" data-act="setup">Set up my plan</button></div>' : '';
+  }
+  function flagsHtml(T) { return T.flags.map(function (f) { return '<div class="flag ' + f.level + '">' + esc(f.text) + '</div>'; }).join(''); }
+
+  function renderToday() {
+    var p = P(), T = targets(), pt = prices();
+    var w = OM.buildWorkout(TODAY, p, startDate(), T.caution);
+    var plan = OM.planDay(TODAY, p, T, pt, S.swaps);
+    var dd = S.days[TODAY] || { sets: {}, habits: {} };
+    var h = exampleBanner() + flagsHtml(T);
+    h += '<section class="dayhead"><span class="label">' + esc(niceDate(TODAY)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min</span></section>';
+    h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">kcal today</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(plan.tot.cost, pt) + '</div><div class="u">food cost</div></div></section>';
+    // workout
+    h += '<section class="card hero">';
+    if (!w.rest) h += '<p class="small"><strong>' + esc(w.phase.name) + ':</strong> ' + esc(w.phase.note) + (w.caution ? ' Keep effort moderate until your doctor clears you.' : '') + '</p>';
+    w.blocks.forEach(function (b, bi) {
+      h += '<div class="block"><div class="blockhead"><h3>' + esc(b.title) + '</h3><span class="small muted num">' + b.minutes + ' min</span></div>';
+      if (b.circuit) h += '<p class="small muted">Do one set of each exercise in order, then repeat the round.</p>';
+      if (b.lines) h += '<ul class="lines">' + b.lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>';
+      (b.items || []).forEach(function (it) {
+        var id = it.ex.id, doneSets = (dd.sets && dd.sets[id]) || 0, lr = S.loads[id], lo = lr && typeof lr === 'object' ? (lr.d === TODAY ? lr.prev : lr) : null, last = lo ? lo.v : '';
+        h += '<div class="ex"><div><div class="name">' + esc(it.ex.name) + '</div><div class="rx">' + it.sets + ' × ' + esc(it.reps) + ' · rest ' + it.rest + ' s' + (it.ex.kind === 'c' || it.ex.kind === 'a' ? ' · ' + esc(it.rir) + ' reps in reserve' : '') + '</div></div><div></div>';
+        h += '<div class="sets">';
+        for (var i = 1; i <= it.sets; i++) h += '<button class="setbox" data-act="set" data-ex="' + id + '" data-n="' + i + '" aria-pressed="' + (i <= doneSets) + '" aria-label="Set ' + i + ' of ' + esc(it.ex.name) + '">' + i + '</button>';
+        if (it.ex.kind === 'c' || it.ex.kind === 'a' || it.ex.kind === 'm') h += '<label class="load"><span class="last">' + (last ? 'Last: ' + esc(last) : 'Weight') + '</span><input id="load-' + id + '" data-act="load" data-ex="' + id + '" type="text" inputmode="decimal" placeholder="' + wUnit() + '" value="' + esc((dd.loads && dd.loads[id]) || '') + '" aria-label="Weight used for ' + esc(it.ex.name) + '"></label>';
+        h += '</div><details><summary>How to do it</summary>' + esc(it.ex.cue) + '</details></div>';
+      });
+      h += '</div>';
+    });
+    h += '<div>' + (dd.done ? '<span class="pill done">Workout logged</span> <button class="linkbtn" data-act="undone">Undo</button>' : '<button class="btn" data-act="done">' + (w.rest ? 'Log recovery day' : 'Finish workout') + '</button>') + '</div></section>';
+    // habits
+    var HB = [['protein', 'Hit protein'], ['sleep', '7+ hours sleep'], ['steps', '8,000+ steps'], ['water', '2 L water']];
+    h += '<section class="card"><div class="cardhead"><h3>Daily habits</h3><span class="small muted">Tap when done</span></div><div class="habits">' + HB.map(function (x) { return '<button class="chip" data-act="habit" data-h="' + x[0] + '" aria-pressed="' + !!(dd.habits && dd.habits[x[0]]) + '">' + x[1] + '</button>'; }).join('') + '</div></section>';
+    // meals summary
+    h += '<section class="card"><div class="cardhead"><h3>Today\'s food</h3><button class="linkbtn" data-act="tab" data-tab="food">Recipes & amounts</button></div><div>';
+    plan.meals.forEach(function (m) { if (m.empty) return; h += '<div class="mealrow"><span class="label">' + m.slot.name + '</span><span>' + esc(m.name) + '</span><span class="small muted num">' + Math.round(m.tot.k) + ' kcal</span></div>'; });
+    h += '</div><p class="small muted num">' + Math.round(plan.tot.k) + ' kcal · ' + Math.round(plan.tot.p) + ' g protein · ' + money(plan.tot.cost, pt) + '</p></section>';
+    return h;
+  }
+
+  function macroBar(label, v, target, unit) {
+    var pc = Math.min(130, v / target * 100);
+    return '<div class="macro"><div class="blockhead"><span class="small"><strong>' + label + '</strong></span><span class="small num muted">' + Math.round(v) + ' / ' + target + ' ' + unit + '</span></div><div class="bar' + (pc > 110 ? ' over' : '') + '"><i style="width:' + Math.min(100, pc) + '%"></i></div></div>';
+  }
+  function renderFood() {
+    var p = P(), T = targets(), pt = prices();
+    var plan = OM.planDay(foodDate, p, T, pt, S.swaps);
+    var h = exampleBanner();
+    h += '<section class="datenav"><button class="iconbtn" data-act="fd" data-n="-1" aria-label="Previous day">‹</button><div style="text-align:center"><span class="label">' + (foodDate === TODAY ? 'Today' : esc(niceDate(foodDate, { weekday: 'long' }))) + '</span><h2>' + esc(niceDate(foodDate, { day: 'numeric', month: 'short' })) + '</h2></div><button class="iconbtn" data-act="fd" data-n="1" aria-label="Next day">›</button></section>';
+    h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Food for the day costs about <strong class="num">' + money(plan.tot.cost, pt) + '</strong> at ' + esc(pt.meta.label) + ' prices. Seasonings (salt, thyme, garlic, curry, browning) are not counted.</p>';
+    if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) closes the gap; soya chunks are a cheap plant option.</div>';
+    h += '</section>';
+    plan.meals.forEach(function (m) {
+      if (m.empty) { h += '<section class="card"><h3>' + m.slot.name + '</h3><p class="muted">No meal fits your diet settings for this slot yet.</p></section>'; return; }
+      h += '<section class="card"><div class="cardhead"><div><span class="label">' + m.slot.name + '</span><h3 style="margin-top:2px">' + esc(m.name) + '</h3></div><button class="btn ghost small" data-act="swap" data-slot="' + m.slot.key + '"' + (m.options < 2 ? ' disabled' : '') + '>Swap</button></div>';
+      h += '<p class="small num"><strong>' + Math.round(m.tot.k) + ' kcal</strong> · ' + Math.round(m.tot.p) + ' g protein · ' + Math.round(m.tot.c) + ' g carbs · ' + Math.round(m.tot.f) + ' g fat · <strong>' + money(m.tot.cost, pt) + '</strong></p>';
+      h += '<div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Amount</th><th class="r">Cost</th></tr></thead><tbody>';
+      m.items.forEach(function (it) { h += '<tr><td>' + esc(OM.ING[it.id].name) + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="r">' + money(it.cost, pt) + '</td></tr>'; });
+      h += '</tbody></table></div><p class="how">' + esc(m.how) + '</p><p class="small muted">Amounts are raw, edible weight (peeled, off the bone).</p></section>';
+    });
+    return h;
+  }
+
+  function shopStart() { return TODAY; }
+  function renderShop() {
+    var p = P(), T = targets(), pt = prices();
+    var start = shopStart();
+    var sl = OM.shoppingList(start, 7, p, T, pt, S.swaps);
+    var ticks = S.shopTicks[start] || {};
+    var h = exampleBanner();
+    h += '<section class="dayhead"><span class="label">' + esc(niceDate(start, { day: 'numeric', month: 'short' })) + ' – ' + esc(niceDate(OM.addDays(start, 6), { day: 'numeric', month: 'short' })) + '</span><h1>Shopping list</h1></section>';
+    if (pt.region === 'OTHER') h += '<div class="flag warn">These are US prices standing in for ' + esc(pt.meta.label) + '. Tap <strong>Edit price</strong> on each item to enter what you pay; the meal costs update straight away.</div>';
+    h += '<section class="kpis"><div class="kpi"><div class="v num">' + money(sl.total, pt) + '</div><div class="u">to buy this week</div></div><div class="kpi"><div class="v num">' + money(sl.eatenCost, pt) + '</div><div class="u">eaten this week</div></div><div class="kpi"><div class="v num">' + money(sl.eatenCost / 7, pt) + '</div><div class="u">per day</div></div></section>';
+    h += '<p class="small muted">"To buy" rounds up to whole tins, bags and jars, so some pantry items last beyond this week. Market produce is listed by the pound.</p>';
+    var grp = null;
+    h += '<section class="card">';
+    sl.rows.forEach(function (r) {
+      if (r.grp !== grp) { if (grp) h += '</div>'; grp = r.grp; h += '<div class="shopgrp"><h3 style="margin-top:6px">' + esc(grp) + '</h3>'; }
+      var t = !!ticks[r.id];
+      h += '<div class="shoprow' + (t ? ' ticked' : '') + '"><input type="checkbox" id="tick-' + r.id + '" data-act="tick" data-id="' + r.id + '"' + (t ? ' checked' : '') + ' aria-label="Bought ' + esc(r.name) + '"><label for="tick-' + r.id + '"><span class="nm"><strong>' + esc(r.name) + '</strong></span><br><span class="small num">' + esc(r.qtyText) + '</span></label><span class="num"><strong>' + money(r.cost, pt) + '</strong></span>';
+      h += '<div class="src"><span class="pill ' + r.price.conf + '">' + ({ survey: 'Gov. survey', market: 'Market', retail: 'Store', estimate: 'Estimate', placeholder: 'Placeholder', yours: 'Your price' }[r.price.conf] || r.price.conf) + '</span><span>' + money(r.price.pr, pt) + ' ' + esc(r.price.u) + ' · ' + esc(r.price.src) + (r.price.date ? ', ' + esc(r.price.date) : '') + '</span><button class="linkbtn small" data-act="editprice" data-id="' + r.id + '">Edit price</button></div>';
+      if (editPrice === r.id) {
+        h += '<div class="priceedit"><label class="small" for="price-' + r.id + '">Price ' + esc(r.price.u) + ' (' + esc(pt.meta.symbol) + ')</label><input id="price-' + r.id + '" type="number" inputmode="decimal" min="0" step="any" value="' + r.price.pr + '"><button class="btn small" data-act="saveprice" data-id="' + r.id + '">Save</button>' + (r.price.conf === 'yours' ? '<button class="linkbtn small" data-act="resetprice" data-id="' + r.id + '">Use survey price</button>' : '') + '<button class="linkbtn small" data-act="cancelprice">Cancel</button></div>';
+      }
+      h += '</div>';
+    });
+    if (grp) h += '</div>';
+    h += '</section><p class="small muted">Also keep on hand: salt, black pepper, thyme, garlic, curry powder, browning, limes and scotch bonnet. Check the Consumer Affairs Commission price tool for the cheapest supermarket in your parish.</p>';
+    return h;
+  }
+
+  function chartSvg(ws, T) {
+    if (ws.length < 2) return '<p class="muted small">Log at least two weigh-ins to see your chart.</p>';
+    var W = 400, H = 220, L = 40, R = 8, Tp = 16, B = 26;
+    var xs = ws.map(function (w) { return OM.dayNum(w.d); }), ys = ws.map(function (w) { return wtv(w.kg); });
+    var goal = wtv(T.goalKg);
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs); if (x1 === x0) x1 = x0 + 1;
+    var lo = Math.min.apply(null, ys.concat([goal])), hi = Math.max.apply(null, ys.concat([goal]));
+    var pad = Math.max(0.5, (hi - lo) * 0.08); lo -= pad; hi += pad;
+    var sx = function (x) { return L + (x - x0) / (x1 - x0) * (W - L - R); };
+    var sy = function (y) { return Tp + (hi - y) / (hi - lo) * (H - Tp - B); };
+    var step = (hi - lo) / 4, g = '';
+    for (var i = 0; i <= 4; i++) { var v = lo + step * i, yy = sy(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="12" fill="var(--muted)">' + v.toFixed(1) + '</text>'; }
+    // 7-day rolling average
+    var avg = ws.map(function (w, i) { var dn = xs[i]; var win = ws.filter(function (u, j) { return xs[j] <= dn && xs[j] > dn - 7; }); return [dn, win.reduce(function (a, u) { return a + wtv(u.kg); }, 0) / win.length]; });
+    var path = avg.map(function (q, i) { return (i ? 'L' : 'M') + sx(q[0]).toFixed(1) + ' ' + sy(q[1]).toFixed(1); }).join(' ');
+    var area = path + ' L' + sx(avg[avg.length - 1][0]).toFixed(1) + ' ' + (H - B) + ' L' + sx(avg[0][0]).toFixed(1) + ' ' + (H - B) + ' Z';
+    var dots = ws.map(function (w, i) { return '<circle cx="' + sx(xs[i]).toFixed(1) + '" cy="' + sy(ys[i]).toFixed(1) + '" r="3" fill="var(--muted)" opacity="0.7"/>'; }).join('');
+    var last = avg[avg.length - 1];
+    var gy = sy(goal);
+    var lbl = '<text x="' + L + '" y="' + (H - 8) + '" font-size="12" fill="var(--muted)">' + esc(niceDate(ws[0].d, { day: 'numeric', month: 'short' })) + '</text><text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end" font-size="12" fill="var(--muted)">' + esc(niceDate(ws[ws.length - 1].d, { day: 'numeric', month: 'short' })) + '</text>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Weight trend chart">' + g +
+      '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--mango)" stroke-width="2" stroke-dasharray="6 5"/><text x="' + (W - R) + '" y="' + (gy - 6) + '" text-anchor="end" font-size="12" font-weight="700" fill="var(--mango-ink)">Goal ' + goal.toFixed(1) + '</text>' +
+      '<path d="' + area + '" fill="var(--iron)" opacity="0.08"/><path d="' + path + '" fill="none" stroke="var(--iron)" stroke-width="2.5" stroke-linejoin="round"/>' + dots +
+      '<circle cx="' + sx(last[0]).toFixed(1) + '" cy="' + sy(last[1]).toFixed(1) + '" r="5" fill="var(--iron)" stroke="var(--surface)" stroke-width="2"/>' + lbl + '</svg>';
+  }
+  function renderProgress() {
+    var p = P(), T = targets();
+    var ws = weights().slice().sort(function (a, b) { return a.d < b.d ? -1 : 1; });
+    var h = exampleBanner();
+    h += '<section class="dayhead"><span class="label">Progress</span><h1>Weigh-ins</h1><p class="small muted">Weigh yourself first thing in the morning, after the bathroom, 2–4 times a week. Day-to-day jumps are mostly water; the line shows your 7-day average.</p></section>';
+    h += '<section class="card"><div class="formgrid"><div class="formrow"><label class="f" for="w-date">Date</label><input id="w-date" type="date" value="' + TODAY + '" max="' + TODAY + '"></div><div class="formrow"><label class="f" for="w-kg">Weight (' + wUnit() + ')</label><input id="w-kg" type="number" inputmode="decimal" step="0.1" min="20" placeholder="' + wtv(p.weightKg) + '"></div><div class="formrow full"><label class="f" for="w-waist">Waist (' + (imperial() ? 'in' : 'cm') + ', optional)</label><input id="w-waist" type="number" inputmode="decimal" step="0.1"></div></div><div><button class="btn" data-act="logw">Save weigh-in</button></div></section>';
+    h += '<section class="card chart"><div class="cardhead"><h3>Trend</h3><span class="small muted">' + ws.length + ' entries</span></div>' + chartSvg(ws, T) + '</section>';
+    var tr = OM.trend(ws, TODAY);
+    var cur = ws.length ? ws[ws.length - 1].kg : p.weightKg;
+    var first = ws.length ? ws[0].kg : p.weightKg;
+    h += '<section class="card"><div class="stats">';
+    h += '<div class="stat"><span class="label">Start</span><span class="v num">' + wt(first) + '</span></div>';
+    h += '<div class="stat"><span class="label">Latest</span><span class="v num">' + wt(cur) + '</span></div>';
+    h += '<div class="stat"><span class="label">Change</span><span class="v num">' + (cur - first > 0 ? '+' : '') + wt(cur - first) + '</span></div>';
+    h += '<div class="stat"><span class="label">To goal</span><span class="v num">' + wt(Math.abs(T.goalKg - cur)) + '</span></div>';
+    h += '<div class="stat"><span class="label">Trend (3 wk)</span><span class="v num">' + (tr ? (tr.perWeek > 0 ? '+' : '') + wt(tr.perWeek, 2) + '/wk' : '—') + '</span></div>';
+    h += '<div class="stat"><span class="label">Plan</span><span class="v num">' + (T.plannedWeeklyKg > 0 ? '+' : '') + wt(T.plannedWeeklyKg, 2) + '/wk</span></div>';
+    h += '</div>';
+    if (!tr) h += '<p class="small muted">The plan checks your trend once you have 4 or more weigh-ins spread over at least 10 days.</p>';
+    h += '</section>';
+    var sug = OM.suggestAdjust(T, tr, cur);
+    var recentAdj = S.adjDate && OM.dayNum(TODAY) - OM.dayNum(S.adjDate) < 14;
+    if (sug && !recentAdj) h += '<section class="card hero"><h3>Adjust your calories?</h3><p>' + esc(sug.why) + '</p><div class="confirm"><button class="btn" data-act="applyadj" data-d="' + sug.delta + '">' + (sug.delta > 0 ? 'Add ' : 'Remove ') + Math.abs(sug.delta) + ' kcal a day</button><span class="small muted">Now ' + T.kcal + ' kcal</span></div></section>';
+    else if (recentAdj) h += '<p class="small muted">Calories were adjusted on ' + esc(niceDate(S.adjDate, { day: 'numeric', month: 'short' })) + '. Give it two weeks before the next change.</p>';
+    // sessions
+    var wk = 0, planned = (p.days || []).length, doneN = 0;
+    for (var i = 0; i < 7; i++) { var d = OM.addDays(TODAY, -i); if (S.days[d] && S.days[d].done && OM.sessionFor(d, p, startDate())) doneN++; }
+    h += '<section class="card"><div class="cardhead"><h3>Workouts, last 7 days</h3><span class="num" style="font-family:var(--display);font-weight:800;font-size:1.4rem">' + doneN + ' / ' + planned + '</span></div><p class="small muted">Sessions you marked finished on your training days.</p></section>';
+    if (ws.length) {
+      h += '<section class="card"><h3>Recent weigh-ins</h3><div class="loglist">';
+      ws.slice(-8).reverse().forEach(function (w) { h += '<div class="logrow"><span>' + esc(niceDate(w.d, { weekday: 'short', day: 'numeric', month: 'short' })) + (w.waistCm ? ' <span class="small muted">· waist ' + len(w.waistCm) + '</span>' : '') + '</span><span class="num"><strong>' + wt(w.kg) + '</strong></span>' + (isExample() ? '<span></span>' : '<button class="linkbtn small" data-act="delw" data-d="' + w.d + '" aria-label="Delete entry">Delete</button>') + '</div>'; });
+      h += '</div></section>';
+    }
+    return h;
+  }
+
+  function renderMe() {
+    var p = P(), T = targets(), pt = prices();
+    var h = exampleBanner() + flagsHtml(T);
+    h += '<section class="dayhead"><span class="label">' + (p.name && !isExample() ? esc(p.name) + '\'s plan' : 'The plan') + '</span><h1>' + ({ lose: 'Lose', gain: 'Gain', maintain: 'Hold' }[T.goalType]) + ' to ' + wt(T.goalKg) + '</h1>';
+    if (T.weeksToGoal) h += '<p class="muted">About ' + Math.round(T.weeksToGoal) + ' weeks at ' + wt(Math.abs(T.plannedWeeklyKg), 2) + ' a week, so around <strong>' + esc(niceDate(OM.addDays(TODAY, Math.round(T.weeksToGoal * 7)), { month: 'long', year: 'numeric' })) + '</strong> if the scale follows the plan.</p>';
+    h += '<div><button class="btn ghost small" data-act="setup">Edit my details</button></div></section>';
+    h += '<section class="card"><h3>Your body today</h3><div class="stats">';
+    h += '<div class="stat"><span class="label">Weight</span><span class="v num">' + wt(p.weightKg) + '</span><span class="small muted">Height ' + len(p.heightCm) + '</span></div>';
+    h += '<div class="stat"><span class="label">BMI</span><span class="v num">' + T.bmi.toFixed(1) + '</span><span class="small muted">' + esc(T.bmiCat) + '</span></div>';
+    h += '<div class="stat"><span class="label">Waist ÷ height</span><span class="v num">' + (T.whtr ? T.whtr.toFixed(2) : '—') + '</span><span class="small muted">' + esc(T.whtrCat || 'Add your waist') + '</span></div>';
+    h += '<div class="stat"><span class="label">Body fat (Navy)</span><span class="v num">' + (T.bf != null ? T.bf.toFixed(1) + '%' : '—') + '</span><span class="small muted">' + esc(T.bfCat || (p.sex === 'female' ? 'Needs neck, waist and hips' : 'Needs neck and waist')) + '</span></div>';
+    h += '</div><p class="small muted">BMI ignores muscle, so waist-to-height (keep it under 0.5) and the tape-measure body-fat estimate give a fuller picture. The Navy method is usually within a few percent of a DEXA scan.</p></section>';
+    h += '<section class="card"><h3>How your calories are worked out</h3><div class="tablewrap"><table><tbody>';
+    h += '<tr><td>Resting burn (Mifflin-St Jeor)</td><td class="r">' + T.bmr + ' kcal</td></tr>';
+    h += '<tr><td>Daily life (×' + T.neat + ')</td><td class="r">+' + Math.round(T.bmr * (T.neat - 1)) + ' kcal</td></tr>';
+    h += '<tr><td>Training (' + T.sessKcal + ' kcal × ' + (p.days || []).length + ' sessions ÷ 7)</td><td class="r">+' + T.exDaily + ' kcal</td></tr>';
+    h += '<tr><td><strong>Maintenance</strong></td><td class="r"><strong>' + T.tdee + ' kcal</strong></td></tr>';
+    h += '<tr><td>' + (T.goalType === 'lose' ? 'Deficit' : T.goalType === 'gain' ? 'Surplus' : 'Change') + (S.kcalAdj ? ' (includes your ' + (S.kcalAdj > 0 ? '+' : '') + S.kcalAdj + ' kcal adjustment)' : '') + '</td><td class="r">' + (T.kcal - T.tdee > 0 ? '+' : '') + (T.kcal - T.tdee) + ' kcal</td></tr>';
+    h += '<tr><td><strong>Daily target</strong></td><td class="r"><strong>' + T.kcal + ' kcal</strong></td></tr></tbody></table></div>';
+    h += '<div class="stats"><div class="stat"><span class="label">Protein</span><span class="v num">' + T.protein + ' g</span><span class="small muted">' + T.ppk + ' g per kg' + (T.refW < p.weightKg - 0.5 ? ' of an adjusted ' + wt(T.refW, 0) : '') + '</span></div><div class="stat"><span class="label">Carbs · Fat</span><span class="v num">' + T.carbs + ' · ' + T.fat + ' g</span><span class="small muted">Fat about 27% of calories</span></div></div>';
+    if (S.kcalAdj && !isExample()) h += '<div><button class="linkbtn" data-act="clearadj">Remove the ' + (S.kcalAdj > 0 ? '+' : '') + S.kcalAdj + ' kcal adjustment</button></div>';
+    h += '<p class="small muted">Every formula is an estimate, often off by around 10% for a single person. Your weigh-ins over 2–3 weeks are the real test; the Progress tab suggests changes when the trend drifts from the plan.</p></section>';
+    var dn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    h += '<section class="card"><h3>Training setup</h3><p>' + (p.days || []).slice().sort().map(function (d) { return dn[d]; }).join(', ') + ' · ' + ({ weights: 'Weights', mix: 'Weights + cardio', cardio: 'Cardio circuits' }[p.style]) + ' · ' + ({ gym: 'Full gym', dumbbells: 'Dumbbells at home', bodyweight: 'Bodyweight only' }[p.equipment]) + ' · ' + esc(p.experience) + (p.injuries && p.injuries.length ? ' · protecting ' + esc(p.injuries.join(', ')) : '') + '</p><p class="small muted">Each 6-week cycle runs 2 weeks of building, 3 weeks of pushing, then a lighter deload week. Exercises change each cycle. Every session is 45 minutes: 6 warm-up, the main work, 5 cool-down.</p></section>';
+    h += '<section class="card"><h3>Food setup</h3><p>' + esc(pt.meta.label) + ' prices (' + esc(pt.meta.symbol) + ') · ' + ({ none: 'Eats everything', pescatarian: 'Pescatarian', vegetarian: 'Vegetarian', vegan: 'Vegan' }[p.diet]) + (p.allergies && p.allergies.length ? ' · avoids ' + esc(p.allergies.join(', ')) : '') + '</p></section>';
+    h += '<section class="card"><h3>Where the numbers come from</h3><ul class="sources">' +
+      '<li><a href="https://pubmed.ncbi.nlm.nih.gov/15883556/" target="_blank" rel="noopener">Frankenfield et al., 2005</a>: Mifflin-St Jeor was the most reliable resting-calorie equation.</li>' +
+      '<li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/" target="_blank" rel="noopener">ISSN protein position stand, 2017</a>: 1.4–2.0 g/kg for active people, more during a diet.</li>' +
+      '<li><a href="https://www.sciencedaily.com/releases/2026/03/260319074552.htm" target="_blank" rel="noopener">ACSM resistance-training position stand, 2026</a>: train every major muscle 2+ days a week; consistency beats complexity.</li>' +
+      '<li><a href="https://lida.sport-iat.de/ta/Record/4020931?lng=en" target="_blank" rel="noopener">Garthe et al., 2011</a>: losing about 0.7% of body weight a week kept more muscle than faster loss.</li>' +
+      '<li><a href="https://primarycarenotebook.com/en-GB/pages/obesity/waist-to-height-ratio-whr" target="_blank" rel="noopener">NICE NG246</a>: waist-to-height ratio bands.</li>' +
+      '<li><a href="https://southlake.ca/wp-content/uploads/2025/02/PARQPlus2025-Form-fillable.pdf" target="_blank" rel="noopener">PAR-Q+ 2025</a>: the seven health screening questions.</li>' +
+      '<li><a href="https://www.cac.gov.jm/portal/index.php" target="_blank" rel="noopener">Consumer Affairs Commission</a>, <a href="https://lastbitefood.com/food-prices/" target="_blank" rel="noopener">Jamaica food price tracker</a>, <a href="https://www.jamaicaobserver.com/2026/10/16/market-bag-farmers-hopeful-rains-will-cool-prices/" target="_blank" rel="noopener">Observer Market Bag</a> and <a href="https://basketreport.com/prices/" target="_blank" rel="noopener">BLS average prices</a> for food costs.</li></ul>' +
+      '<p class="small muted">OMGym gives general fitness guidance, not medical advice.</p></section>';
+    if (!isExample()) {
+      h += '<section class="card"><h3>Your data</h3><p class="small muted">' + (store.kind === 'db' ? 'Saved privately to your Claude account, so it follows you to any device where you open this page.' : 'Saved in this browser.') + '</p>';
+      h += confirmReset ? '<div class="confirm"><span>Delete your profile, weigh-ins and logs?</span><button class="btn warn small" data-act="reset2">Delete everything</button><button class="linkbtn" data-act="reset0">Keep</button></div>' : '<div><button class="btn ghost small" data-act="reset1">Start over</button></div>';
+      h += '</section>';
+    }
+    return h;
+  }
+
+  function render() {
+    var v = $('#view');
+    var fn = { today: renderToday, food: renderFood, shop: renderShop, progress: renderProgress, me: renderMe }[tab];
+    v.innerHTML = fn();
+    document.querySelectorAll('nav.tabs button').forEach(function (b) { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  }
+  function go(t) { tab = t; render(); window.scrollTo(0, 0); }
+
+  /* ---------- setup sheet ---------- */
+  var draft = null, step = 0, stepErr = '';
+  var STEPS = ['About you', 'Measurements', 'Your goal', 'Health check', 'Food'];
+  var PARQ = [
+    'A doctor has said you have a heart condition or high blood pressure.',
+    'You get chest pain at rest, during daily activities, or when you are active.',
+    'You have lost your balance from dizziness, or passed out, in the last 12 months.',
+    'You have been diagnosed with another long-term medical condition.',
+    'You take prescribed medicine for a long-term condition.',
+    'You have (or had in the last 12 months) a bone, joint or muscle problem that more activity could make worse.',
+    'A doctor has said you should only exercise under medical supervision.'
+  ];
+  function openSetup() {
+    draft = JSON.parse(JSON.stringify(S.profile || { units: 'metric', sex: '', days: [1, 3, 5], style: 'mix', equipment: 'gym', experience: 'beginner', activity: 'desk', pace: 'standard', injuries: [], parq: [false, false, false, false, false, false, false], pregnant: false, region: 'JM', diet: 'none', allergies: [], currencySymbol: '$', regionName: '' }));
+    step = 0; stepErr = ''; renderSheet(); $('#sheet').hidden = false; document.body.style.overflow = 'hidden';
+  }
+  function closeSetup() { $('#sheet').hidden = true; document.body.style.overflow = ''; }
+  function seg(name, opts, val) { return '<div class="seg" role="group">' + opts.map(function (o) { return '<button type="button" class="chip" data-act="seg" data-k="' + name + '" data-v="' + o[0] + '" aria-pressed="' + (String(val) === String(o[0])) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+  function multi(name, opts, arr) { return '<div class="seg" role="group">' + opts.map(function (o) { return '<button type="button" class="chip" data-act="multi" data-k="' + name + '" data-v="' + o[0] + '" aria-pressed="' + ((arr || []).indexOf(o[0]) >= 0) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+  function numIn(id, label, val, hint, step_) { return '<div class="formrow"><label class="f" for="' + id + '">' + label + '</label><input id="' + id + '" data-k="' + id + '" type="number" inputmode="decimal" step="' + (step_ || 'any') + '" value="' + (val == null || val === '' || isNaN(val) ? '' : val) + '">' + (hint ? '<span class="f-hint">' + hint + '</span>' : '') + '</div>'; }
+  function cv(cm) { return cm == null ? '' : (draft.units === 'imperial' ? Math.round(cm / 2.54 * 10) / 10 : Math.round(cm * 10) / 10); }
+  function kv(kg) { return kg == null ? '' : (draft.units === 'imperial' ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10); }
+  function renderSheet() {
+    var d = draft, imp = d.units === 'imperial', lu = imp ? 'in' : 'cm', wu = imp ? 'lb' : 'kg';
+    var h = '<div class="wrap"><div class="cardhead"><div><span class="label">Step ' + (step + 1) + ' of 5</span><h2>' + STEPS[step] + '</h2></div><button class="btn ghost small" data-act="closesetup">Close</button></div><div class="steps">' + STEPS.map(function (_, i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+    if (step === 0) {
+      h += '<div class="formrow"><label class="f" for="name">First name (optional)</label><input id="name" data-k="name" type="text" value="' + esc(d.name || '') + '" autocomplete="given-name"></div>';
+      h += '<div class="formrow"><span class="f">Units</span>' + seg('units', [['metric', 'kg · cm'], ['imperial', 'lb · inches']], d.units) + '</div>';
+      h += '<div class="formrow"><span class="f">Sex used in the calorie and body-fat formulas</span>' + seg('sex', [['female', 'Female'], ['male', 'Male']], d.sex) + '</div>';
+      h += '<div class="formgrid">' + numIn('age', 'Age', d.age, '', '1');
+      if (imp) { var ti = d.heightCm ? d.heightCm / 2.54 : null; h += '<div class="formrow"><span class="f">Height</span><div class="formgrid"><input id="hft" data-k="hft" type="number" inputmode="numeric" aria-label="Feet" placeholder="ft" value="' + (ti ? Math.floor(ti / 12) : '') + '"><input id="hin" data-k="hin" type="number" inputmode="decimal" aria-label="Inches" placeholder="in" value="' + (ti ? Math.round((ti % 12) * 10) / 10 : '') + '"></div></div>'; }
+      else h += numIn('heightCm', 'Height (cm)', d.heightCm ? Math.round(d.heightCm) : '', '', '1');
+      h += numIn('weightKg', 'Current weight (' + wu + ')', kv(d.weightKg), 'Morning weight, before breakfast', '0.1') + '</div>';
+    } else if (step === 1) {
+      h += '<p class="muted">A soft tape measure is all you need. Stand relaxed, breathe out normally, keep the tape level and snug without pressing in. These give your body-fat estimate and waist-to-height ratio.</p><div class="formgrid">';
+      h += numIn('neckCm', 'Neck (' + lu + ')', cv(d.neckCm), 'Just below the Adam\'s apple');
+      h += numIn('waistCm', 'Waist (' + lu + ')', cv(d.waistCm), d.sex === 'male' ? 'Level with your belly button' : 'At the narrowest point');
+      if (d.sex !== 'male') h += numIn('hipCm', 'Hips (' + lu + ')', cv(d.hipCm), 'Around the widest part of your bottom');
+      h += '</div><p class="small muted">You can skip this step and add measurements later, but the plan is more accurate with them.</p>';
+    } else if (step === 2) {
+      h += '<div class="formgrid">' + numIn('goalKg', 'Goal weight (' + wu + ')', kv(d.goalKg), '', '0.1') + '</div>';
+      if (d.goalKg && d.weightKg && d.goalKg < d.weightKg - 1) h += '<div class="formrow"><span class="f">Pace</span>' + seg('pace', [['steady', 'Steady · 0.5%/wk'], ['standard', 'Standard · 0.75%/wk'], ['faster', 'Faster · 1%/wk']], d.pace) + '<span class="f-hint">Percent of body weight per week. Slower keeps more muscle and is easier to stick with.</span></div>';
+      h += '<div class="formrow"><span class="f">Outside of workouts, your day is mostly…</span>' + seg('activity', [['desk', 'Sitting'], ['light', 'Some walking'], ['onfeet', 'On my feet'], ['manual', 'Heavy physical work']], d.activity) + '</div>';
+      h += '<div class="formrow"><span class="f">Training experience</span>' + seg('experience', [['beginner', 'New or returning'], ['intermediate', '1–3 years'], ['advanced', '3+ years']], d.experience) + '</div>';
+      h += '<div class="formrow"><span class="f">Training days</span>' + multi('days', [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']], d.days) + '<span class="f-hint">2–4 days suits most people. Every session is 45 minutes.</span></div>';
+      h += '<div class="formrow"><span class="f">Session style</span>' + seg('style', [['weights', 'Mostly weights'], ['mix', 'Weights + cardio'], ['cardio', 'Cardio circuits']], d.style) + '</div>';
+      h += '<div class="formrow"><span class="f">Equipment</span>' + seg('equipment', [['gym', 'Full gym'], ['dumbbells', 'Dumbbells at home'], ['bodyweight', 'Bodyweight only']], d.equipment) + '</div>';
+    } else if (step === 3) {
+      h += '<p class="muted">From the PAR-Q+ screening questionnaire. A "yes" doesn\'t stop you training; it means check with your doctor first, and the plan keeps intensity moderate.</p><div>';
+      PARQ.forEach(function (q, i) { h += '<div class="yn"><span>' + esc(q) + '</span>' + seg('parq' + i, [['no', 'No'], ['yes', 'Yes']], d.parq[i] ? 'yes' : 'no') + '</div>'; });
+      if (d.sex === 'female') h += '<div class="yn"><span>Pregnant or breastfeeding</span>' + seg('pregnant', [['no', 'No'], ['yes', 'Yes']], d.pregnant ? 'yes' : 'no') + '</div>';
+      h += '</div><div class="formrow"><span class="f">Any of these that hurt or have been injured?</span>' + multi('injuries', [['knees', 'Knees'], ['back', 'Lower back'], ['shoulders', 'Shoulders']], d.injuries) + '<span class="f-hint">Exercises that load these areas are swapped for kinder versions.</span></div>';
+    } else if (step === 4) {
+      h += '<div class="formrow"><span class="f">Where do you shop?</span>' + seg('region', [['JM', 'Jamaica (J$)'], ['US', 'United States ($)'], ['OTHER', 'Somewhere else']], d.region) + '</div>';
+      if (d.region === 'OTHER') h += '<div class="formgrid"><div class="formrow"><label class="f" for="regionName">Country or city</label><input id="regionName" data-k="regionName" type="text" value="' + esc(d.regionName || '') + '"></div><div class="formrow"><label class="f" for="currencySymbol">Currency symbol</label><input id="currencySymbol" data-k="currencySymbol" type="text" maxlength="4" value="' + esc(d.currencySymbol || '$') + '"></div></div><p class="small muted">You will enter local prices on the Shop tab. Until then, US prices stand in.</p>';
+      h += '<div class="formrow"><span class="f">How do you eat?</span>' + seg('diet', [['none', 'Everything'], ['pescatarian', 'Fish, no meat'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']], d.diet) + '</div>';
+      h += '<div class="formrow"><span class="f">Allergies or foods to avoid</span>' + multi('allergies', [['egg', 'Eggs'], ['fish', 'Fish'], ['peanut', 'Peanuts'], ['dairy', 'Dairy'], ['gluten', 'Gluten']], d.allergies) + '</div>';
+    }
+    if (stepErr) h += '<p class="err" role="alert">' + esc(stepErr) + '</p>';
+    h += '<div class="sheetfoot"><button class="btn ghost" data-act="back"' + (step === 0 ? ' disabled' : '') + '>Back</button><button class="btn" data-act="next">' + (step === 4 ? 'Build my plan' : 'Next') + '</button></div></div>';
+    $('#sheet').innerHTML = h;
+  }
+  function readSheet() {
+    var imp = draft.units === 'imperial';
+    var num = function (id) { var el = document.getElementById(id); if (!el) return undefined; var v = parseFloat(el.value); return isNaN(v) ? null : v; };
+    var txt = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : undefined; };
+    if (step === 0) {
+      draft.name = txt('name'); var a = num('age'); if (a !== undefined) draft.age = a;
+      if (imp) { var ft = num('hft'), inch = num('hin'); if (ft != null) draft.heightCm = (ft * 12 + (inch || 0)) * 2.54; }
+      else { var hc = num('heightCm'); if (hc !== undefined) draft.heightCm = hc; }
+      var w = num('weightKg'); if (w !== undefined) draft.weightKg = w == null ? null : (imp ? w / 2.20462 : w);
+    } else if (step === 1) {
+      ['neckCm', 'waistCm', 'hipCm'].forEach(function (k) { var v = num(k); if (v !== undefined) draft[k] = v == null ? null : (imp ? v * 2.54 : v); });
+    } else if (step === 2) {
+      var g = num('goalKg'); if (g !== undefined) draft.goalKg = g == null ? null : (imp ? g / 2.20462 : g);
+    } else if (step === 4) {
+      var rn = txt('regionName'); if (rn !== undefined) draft.regionName = rn;
+      var cs = txt('currencySymbol'); if (cs !== undefined) draft.currencySymbol = cs || '$';
+    }
+  }
+  function validate() {
+    var d = draft;
+    if (step === 0) {
+      if (!d.sex) return 'Choose the sex used in the formulas.';
+      if (!d.age || d.age < 13 || d.age > 100) return 'Enter an age between 13 and 100.';
+      if (!d.heightCm || d.heightCm < 120 || d.heightCm > 230) return 'Enter a height between 120 and 230 cm (3 ft 11 in to 7 ft 6 in).';
+      if (!d.weightKg || d.weightKg < 35 || d.weightKg > 300) return 'Enter a weight between 35 and 300 kg (77 to 660 lb).';
+    }
+    if (step === 1) {
+      if (d.neckCm && d.waistCm && d.waistCm <= d.neckCm) return 'Waist should be bigger than neck. Check the numbers.';
+      if (d.waistCm && (d.waistCm < 45 || d.waistCm > 200)) return 'That waist measurement looks off. Check the units.';
+    }
+    if (step === 2) {
+      if (!d.goalKg || d.goalKg < 35 || d.goalKg > 300) return 'Enter a goal weight.';
+      if (!d.days || !d.days.length) return 'Pick at least one training day.';
+    }
+    return '';
+  }
+  function finishSetup() {
+    var d = draft;
+    d.days = d.days.map(Number).sort();
+    d.weightKg = Math.round(d.weightKg * 10) / 10; d.goalKg = Math.round(d.goalKg * 10) / 10;
+    var first = !S.profile;
+    var oldW = S.profile && S.profile.weightKg;
+    S.profile = d;
+    if (first) { S.startDate = TODAY; S.weights = [{ d: TODAY, kg: d.weightKg, waistCm: d.waistCm || undefined }]; }
+    else if (oldW !== d.weightKg) { addWeight(TODAY, d.weightKg, null); }
+    closeSetup(); save(); go('today'); toast(first ? 'Your plan is ready' : 'Plan updated');
+  }
+  function addWeight(d, kg, waist) {
+    S.weights = S.weights.filter(function (w) { return w.d !== d; });
+    var e = { d: d, kg: Math.round(kg * 10) / 10 }; if (waist) e.waistCm = Math.round(waist * 10) / 10;
+    S.weights.push(e); S.weights.sort(function (a, b) { return a.d < b.d ? -1 : 1; });
+    var latest = S.weights[S.weights.length - 1];
+    S.profile.weightKg = latest.kg;
+    if (latest.waistCm) S.profile.waistCm = latest.waistCm;
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-act],[data-tab]'); if (!t) return;
+    var a = t.dataset.act;
+    if (!a && t.dataset.tab) { go(t.dataset.tab); return; }
+    switch (a) {
+      case 'tab': go(t.dataset.tab); break;
+      case 'setup': openSetup(); break;
+      case 'closesetup': closeSetup(); break;
+      case 'seg': readSheet();
+        var k = t.dataset.k, v = t.dataset.v;
+        if (k.indexOf('parq') === 0) draft.parq[+k.slice(4)] = v === 'yes';
+        else if (k === 'pregnant') draft.pregnant = v === 'yes';
+        else draft[k] = v;
+        renderSheet(); break;
+      case 'multi': readSheet();
+        var mk = t.dataset.k, mv = mk === 'days' ? Number(t.dataset.v) : t.dataset.v;
+        var arr = draft[mk] = (draft[mk] || []).slice(); var ix = arr.indexOf(mv);
+        if (ix >= 0) arr.splice(ix, 1); else arr.push(mv);
+        renderSheet(); break;
+      case 'next': readSheet(); stepErr = validate(); if (stepErr) { renderSheet(); break; } if (step === 4) finishSetup(); else { step++; renderSheet(); $('#sheet').scrollTop = 0; } break;
+      case 'back': readSheet(); stepErr = ''; step = Math.max(0, step - 1); renderSheet(); break;
+      case 'set': if (needSetup()) break;
+        var dd = day(TODAY), n = +t.dataset.n, ex = t.dataset.ex;
+        dd.sets[ex] = (dd.sets[ex] || 0) >= n ? n - 1 : n; save(); render(); break;
+      case 'done': if (needSetup()) break; day(TODAY).done = true; trim(); save(); render(); toast('Workout logged. Nice work.'); break;
+      case 'undone': day(TODAY).done = false; save(); render(); break;
+      case 'habit': if (needSetup()) break; var hd = day(TODAY); hd.habits[t.dataset.h] = !hd.habits[t.dataset.h]; save(); render(); break;
+      case 'fd': foodDate = OM.addDays(foodDate, +t.dataset.n); render(); break;
+      case 'swap': if (needSetup()) break; var sw = S.swaps[foodDate] = S.swaps[foodDate] || {}; sw[t.dataset.slot] = (sw[t.dataset.slot] || 0) + 1; save(); render(); break;
+      case 'tick': if (needSetup()) { t.checked = false; break; } var tk = S.shopTicks[shopStart()] = S.shopTicks[shopStart()] || {}; tk[t.dataset.id] = t.checked; save(); render(); break;
+      case 'editprice': if (needSetup()) break; editPrice = t.dataset.id; render(); var inp = document.getElementById('price-' + editPrice); if (inp) inp.focus(); break;
+      case 'cancelprice': editPrice = null; render(); break;
+      case 'saveprice':
+        var pid = t.dataset.id, pv = parseFloat(document.getElementById('price-' + pid).value);
+        if (!(pv >= 0)) { toast('Enter a price of 0 or more'); break; }
+        var reg = P().region; S.prices[reg] = S.prices[reg] || {}; S.prices[reg][pid] = { pr: pv, date: niceDate(TODAY, { day: 'numeric', month: 'short', year: 'numeric' }) };
+        editPrice = null; save(); render(); toast('Price saved'); break;
+      case 'resetprice': var rg = P().region; if (S.prices[rg]) delete S.prices[rg][t.dataset.id]; editPrice = null; save(); render(); break;
+      case 'logw': if (needSetup()) break;
+        var dv = $('#w-date').value || TODAY, kgv = parseFloat($('#w-kg').value), wv = parseFloat($('#w-waist').value);
+        if (!(kgv > 0)) { toast('Enter your weight'); break; }
+        var kg = imperial() ? kgv / 2.20462 : kgv; var wc = wv > 0 ? (imperial() ? wv * 2.54 : wv) : null;
+        if (kg < 30 || kg > 320) { toast('That weight looks off. Check the units.'); break; }
+        addWeight(dv > TODAY ? TODAY : dv, kg, wc); save(); render(); toast('Weigh-in saved'); break;
+      case 'delw': S.weights = S.weights.filter(function (w) { return w.d !== t.dataset.d; }); if (S.weights.length) S.profile.weightKg = S.weights[S.weights.length - 1].kg; save(); render(); break;
+      case 'applyadj': if (needSetup()) break; S.kcalAdj = Math.max(-600, Math.min(600, (S.kcalAdj || 0) + Number(t.dataset.d))); S.adjDate = TODAY; save(); render(); toast('Calories updated'); break;
+      case 'clearadj': S.kcalAdj = 0; S.adjDate = null; save(); render(); break;
+      case 'reset1': confirmReset = true; render(); break;
+      case 'reset0': confirmReset = false; render(); break;
+      case 'reset2':
+        confirmReset = false; S = freshState();
+        try { localStorage.removeItem(LSKEY); } catch (e) { }
+        if (store.kind === 'db') store.ref.delete().catch(function () { });
+        go('today'); toast('Everything deleted'); break;
+    }
+  });
+  document.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t.dataset && t.dataset.act === 'load') {
+      if (needSetup()) { t.value = ''; return; }
+      var dd = day(TODAY); dd.loads = dd.loads || {};
+      var v = t.value.trim();
+      dd.loads[t.dataset.ex] = v;
+      if (v) {
+        var cur = S.loads[t.dataset.ex], val = v + (/[a-z]/i.test(v) ? '' : ' ' + wUnit());
+        var prev = cur && typeof cur === 'object' ? (cur.d === TODAY ? cur.prev : { v: cur.v, d: cur.d }) : null;
+        S.loads[t.dataset.ex] = { v: val, d: TODAY, prev: prev || null };
+      }
+      save();
+    }
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('#sheet').hidden) closeSetup(); });
+
+  var h0 = (location.hash || '').slice(1);
+  if (VALID_TABS.indexOf(h0) >= 0) tab = h0;
+  initStore();
+})();
