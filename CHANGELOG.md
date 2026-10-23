@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23: OMGym Store
+- New Store tab: whey and plant protein, creatine, pre-workout, gloves, jump rope, resistance bands, shaker, lifting straps, wrist wraps. Bag with quantity controls and a "Send order on WhatsApp" button (owner: +1 658 218 4432), or copy the order.
+- Prices include Amazon price, Florida sales tax, J$600/lb freight, Jamaica Customs duty, GCT and fees, plus 15% markup. A Seller view shows the full breakdown and profit per item.
+- Small add-on prompts: jump rope on cardio-finisher days, gloves or straps on strength days, bands on rest days, protein powder on days short of protein. Each can be dismissed for the day.
+- Pre-workout hidden for under-18s, pregnancy and health-screen "yes" answers; whey flagged for vegan or dairy-free users.
+- Sources: Jamaica Trade Information Portal (HS 2106.90: 20% duty, 15% GCT, 0.3% SCF, 0.5% environmental levy, MOH permit, FSPID inspection); Jamaica Customs Agency duties page and de minimis page (US$100 FOB); JIS on Ministry of Health import permits; Bank of Jamaica rate via Jamaica Observer (J$158.98, 16 Oct 2026); Amazon tax-exempt help page; Optimum Nutrition and Garage Gym Reviews for product prices.
+
 ## 2026-10-23: Supermarket packs, shellfish, review fixes
 - Prices are quoted per pack the way supermarkets sell them (2 kg bag of rice, whole frozen chicken, 155 g tin of mackerel, dozen eggs, bundle of callaloo), each with store, source and date. Meal tables show the pack you buy instead of a per-serving cost; the Today screen shows the week's shop.
 - Edit price now records which store (PriceSmart, Hi-Lo, Loshusan or another).

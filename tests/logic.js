@@ -163,6 +163,34 @@ const fast = []; for (let i = 0; i < 21; i += 2) fast.push({ d: OM.addDays('2026
 ok(OM.suggestAdjust(T0, OM.trend(fast, '2026-10-21'), 80).delta === 150, 'too-fast loss suggests +150');
 ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend');
 
+// 8. Store pricing
+{
+  const cfg = OM.STORE;
+  for (const pr of OM.PRODUCTS) {
+    const l = OM.landed(pr);
+    const goods = pr.usd * 1.07 * cfg.fx, freight = pr.lb * 600, cif = goods + freight, duty = cif * 0.2, gct = (cif + duty) * 0.15;
+    const fees = cif * 0.008 + (cif > 5500 ? 100 : 0), cost = goods + freight + duty + gct + fees;
+    near(l.cost, cost, 0.01, 'landed cost ' + pr.id);
+    ok(l.price >= cost * 1.15 && l.price < cost * 1.15 + 50, '15% markup, rounded up to J$50: ' + pr.id);
+    ok(l.price % 50 === 0, 'price rounded ' + pr.id);
+    ok(pr.lb > 0 && pr.usd > 0 && pr.name && pr.size, 'product complete ' + pr.id);
+  }
+  ok(cfg.freightPerLb === 600 && cfg.markup === 0.15 && cfg.duty === 0.2 && cfg.gct === 0.15, 'store settings match owner + Customs');
+  ok(/^1\d{10}$/.test(cfg.whatsapp), 'WhatsApp number in international form');
+  const c4 = OM.PRODUCTS.find(x => x.stim);
+  ok(OM.productView(c4, { age: 16 }).hidden, 'pre-workout hidden under 18');
+  ok(OM.productView(c4, { age: 30, pregnant: true }).hidden, 'pre-workout hidden in pregnancy');
+  ok(OM.productView(c4, { age: 30, parq: [true] }).hidden, 'pre-workout hidden after a health-screen yes');
+  ok(!OM.productView(c4, { age: 30, parq: [false] }).hidden, 'pre-workout shown otherwise');
+  const whey = OM.PRODUCTS.find(x => x.id === 'on-whey-5');
+  ok(OM.productView(whey, { diet: 'vegan' }).conflict.includes('dairy'), 'whey flagged for vegans');
+  ok(OM.productView(whey, { allergies: ['dairy'] }).conflict.includes('dairy'), 'whey flagged for dairy allergy');
+  const o = OM.orderText({ 'on-whey-5': 2, 'jump-rope': 1 }, cfg, 'Kim');
+  ok(o.count === 2 && o.total === OM.landed(whey).price * 2 + OM.landed(OM.PRODUCTS.find(x => x.id === 'jump-rope')).price, 'order total');
+  ok(/Name: Kim/.test(o.text) && /2 × Optimum Nutrition/.test(o.text), 'order text');
+  ok(OM.orderText({}, cfg).count === 0, 'empty bag');
+  console.log('Store prices: ' + OM.PRODUCTS.map(x => x.id + ' J$' + OM.landed(x).price.toLocaleString()).join(', '));
+}
 console.log(`Workouts generated: ${wcount}, session length ${minM}-${maxM} min`);
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 if (fail) { console.log([...new Set(fails)].slice(0, 30).join('\n')); process.exit(1); }

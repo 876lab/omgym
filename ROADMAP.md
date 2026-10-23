@@ -21,7 +21,15 @@
 6. Add a plain-language entry at the top of `CHANGES` in `src/core.js` and a dated entry in `CHANGELOG.md`.
 7. One focused improvement per night. Never change repository settings or hosting, add paid services, keys or secrets.
 
+## Store (added 2026-10-23)
+- Store tab sells supplements and gym gear the owner buys on Amazon and ships through a Miami freight forwarder. Orders go to the owner's WhatsApp (+1 658 218 4432); nothing is charged in the app.
+- Price = (Amazon price + 7% Miami-Dade sales tax) × FX, + J$600/lb freight, + Jamaica Customs (20% duty on CIF, 15% GCT on CIF + duty, 0.3% standards fee, 0.5% environmental levy, J$100 stamp duty over J$5,500 CIF), then 15% markup on landed cost, rounded up to J$50. Settings live in `STORE` in `src/core.js`; products in `PRODUCTS`.
+- Rules: keep the markup at 15% and freight at J$600/lb unless the owner changes them; never show pre-workout (caffeine) to under-18s, pregnant users or anyone with a health-screen "yes"; flag milk in whey for vegan or dairy-free users; add-on prompts stay one per screen, dismissible, with no fake scarcity, countdowns or invented reviews.
+- Legal: supplements need a Ministry of Health import permit (Pharmaceutical Chemical and Food Additives Import Permit; one permit covers up to ten products) and post-import inspection by FSPID for processed foods. The owner should also register the business and check GCT registration with TAJ.
+
 ## Backlog
+- [ ] Confirm each Store product's Amazon price (Amazon blocks automated reading; ask the owner for screenshots or use whatever source becomes readable) and refresh `STORE.fx` from the Bank of Jamaica weekly.
+- [ ] Compare Store prices with local stores (PriceSmart, supplement shops in Kingston) so the owner knows where he is competitive.
 - [ ] **Live store prices (blocked: PriceSmart blocks automated reading, Hi-Lo's online shop isn't reachable, Loshusan hides prices from automated readers).** Ways forward for the owner to choose: share receipts or screenshots of the store apps, or connect Claude in Chrome on a computer for a weekly price check. Until then the owner can tap Edit price and pick the store.
 - [ ] More plant protein for vegan plans: soya chunks, chickpeas (tin), with Loshusan prices.
 - [ ] A shrimp or saltfish meal (tag shrimp `shellfish`, saltfish `fish`) for variety.
@@ -33,4 +41,5 @@
 - [ ] Sync between the Home Screen app and the claude.ai version (needs the owner's decision on accounts).
 
 ## Notes from runs
+- 2026-10-23: Store added. Amazon, PriceSmart and the Jamaica trade portal's 9506 (exercise equipment) and 4203 (gloves) pages could not be read, so gym gear uses the standard 20% duty (conservative). Protein powder 2106.90 rates confirmed on the Jamaica Trade Information Portal.
 - 2026-10-23: Store sites checked. PriceSmart (robots block), Hi-Lo online shop (not reachable), Loshusan (prices load by script, not readable). Used Loshusan prices from earlier indexed pages, the CAC survey (outlets include Hi-Lo Constant Spring) and the agriculture ministry's supermarket survey (includes Hi-Lo, Loshusan, PriceSmart).

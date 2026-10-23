@@ -140,8 +140,8 @@ input[type=number], input[type=text], input[type=date], select { width: 100%; pa
 .yn { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 0.92rem; }
 
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
-nav.tabs .in { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-nav.tabs button { appearance: none; border: 0; background: none; padding: 10px 2px 12px; cursor: pointer; display: grid; justify-items: center; gap: 2px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+nav.tabs .in { max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+nav.tabs button { position: relative; appearance: none; border: 0; background: none; padding: 10px 2px 12px; cursor: pointer; display: grid; justify-items: center; gap: 2px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 nav.tabs button svg { width: 22px; height: 22px; }
 nav.tabs button[aria-current="page"] { color: var(--iron); }
 
@@ -162,6 +162,22 @@ nav.tabs button[aria-current="page"] { color: var(--iron); }
 .restbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: flex; align-items: center; gap: 12px; background: var(--iron); color: var(--on-iron); border-radius: 999px; padding: 8px 8px 8px 18px; font-family: var(--display); font-weight: 800; font-size: 1.3rem; box-shadow: 0 6px 20px rgba(0,0,0,.18); white-space: nowrap; }
 .restbar .btn.ghost { color: var(--on-iron); box-shadow: inset 0 0 0 1.5px currentColor; font-family: var(--body); }
 .restbar.go { background: var(--mango); color: #1a1205; }
+.badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--mango); color: #1a1205; font-size: 0.68rem; font-weight: 800; display: grid; place-items: center; padding: 0 4px; }
+.products { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.prod { background: var(--surface); border-radius: 14px; padding: 14px; display: grid; gap: 6px; align-content: start; }
+.prod h3 { font-size: 1.1rem; }
+.prod-top { display: flex; gap: 6px; flex-wrap: wrap; }
+.prod-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.prod-price { font-family: var(--display); font-weight: 800; font-size: 1.5rem; line-height: 1; }
+.qty { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.iconbtn.sm { width: 36px; height: 36px; font-size: 1.05rem; }
+.bagrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.btn.wa { display: block; text-align: center; text-decoration: none; background: var(--iron); color: var(--on-iron); line-height: 24px; }
+textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); margin-block: 8px; }
+.nudge { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--sunk); border-radius: 12px; padding: 12px 14px; }
+.nudge-txt { display: grid; gap: 2px; min-width: 0; flex: 1 1 200px; }
+.nudge-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nudge-price { font-family: var(--display); font-weight: 800; font-size: 1.25rem; }
 .confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
 @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .formgrid { grid-template-columns: minmax(0, 1fr); } }
@@ -180,7 +196,8 @@ nav.tabs button[aria-current="page"] { color: var(--iron); }
     <div class="in">
       <button data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>Today</button>
       <button data-tab="food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="7"/><path d="M12 6V3M9 13h6"/></svg>Meals</button>
-      <button data-tab="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Shop</button>
+      <button data-tab="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>List</button>
+      <button data-tab="store"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16l-1.5 11h-13z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Store<span class="badge num" id="bagcount" hidden>0</span></button>
       <button data-tab="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/></svg>Progress</button>
       <button data-tab="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Plan</button>
     </div>

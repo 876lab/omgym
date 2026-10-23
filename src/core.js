@@ -482,6 +482,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-23', t: 'OMGym Store', b: ['New Store tab: protein powder, creatine, pre-workout and gym gear, delivered to Jamaica in about 1–2 weeks.', 'Prices include shipping, customs duty and GCT. Order on WhatsApp.'] },
     { d: '2026-10-23', t: 'Supermarket packs and shellfish', b: ['Prices are now quoted per pack (a 2 kg bag of rice, a whole chicken, a tin of mackerel), with the store and date for each.', 'Shellfish added to allergies.', 'A rest timer starts when you tick a set; a week view shows your training days.', 'Each exercise links to demo videos. Plates keep a proper portion of starch.'] },
     { d: '2026-10-22', t: 'First version', b: ['Workouts, meals, shopping list, weigh-ins and calorie targets.'] }
   ];
@@ -655,6 +656,71 @@ var OM = (function () {
     return { rows: rows, total: total, eatenCost: eaten, days: days };
   }
 
+  /* ---------- store: supplements and gym gear bought on Amazon, shipped by a forwarder ---------- */
+  // Pricing per item: Amazon price + US sales tax, converted to J$; freight per lb; Jamaica Customs charges on CIF;
+  // then the seller's markup on the landed cost, rounded up.
+  var STORE = {
+    fx: 162, fxNote: 'J$158.98 per US$ (Bank of Jamaica average, 16 Oct 2026) plus about 2% card fee',
+    freightPerLb: 600, freightNote: 'Freight forwarder rate, J$600 per lb (owner)',
+    usSalesTax: 0.07, usTaxNote: 'Miami-Dade sales tax 7% on Amazon orders to a Florida forwarder; refundable through tax-exempt@amazon.com with the airway bill',
+    duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.005, stampDuty: 100, stampOver: 5500,
+    dutyNote: 'Jamaica Customs: 20% import duty, 15% GCT on CIF + duty, 0.3% standards fee and 0.5% environmental levy on CIF, J$100 stamp duty when CIF is over J$5,500',
+    markup: 0.15, roundTo: 50,
+    whatsapp: '16582184432', // owner's WhatsApp, international form (+1 658 218 4432)
+    leadTime: 'about 1–2 weeks'
+  };
+  // usd: typical Amazon price (check on Amazon before ordering), lb: billed shipping weight.
+  var PRODUCTS = [
+    { id: 'on-whey-5', cat: 'protein', name: 'Optimum Nutrition Gold Standard 100% Whey', size: '5 lb tub · 74 servings', usd: 89.99, lb: 6, servings: 74, perServing: '24 g protein a scoop', tags: ['dairy'], desc: 'The best-known whey. One scoop in water or milk after training.' },
+    { id: 'on-whey-2', cat: 'protein', name: 'Optimum Nutrition Gold Standard 100% Whey', size: '2 lb tub · 29 servings', usd: 41.99, lb: 3, servings: 29, perServing: '24 g protein a scoop', tags: ['dairy'], desc: 'Smaller tub to try a flavour first.' },
+    { id: 'iso100-5', cat: 'protein', name: 'Dymatize ISO100 Hydrolyzed Whey Isolate', size: '5 lb tub · 71 servings', usd: 119.99, lb: 6, servings: 71, perServing: '25 g protein a scoop', tags: ['dairy'], desc: 'Whey isolate: very low lactose, mixes thin.' },
+    { id: 'orgain-plant', cat: 'protein', name: 'Orgain Organic Plant-Based Protein', size: '2.03 lb tub · 20 servings', usd: 29.99, lb: 3, servings: 20, perServing: '21 g protein a scoop', tags: [], desc: 'Pea, rice and chia protein. Dairy-free and vegan.' },
+    { id: 'on-creatine', cat: 'creatine', name: 'Optimum Nutrition Micronized Creatine', size: '600 g · 120 servings', usd: 34.99, lb: 2, servings: 120, perServing: '5 g creatine a scoop', tags: [], desc: 'The most researched supplement for strength. 5 g a day, any time.' },
+    { id: 'nutricost-creatine', cat: 'creatine', name: 'Nutricost Creatine Monohydrate', size: '500 g · 100 servings', usd: 19.95, lb: 1.5, servings: 100, perServing: '5 g creatine a scoop', tags: [], desc: 'Budget creatine, same active ingredient.' },
+    { id: 'c4-original', cat: 'preworkout', name: 'Cellucor C4 Original Pre-Workout', size: '60 servings', usd: 42.99, lb: 1.5, servings: 60, perServing: '150 mg caffeine a scoop', tags: [], stim: true, desc: 'Energy before training. Contains caffeine: skip coffee that day.' },
+    { id: 'gloves', cat: 'gear', name: 'Weightlifting gloves', size: 'Padded palm, wrist strap · S–XL', usd: 19.99, lb: 0.5, tags: [], desc: 'Better grip on bars and dumbbells, fewer calluses.' },
+    { id: 'jump-rope', cat: 'gear', name: 'Adjustable speed jump rope', size: 'Steel cable, ball-bearing handles', usd: 9.99, lb: 0.5, tags: [], desc: 'Ten minutes of skipping covers a cardio finisher anywhere.' },
+    { id: 'bands', cat: 'gear', name: 'Resistance loop bands', size: 'Set of 5 strengths', usd: 12.99, lb: 0.5, tags: [], desc: 'Warm-ups, glute work and home sessions.' },
+    { id: 'shaker', cat: 'gear', name: 'BlenderBottle Classic shaker', size: '28 oz with whisk ball', usd: 9.99, lb: 0.5, tags: [], desc: 'Lump-free protein shakes.' },
+    { id: 'straps', cat: 'gear', name: 'Lifting straps', size: 'Padded cotton, pair', usd: 9.99, lb: 0.5, tags: [], desc: 'Hold heavier rows and deadlifts when grip gives out first.' },
+    { id: 'wraps', cat: 'gear', name: 'Wrist wraps', size: '18 in, pair', usd: 11.99, lb: 0.5, tags: [], desc: 'Support for pressing days.' }
+  ];
+  var PRODUCT_PRICES_NOTE = 'Typical Amazon prices, October 2026. Amazon blocks automated price checks, so confirm each price on Amazon before ordering.';
+
+  function landed(prod, cfg) {
+    cfg = cfg || STORE;
+    var usd = prod.usd * (1 + cfg.usSalesTax);
+    var goods = usd * cfg.fx;
+    var freight = prod.lb * cfg.freightPerLb;
+    var cif = goods + freight;
+    var duty = cif * cfg.duty;
+    var gct = (cif + duty) * cfg.gct;
+    var fees = cif * (cfg.scf + cfg.envLevy) + (cif > cfg.stampOver ? cfg.stampDuty : 0);
+    var cost = goods + freight + duty + gct + fees;
+    var price = Math.ceil(cost * (1 + cfg.markup) / cfg.roundTo) * cfg.roundTo;
+    return { usd: prod.usd, usTax: prod.usd * cfg.usSalesTax, goods: goods, freight: freight, cif: cif, duty: duty, gct: gct, fees: fees, cost: cost, price: price, profit: price - cost, perServing: prod.servings ? price / prod.servings : null };
+  }
+  // what a person may see: stimulants hidden for under-18, pregnancy or a health-screen "yes"; allergy and diet flags
+  function productView(prod, p) {
+    var ex = excludedTags(p || {});
+    var blocked = !!prod.stim && p && (p.age < 18 || p.pregnant || (p.parq || []).some(Boolean));
+    var conflict = prod.tags.filter(function (t) { return ex.indexOf(t) >= 0; });
+    return { hidden: blocked, conflict: conflict };
+  }
+  function orderText(cart, cfg, name) {
+    cfg = cfg || STORE;
+    var lines = [], total = 0;
+    Object.keys(cart).forEach(function (id) {
+      var q = cart[id]; if (!q) return;
+      var pr = PRODUCTS.filter(function (x) { return x.id === id; })[0]; if (!pr) return;
+      var l = landed(pr, cfg); total += l.price * q;
+      lines.push(q + ' × ' + pr.name + ' (' + pr.size.split(' · ')[0] + ') — J$' + (l.price * q).toLocaleString('en-US'));
+    });
+    if (!lines.length) return { text: '', total: 0, count: 0 };
+    var text = 'Hi! I would like to order from OMGym:\n' + lines.join('\n') + '\nTotal: J$' + total.toLocaleString('en-US') + (name ? '\nName: ' + name : '');
+    return { text: text, total: total, count: lines.length };
+  }
+
   /* ---------- progress ---------- */
   function trend(weights, todayStr, windowDays) {
     windowDays = windowDays || 21;
@@ -692,7 +758,8 @@ var OM = (function () {
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES,
+    STORE: STORE, PRODUCTS: PRODUCTS, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
 if (typeof module !== 'undefined') module.exports = OM;

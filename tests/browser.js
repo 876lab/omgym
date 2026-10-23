@@ -17,7 +17,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   }
   ok(await page.isVisible('text=You are looking at an example plan'), 'example banner');
   ok(await page.locator('.ex').count() > 0 || await page.isVisible('text=Active recovery'), 'example workout renders');
-  for (const t of ['food', 'shop', 'progress', 'me', 'today']) { await page.click(`nav [data-tab=${t}]`); ok((await page.locator('#view').innerText()).length > 200, 'tab renders ' + t); }
+  for (const t of ['food', 'shop', 'store', 'progress', 'me', 'today']) { await page.click(`nav [data-tab=${t}]`); ok((await page.locator('#view').innerText()).length > 200, 'tab renders ' + t); }
   const overflow = async () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   await page.screenshot({ path: OUT + '/shot-example-today.png', fullPage: true });
   // setup flow
@@ -89,6 +89,24 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.locator('[data-act=tick]').first().check();
   ok(!(await overflow()), 'no horizontal overflow on shop');
   await page.screenshot({ path: OUT + '/shot-shop.png', fullPage: true });
+  // store
+  await page.click('nav [data-tab=store]');
+  ok(await page.locator('.prod').count() >= 10, 'store lists products');
+  ok(/Pre-workout/.test(await page.locator('#view').innerText()), 'pre-workout shown for a cleared adult');
+  await page.locator('.prod [data-act=cartadd][data-id=on-whey-5]').click();
+  await page.locator('.prod [data-act=cartadd][data-id=jump-rope]').click();
+  await page.locator('.bag [data-act=cartadd][data-id=on-whey-5]').click();
+  ok((await page.innerText('#bagcount')) === '3', 'bag badge counts items');
+  await page.fill('#order-name', 'Cargill');
+  const wa = await page.getAttribute('#wa-link', 'href');
+  ok(wa.startsWith('https://wa.me/16582184432?text=') && decodeURIComponent(wa).includes('2 × Optimum Nutrition') && decodeURIComponent(wa).includes('Name: Cargill'), 'WhatsApp order link');
+  await page.click('.prod-top + h3 >> nth=0').catch(() => {});
+  await page.click('[data-act=storecat][data-c=gear]');
+  ok(await page.locator('.prod').count() === 6, 'gear filter');
+  await page.click('[data-act=sellerview]');
+  ok(/landed/i.test(await page.locator('#view').innerText()) && /import permit/i.test(await page.locator('#view').innerText()), 'seller view shows breakdown');
+  ok(!(await overflow()), 'no horizontal overflow on store');
+  await page.screenshot({ path: OUT + '/shot-store.png', fullPage: true });
   // progress
   await page.click('nav [data-tab=progress]');
   for (const [d, kg] of [[-20, 92.3], [-16, 92.2], [-12, 92.4], [-8, 92.1], [-4, 92.2]]) {
@@ -115,13 +133,17 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('nav [data-tab=me]'); await page.click('[data-act=setup]');
   await page.click('[data-k=units][data-v=imperial]');
   ok(await page.inputValue('#weightKg') !== '', 'imperial weight prefilled');
-  for (let i = 0; i < 4; i++) await page.click('[data-act=next]');
+  for (let i = 0; i < 3; i++) await page.click('[data-act=next]');
+  await page.click('[data-k=parq0][data-v=yes]');
+  await page.click('[data-act=next]');
   await page.click('[data-k=region][data-v=OTHER]'); await page.fill('#regionName', 'Toronto'); await page.fill('#currencySymbol', 'C$');
   await page.click('[data-k=diet][data-v=vegan]');
   await page.click('[data-act=next]');
   await page.click('nav [data-tab=shop]');
   ok(await page.isVisible('text=US prices standing in for Toronto'), 'other-region notice');
   ok((await page.locator('.kpi .v').first().innerText()).startsWith('C$'), 'custom currency');
+  await page.click('nav [data-tab=store]'); await page.click('[data-act=storecat][data-c=all]');
+  { const st = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')).profile.parq); const vt2 = await page.locator('#view').innerText(); const cards = (await page.locator('.prod h3').allInnerTexts()).join('|'); ok(!/C4/i.test(cards) && /Pre-workout is hidden/.test(vt2), 'pre-workout hidden after health-screen yes ' + JSON.stringify(st)); }
   await page.click('nav [data-tab=food]');
   const vt = await page.locator('#view').innerText();
   ok(!/\b(chicken|egg|eggs|tuna|sardine|mackerel|milk)\b/i.test(vt.replace(/Extra red peas, eggs or a glass of milk/,'')), 'vegan meals have no animal foods');

@@ -7,7 +7,7 @@
   function refreshToday() { var t = OM.ymd(new Date()); if (t !== TODAY) { if (foodDate === TODAY) foodDate = t; TODAY = t; render(); } }
 
   /* ---------- state ---------- */
-  function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {} }; }
+  function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: {}, orderName: '', sellerView: false, nudgeHide: {} }; }
   var S = freshState();
   var EXAMPLE = {
     name: 'Example', units: 'metric', sex: 'female', age: 32, heightCm: 165, weightKg: 82, goalKg: 70, neckCm: 34, waistCm: 92, hipCm: 110,
@@ -43,6 +43,7 @@
     Object.keys(S.days).forEach(function (d) { if (d < cut) delete S.days[d]; });
     Object.keys(S.swaps).forEach(function (d) { if (d < OM.addDays(TODAY, -14)) delete S.swaps[d]; });
     Object.keys(S.shopTicks).forEach(function (d) { if (d < OM.addDays(TODAY, -21)) delete S.shopTicks[d]; });
+    Object.keys(S.nudgeHide || {}).forEach(function (k) { if (k.slice(0, 10) < OM.addDays(TODAY, -3)) delete S.nudgeHide[k]; });
     if (S.weights.length > 400) S.weights = S.weights.slice(-400);
   }
   function adopt(data) { if (data && data.profile) { var f = freshState(); Object.keys(f).forEach(function (k) { if (data[k] != null) f[k] = data[k]; }); S = JSON.parse(JSON.stringify(f)); } }
@@ -94,7 +95,8 @@
 
   /* ---------- views ---------- */
   var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null;
-  var VALID_TABS = ['today', 'food', 'shop', 'progress', 'me'];
+  var VALID_TABS = ['today', 'food', 'shop', 'store', 'progress', 'me'];
+  var storeCat = 'all', orderCopied = false;
 
   function exampleBanner() {
     return isExample() ? '<div class="banner example"><div><strong>You are looking at an example plan.</strong><div class="small muted">A 32-year-old woman, 82 kg, aiming for 70 kg, training 3 days a week in Jamaica.</div></div><button class="btn" data-act="setup">Set up my plan</button></div>' : '';
@@ -129,6 +131,10 @@
       h += '</div>';
     });
     h += '<div>' + (dd.done ? '<span class="pill done">Workout logged</span> <button class="linkbtn" data-act="undone">Undo</button>' : '<button class="btn" data-act="done">' + (w.rest ? 'Log recovery day' : 'Finish workout') + '</button>') + '</div></section>';
+    if (!w.rest) {
+      var hasCond = w.blocks.some(function (b) { return b.cond; });
+      h += hasCond ? nudge('jump-rope', 'Do the cardio finisher anywhere, no machine needed.') : nudge(OM.dayNum(TODAY) % 2 ? 'gloves' : 'straps', 'Better grip on today\'s pulls and presses.');
+    } else h += nudge('bands', 'Recovery days: band warm-ups and glute work at home.');
     // habits
     var HB = [['protein', 'Hit protein'], ['sleep', '7+ hours sleep'], ['steps', '8,000+ steps'], ['water', '2 L water']];
     h += '<section class="card"><div class="cardhead"><h3>Daily habits</h3><span class="small muted">Tap when done</span></div><div class="habits">' + HB.map(function (x) { return '<button class="chip" data-act="habit" data-h="' + x[0] + '" aria-pressed="' + !!(dd.habits && dd.habits[x[0]]) + '">' + x[1] + '</button>'; }).join('') + '</div></section>';
@@ -160,6 +166,7 @@
     var h = exampleBanner();
     h += '<section class="datenav"><button class="iconbtn" data-act="fd" data-n="-1" aria-label="Previous day">‹</button><div style="text-align:center"><span class="label">' + (foodDate === TODAY ? 'Today' : esc(niceDate(foodDate, { weekday: 'long' }))) + '</span><h2>' + esc(niceDate(foodDate, { day: 'numeric', month: 'short' })) + '</h2></div><button class="iconbtn" data-act="fd" data-n="1" aria-label="Next day">›</button></section>';
     h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Everything on this page comes from the week\'s shopping list: <strong class="num">' + money(weekShop().total, pt) + '</strong> in packs at ' + esc(pt.meta.label) + ' prices. <button class="linkbtn" data-act="tab" data-tab="shop">See the list</button></p>';
+    if (plan.tot.p < T.protein * 0.92) h += nudge(p.diet === 'vegan' || (p.allergies || []).indexOf('dairy') >= 0 ? 'orgain-plant' : 'on-whey-5', 'This day is ' + Math.round(T.protein - plan.tot.p) + ' g short of your protein target. One scoop closes most of the gap.');
     if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) closes the gap; soya chunks are a cheap plant option.</div>';
     h += '</section>';
     plan.meals.forEach(function (m) {
@@ -229,6 +236,62 @@
       '<path d="' + area + '" fill="var(--iron)" opacity="0.08"/><path d="' + path + '" fill="none" stroke="var(--iron)" stroke-width="2.5" stroke-linejoin="round"/>' + dots +
       '<circle cx="' + sx(last[0]).toFixed(1) + '" cy="' + sy(last[1]).toFixed(1) + '" r="5" fill="var(--iron)" stroke="var(--surface)" stroke-width="2"/>' + lbl + '</svg>';
   }
+  /* ---------- store ---------- */
+  function prod(id) { return OM.PRODUCTS.filter(function (x) { return x.id === id; })[0]; }
+  function jm(v) { return 'J$' + Math.round(v).toLocaleString('en-US'); }
+  function cartCount() { return Object.keys(S.cart || {}).reduce(function (a, k) { return a + (S.cart[k] || 0); }, 0); }
+  function nudge(id, why) {
+    var pr = prod(id); if (!pr) return '';
+    var key = TODAY + ':' + id;
+    if ((S.nudgeHide || {})[key] || (S.cart || {})[id] || OM.productView(pr, P()).hidden) return '';
+    var l = OM.landed(pr);
+    return '<section class="nudge"><div class="nudge-txt"><span class="label">From the OMGym Store</span><strong>' + esc(pr.name) + '</strong><span class="small muted">' + esc(why) + '</span></div><div class="nudge-act"><span class="num nudge-price">' + jm(l.price) + '</span><button class="btn small" data-act="cartadd" data-id="' + id + '">Add to bag</button><button class="linkbtn small" data-act="nudgehide" data-key="' + key + '">Not now</button></div></section>';
+  }
+  function renderStore() {
+    var p = P(), cfg = OM.STORE;
+    var h = '<section class="dayhead"><span class="label">Delivered to Jamaica in ' + esc(cfg.leadTime) + '</span><h1>OMGym Store</h1><p class="small muted">Prices include shipping, customs duty and GCT. Pay and arrange delivery with OMGym on WhatsApp.</p></section>';
+    // bag
+    var ord = OM.orderText(S.cart || {}, cfg, S.orderName);
+    if (ord.count) {
+      h += '<section class="card hero bag"><div class="cardhead"><h3>Your bag</h3><span class="num" style="font-family:var(--display);font-weight:800;font-size:1.5rem">' + jm(ord.total) + '</span></div>';
+      Object.keys(S.cart).forEach(function (id) {
+        var q = S.cart[id]; if (!q) return; var pr = prod(id); if (!pr) return;
+        h += '<div class="bagrow"><span>' + esc(pr.name) + ' <span class="small muted">' + esc(pr.size.split(' · ')[0]) + '</span></span><span class="qty"><button class="iconbtn sm" data-act="cartdec" data-id="' + id + '" aria-label="One fewer">−</button><span class="num">' + q + '</span><button class="iconbtn sm" data-act="cartadd" data-id="' + id + '" aria-label="One more">+</button></span><span class="num">' + jm(OM.landed(pr).price * q) + '</span></div>';
+      });
+      h += '<div class="formrow"><label class="f" for="order-name">Your name</label><input id="order-name" type="text" autocomplete="name" value="' + esc(S.orderName || '') + '" placeholder="So OMGym knows who is ordering"></div>';
+      if (cfg.whatsapp) h += '<a class="btn wa" id="wa-link" href="https://wa.me/' + cfg.whatsapp + '?text=' + encodeURIComponent(ord.text) + '" target="_blank" rel="noopener">Send order on WhatsApp</a>';
+      h += '<details><summary class="small">Or copy the order</summary><textarea id="order-text" readonly rows="6">' + esc(ord.text) + '</textarea><button class="btn ghost small" data-act="copyorder">' + (orderCopied ? 'Copied' : 'Copy order') + '</button>' + (cfg.whatsapp ? '<p class="small muted">WhatsApp: +' + cfg.whatsapp.replace(/^1(\d{3})(\d{3})(\d{4})$/, '1 ($1) $2-$3') + '</p>' : '') + '</details>';
+      h += '<p class="small muted">Nothing is charged here. OMGym confirms the price, payment and delivery with you on WhatsApp.</p></section>';
+    }
+    var cats = [['all', 'All'], ['protein', 'Protein'], ['creatine', 'Creatine'], ['preworkout', 'Pre-workout'], ['gear', 'Gym gear']];
+    h += '<div class="seg" role="group" aria-label="Category">' + cats.map(function (c) { return '<button class="chip" data-act="storecat" data-c="' + c[0] + '" aria-pressed="' + (storeCat === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</div>';
+    var hiddenStim = false;
+    h += '<section class="products">';
+    OM.PRODUCTS.forEach(function (pr) {
+      if (storeCat !== 'all' && pr.cat !== storeCat) return;
+      var v = OM.productView(pr, isExample() ? null : p);
+      if (v.hidden) { hiddenStim = true; return; }
+      var l = OM.landed(pr), q = (S.cart || {})[pr.id] || 0;
+      h += '<article class="prod"><div class="prod-top"><span class="pill">' + ({ protein: 'Protein', creatine: 'Creatine', preworkout: 'Pre-workout', gear: 'Gym gear' }[pr.cat]) + '</span>' + (v.conflict.length ? '<span class="pill estimate">Contains ' + esc(v.conflict.map(function (t) { return t === 'dairy' ? 'milk' : t; }).join(', ')) + '</span>' : '') + '</div>';
+      h += '<h3>' + esc(pr.name) + '</h3><p class="small muted">' + esc(pr.size) + '</p><p class="small">' + esc(pr.desc) + '</p>';
+      h += '<div class="prod-foot"><div><div class="num prod-price">' + jm(l.price) + '</div>' + (l.perServing ? '<div class="small muted num">' + jm(l.perServing) + ' a serving · ' + esc(pr.perServing) + '</div>' : '') + '</div>';
+      h += q ? '<span class="qty"><button class="iconbtn sm" data-act="cartdec" data-id="' + pr.id + '" aria-label="One fewer">−</button><span class="num">' + q + '</span><button class="iconbtn sm" data-act="cartadd" data-id="' + pr.id + '" aria-label="One more">+</button></span>' : '<button class="btn small" data-act="cartadd" data-id="' + pr.id + '">Add to bag</button>';
+      h += '</div></article>';
+    });
+    h += '</section>';
+    if (hiddenStim) h += '<div class="flag info">Pre-workout is hidden for you because of your health answers. It contains caffeine; check with your doctor first.</div>';
+    h += '<p class="small muted">Supplements are optional: your meal plan reaches its targets with food. Supplement claims are not evaluated by health authorities.</p>';
+    // seller view
+    h += '<section class="card"><div class="cardhead"><h3>Seller view</h3><button class="chip" data-act="sellerview" aria-pressed="' + !!S.sellerView + '">' + (S.sellerView ? 'On' : 'Off') + '</button></div>';
+    if (S.sellerView) {
+      h += '<p class="small muted">How each price is built. ' + esc(OM.PRODUCT_PRICES_NOTE) + '</p><div class="tablewrap"><table class="small"><thead><tr><th>Item</th><th class="r">Amazon</th><th class="r">Goods J$</th><th class="r">Freight</th><th class="r">Duty</th><th class="r">GCT</th><th class="r">Fees</th><th class="r">Landed</th><th class="r">Price</th><th class="r">Profit</th></tr></thead><tbody>';
+      OM.PRODUCTS.forEach(function (pr) { var l = OM.landed(pr); h += '<tr><td>' + esc(pr.name.replace('Optimum Nutrition', 'ON')) + ' ' + esc(pr.size.split(' · ')[0]) + '</td><td class="r">US$' + pr.usd.toFixed(2) + '</td><td class="r">' + jm(l.goods) + '</td><td class="r">' + jm(l.freight) + '</td><td class="r">' + jm(l.duty) + '</td><td class="r">' + jm(l.gct) + '</td><td class="r">' + jm(l.fees) + '</td><td class="r">' + jm(l.cost) + '</td><td class="r"><strong>' + jm(l.price) + '</strong></td><td class="r">' + jm(l.profit) + '</td></tr>'; });
+      h += '</tbody></table></div><ul class="lines small muted"><li>' + esc(cfg.fxNote) + ' → J$' + cfg.fx + '.</li><li>' + esc(cfg.usTaxNote) + '.</li><li>' + esc(cfg.freightNote) + '.</li><li>' + esc(cfg.dutyNote) + '.</li><li>Markup ' + Math.round(cfg.markup * 100) + '% on landed cost, rounded up to J$' + cfg.roundTo + '.</li><li>Supplements need a Ministry of Health import permit before they are imported for sale.</li></ul>';
+    }
+    h += '</section>';
+    return h;
+  }
+
   function renderProgress() {
     var p = P(), T = targets();
     var ws = weights().slice().sort(function (a, b) { return a.d < b.d ? -1 : 1; });
@@ -310,9 +373,10 @@
 
   function render() {
     var v = $('#view');
-    var fn = { today: renderToday, food: renderFood, shop: renderShop, progress: renderProgress, me: renderMe }[tab];
+    var fn = { today: renderToday, food: renderFood, shop: renderShop, store: renderStore, progress: renderProgress, me: renderMe }[tab];
     v.innerHTML = fn();
     document.querySelectorAll('nav.tabs button').forEach(function (b) { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    var badge = document.getElementById('bagcount'), n = cartCount(); if (badge) { badge.textContent = n; badge.hidden = !n; }
   }
   function go(t) { tab = t; render(); window.scrollTo(0, 0); }
 
@@ -481,6 +545,16 @@
         dd.sets[ex] = ticking ? n : n - 1; save(); render();
         if (ticking) startRest(+t.dataset.rest || 60); break;
       case 'skiprest': stopRest(); break;
+      case 'cartadd': S.cart = S.cart || {}; S.cart[t.dataset.id] = (S.cart[t.dataset.id] || 0) + 1; orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
+      case 'cartdec': S.cart[t.dataset.id] = Math.max(0, (S.cart[t.dataset.id] || 0) - 1); if (!S.cart[t.dataset.id]) delete S.cart[t.dataset.id]; orderCopied = false; save(); render(); break;
+      case 'storecat': storeCat = t.dataset.c; render(); break;
+      case 'sellerview': S.sellerView = !S.sellerView; save(); render(); break;
+      case 'nudgehide': S.nudgeHide = S.nudgeHide || {}; S.nudgeHide[t.dataset.key] = true; save(); render(); break;
+      case 'copyorder':
+        var ta = document.getElementById('order-text');
+        var done = function () { orderCopied = true; toast('Order copied'); var b = t; b.textContent = 'Copied'; };
+        try { navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); toast('Press and hold to copy'); }); } catch (e) { ta.select(); toast('Press and hold to copy'); }
+        break;
       case 'done': if (needSetup()) break; day(TODAY).done = true; trim(); save(); render(); toast('Workout logged. Nice work.'); break;
       case 'undone': day(TODAY).done = false; save(); render(); break;
       case 'habit': if (needSetup()) break; var hd = day(TODAY); hd.habits[t.dataset.h] = !hd.habits[t.dataset.h]; save(); render(); break;
@@ -511,6 +585,15 @@
         try { localStorage.removeItem(LSKEY); } catch (e) { }
         if (store.kind === 'db') store.ref.delete().catch(function () { });
         go('today'); toast('Everything deleted'); break;
+    }
+  });
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t.id === 'order-name') {
+      S.orderName = t.value; save();
+      var ord = OM.orderText(S.cart || {}, OM.STORE, S.orderName), a = document.getElementById('wa-link'), ta = document.getElementById('order-text');
+      if (a) a.href = 'https://wa.me/' + OM.STORE.whatsapp + '?text=' + encodeURIComponent(ord.text);
+      if (ta) ta.value = ord.text;
     }
   });
   document.addEventListener('change', function (ev) {
