@@ -46,7 +46,7 @@
     Object.keys(S.nudgeHide || {}).forEach(function (k) { if (k.slice(0, 10) < OM.addDays(TODAY, -3)) delete S.nudgeHide[k]; });
     if (S.weights.length > 400) S.weights = S.weights.slice(-400);
   }
-  function adopt(data) { if (data && data.profile) { var f = freshState(); Object.keys(f).forEach(function (k) { if (data[k] != null) f[k] = data[k]; }); S = JSON.parse(JSON.stringify(f)); } }
+  function adopt(data) { if (data && data.profile) { var f = freshState(); Object.keys(f).forEach(function (k) { if (data[k] != null) f[k] = data[k]; }); S = JSON.parse(JSON.stringify(f)); S.cart = OM.normalizeCart(S.cart); } }
   function initStore() {
     var local = null;
     try { var raw = localStorage.getItem(LSKEY); if (raw) local = JSON.parse(raw); } catch (e) { }
@@ -237,31 +237,52 @@
       '<circle cx="' + sx(last[0]).toFixed(1) + '" cy="' + sy(last[1]).toFixed(1) + '" r="5" fill="var(--iron)" stroke="var(--surface)" stroke-width="2"/>' + lbl + '</svg>';
   }
   /* ---------- store ---------- */
-  function prod(id) { return OM.PRODUCTS.filter(function (x) { return x.id === id; })[0]; }
+  function prod(id) { return OM.productById(id); }
+  var pickVar = {};
+  function inCart(id) { return Object.keys(S.cart || {}).some(function (k) { return k === id || k.indexOf(id + '.') === 0; }); }
+  // seller mode is remembered on this device only, so order links never show costs to customers
+  function sellerOn() { try { return localStorage.getItem('omgym-seller') === '1'; } catch (e) { return !!S.sellerView; } }
+  function setSeller(on) { try { localStorage.setItem('omgym-seller', on ? '1' : '0'); } catch (e) { } S.sellerView = on; }
+  // simple drawn pictures (generic, no brand artwork)
+  var PICS = {
+    tub: '<rect class="pa" x="36" y="12" width="48" height="12" rx="3"/><rect class="ps" x="31" y="22" width="58" height="62" rx="9"/><rect class="pb" x="32.5" y="40" width="55" height="24"/><path class="pw" d="M45 52h30"/>',
+    plant: '<rect class="pa" x="36" y="12" width="48" height="12" rx="3"/><rect class="ps" x="31" y="22" width="58" height="62" rx="9"/><path class="pb" d="M60 70c-14-4-18-18-12-30 10 2 18 12 12 30z"/><path class="pl" d="M60 70c-2-10-6-18-12-30"/>',
+    jar: '<rect class="pa" x="44" y="16" width="32" height="10" rx="3"/><rect class="ps" x="40" y="24" width="40" height="60" rx="8"/><rect class="pb" x="41.5" y="44" width="37" height="18"/><circle class="pw2" cx="60" cy="53" r="4"/>',
+    bolt: '<rect class="pa" x="38" y="14" width="44" height="11" rx="3"/><rect class="ps" x="34" y="23" width="52" height="61" rx="9"/><path class="pb" d="M63 34L50 56h10l-4 18 14-24H60z"/>',
+    gloves: '<rect class="ps" x="40" y="34" width="40" height="38" rx="10"/><rect class="ps" x="40" y="20" width="9" height="18" rx="4.5"/><rect class="ps" x="50.5" y="16" width="9" height="22" rx="4.5"/><rect class="ps" x="61" y="17" width="9" height="21" rx="4.5"/><rect class="ps" x="71" y="22" width="9" height="16" rx="4.5"/><rect class="ps" x="28" y="44" width="16" height="9" rx="4.5" transform="rotate(-35 36 48)"/><rect class="pb" x="38" y="70" width="44" height="12" rx="4"/>',
+    rope: '<path class="pl" d="M30 28c-6 40 66 60 60 0"/><rect class="pa" x="24" y="10" width="12" height="26" rx="6"/><rect class="pb" x="84" y="10" width="12" height="26" rx="6"/>',
+    bands: '<ellipse class="pr1" cx="48" cy="50" rx="26" ry="16"/><ellipse class="pr2" cx="66" cy="44" rx="26" ry="16"/><ellipse class="pr3" cx="60" cy="60" rx="26" ry="16"/>',
+    shaker: '<rect class="pa" x="46" y="10" width="28" height="12" rx="4"/><path class="pl" d="M74 14c10 0 10 12 0 12"/><path class="ps" d="M42 22h36l-4 62H46z"/><path class="pb" d="M44.5 50h31l-1.6 22h-27.8z"/>',
+    straps: '<rect class="ps" x="22" y="40" width="76" height="16" rx="8"/><rect class="pb" x="22" y="40" width="24" height="16" rx="8"/><path class="pl" d="M92 48c8-10 8-24-6-24"/>',
+    wraps: '<circle class="ps" cx="48" cy="52" r="20"/><circle class="pb" cx="48" cy="52" r="8"/><path class="ps" d="M66 44h28v16H66z"/><path class="pl" d="M94 52c10 0 10-16 0-16"/>'
+  };
+  function pic(kind, cls) { return '<div class="' + (cls || 'pic') + '" aria-hidden="true"><svg viewBox="0 0 120 96">' + (PICS[kind] || PICS.tub) + '</svg></div>'; }
   function jm(v) { return 'J$' + Math.round(v).toLocaleString('en-US'); }
   function cartCount() { return Object.keys(S.cart || {}).reduce(function (a, k) { return a + (S.cart[k] || 0); }, 0); }
   function nudge(id, why) {
     var pr = prod(id); if (!pr) return '';
     var key = TODAY + ':' + id;
-    if ((S.nudgeHide || {})[key] || (S.cart || {})[id] || OM.productView(pr, P()).hidden) return '';
+    if ((S.nudgeHide || {})[key] || inCart(id) || OM.productView(pr, P()).hidden) return '';
     var l = OM.landed(pr);
-    return '<section class="nudge"><div class="nudge-txt"><span class="label">From the OMGym Store</span><strong>' + esc(pr.name) + '</strong><span class="small muted">' + esc(why) + '</span></div><div class="nudge-act"><span class="num nudge-price">' + jm(l.price) + '</span><button class="btn small" data-act="cartadd" data-id="' + id + '">Add to bag</button><button class="linkbtn small" data-act="nudgehide" data-key="' + key + '">Not now</button></div></section>';
+    var addBtn = pr.variants ? '<button class="btn small" data-act="gostore" data-id="' + id + '">Choose ' + esc(pr.vlabel.toLowerCase()) + '</button>' : '<button class="btn small" data-act="cartadd" data-key="' + OM.cartKey(id) + '">Add to bag</button>';
+    return '<section class="nudge">' + pic(pr.pic, 'pic sm') + '<div class="nudge-txt"><span class="label">From the OMGym Store</span><strong>' + esc(pr.name) + '</strong><span class="small muted">' + esc(why) + '</span></div><div class="nudge-act"><span class="num nudge-price">' + jm(l.price) + '</span>' + addBtn + '<button class="linkbtn small" data-act="nudgehide" data-key="' + key + '">Not now</button></div></section>';
   }
   function renderStore() {
     var p = P(), cfg = OM.STORE;
     var h = '<section class="dayhead"><span class="label">Delivered to Jamaica in ' + esc(cfg.leadTime) + '</span><h1>OMGym Store</h1><p class="small muted">Prices include shipping, customs duty and GCT. Pay and arrange delivery with OMGym on WhatsApp.</p></section>';
     // bag
-    var ord = OM.orderText(S.cart || {}, cfg, S.orderName);
+    S.cart = OM.normalizeCart(S.cart);
+    var ord = OM.orderText(S.cart, cfg, S.orderName, TODAY);
     if (ord.count) {
-      h += '<section class="card hero bag"><div class="cardhead"><h3>Your bag</h3><span class="num" style="font-family:var(--display);font-weight:800;font-size:1.5rem">' + jm(ord.total) + '</span></div>';
-      Object.keys(S.cart).forEach(function (id) {
-        var q = S.cart[id]; if (!q) return; var pr = prod(id); if (!pr) return;
-        h += '<div class="bagrow"><span>' + esc(pr.name) + ' <span class="small muted">' + esc(pr.size.split(' · ')[0]) + '</span></span><span class="qty"><button class="iconbtn sm" data-act="cartdec" data-id="' + id + '" aria-label="One fewer">−</button><span class="num">' + q + '</span><button class="iconbtn sm" data-act="cartadd" data-id="' + id + '" aria-label="One more">+</button></span><span class="num">' + jm(OM.landed(pr).price * q) + '</span></div>';
+      h += '<section class="card hero bag"><div class="cardhead"><div><h3>Your bag</h3><span class="small muted num">Order ' + esc(ord.id) + '</span></div><span class="num" style="font-family:var(--display);font-weight:800;font-size:1.5rem">' + jm(ord.total) + '</span></div>';
+      Object.keys(S.cart).forEach(function (k) {
+        var q = S.cart[k], pk = OM.parseKey(k); if (!q || !pk) return;
+        h += '<div class="bagrow">' + pic(pk.prod.pic, 'pic xs bp') + '<span class="bn">' + esc(pk.prod.name) + ' <span class="small muted">' + esc(pk.prod.size.split(' · ')[0]) + '</span>' + (pk.variant ? '<br><span class="small"><strong>' + esc(pk.variant.label) + '</strong></span>' : '') + '</span><span class="qty bq"><button class="iconbtn sm" data-act="cartdec" data-key="' + k + '" aria-label="One fewer">−</button><span class="num">' + q + '</span><button class="iconbtn sm" data-act="cartadd" data-key="' + k + '" aria-label="One more">+</button></span><span class="num br">' + jm(OM.landed(pk.prod).price * q) + '</span></div>';
       });
       h += '<div class="formrow"><label class="f" for="order-name">Your name</label><input id="order-name" type="text" autocomplete="name" value="' + esc(S.orderName || '') + '" placeholder="So OMGym knows who is ordering"></div>';
       if (cfg.whatsapp) h += '<a class="btn wa" id="wa-link" href="https://wa.me/' + cfg.whatsapp + '?text=' + encodeURIComponent(ord.text) + '" target="_blank" rel="noopener">Send order on WhatsApp</a>';
       h += '<details><summary class="small">Or copy the order</summary><textarea id="order-text" readonly rows="6">' + esc(ord.text) + '</textarea><button class="btn ghost small" data-act="copyorder">' + (orderCopied ? 'Copied' : 'Copy order') + '</button>' + (cfg.whatsapp ? '<p class="small muted">WhatsApp: +' + cfg.whatsapp.replace(/^1(\d{3})(\d{3})(\d{4})$/, '1 ($1) $2-$3') + '</p>' : '') + '</details>';
-      h += '<p class="small muted">Nothing is charged here. OMGym confirms the price, payment and delivery with you on WhatsApp.</p></section>';
+      h += '<p class="small muted">Nothing is charged here. OMGym confirms the price, payment and delivery with you on WhatsApp.</p><div><button class="linkbtn small" data-act="emptybag">Empty the bag</button></div></section>';
     }
     var cats = [['all', 'All'], ['protein', 'Protein'], ['creatine', 'Creatine'], ['preworkout', 'Pre-workout'], ['gear', 'Gym gear']];
     h += '<div class="seg" role="group" aria-label="Category">' + cats.map(function (c) { return '<button class="chip" data-act="storecat" data-c="' + c[0] + '" aria-pressed="' + (storeCat === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</div>';
@@ -271,19 +292,22 @@
       if (storeCat !== 'all' && pr.cat !== storeCat) return;
       var v = OM.productView(pr, isExample() ? null : p);
       if (v.hidden) { hiddenStim = true; return; }
-      var l = OM.landed(pr), q = (S.cart || {})[pr.id] || 0;
-      h += '<article class="prod"><div class="prod-top"><span class="pill">' + ({ protein: 'Protein', creatine: 'Creatine', preworkout: 'Pre-workout', gear: 'Gym gear' }[pr.cat]) + '</span>' + (v.conflict.length ? '<span class="pill estimate">Contains ' + esc(v.conflict.map(function (t) { return t === 'dairy' ? 'milk' : t; }).join(', ')) + '</span>' : '') + '</div>';
+      var l = OM.landed(pr), chosen = OM.variantOf(pr, pickVar[pr.id]), key = OM.cartKey(pr.id, chosen && chosen.id), q = (S.cart || {})[key] || 0;
+      h += '<article class="prod">' + pic(pr.pic) + '<div class="prod-top"><span class="pill">' + ({ protein: 'Protein', creatine: 'Creatine', preworkout: 'Pre-workout', gear: 'Gym gear' }[pr.cat]) + '</span>' + (v.conflict.length ? '<span class="pill estimate">Contains ' + esc(v.conflict.map(function (t) { return t === 'dairy' ? 'milk' : t; }).join(', ')) + '</span>' : '') + '</div>';
       h += '<h3>' + esc(pr.name) + '</h3><p class="small muted">' + esc(pr.size) + '</p><p class="small">' + esc(pr.desc) + '</p>';
+      if (pr.variants) h += '<div class="formrow"><label class="small" for="var-' + pr.id + '"><strong>' + esc(pr.vlabel) + '</strong></label><select id="var-' + pr.id + '" data-act="pickvar" data-id="' + pr.id + '">' + pr.variants.map(function (v) { return '<option value="' + v.id + '"' + (chosen && v.id === chosen.id ? ' selected' : '') + '>' + esc(v.label) + '</option>'; }).join('') + '</select></div>';
       h += '<div class="prod-foot"><div><div class="num prod-price">' + jm(l.price) + '</div>' + (l.perServing ? '<div class="small muted num">' + jm(l.perServing) + ' a serving · ' + esc(pr.perServing) + '</div>' : '') + '</div>';
-      h += q ? '<span class="qty"><button class="iconbtn sm" data-act="cartdec" data-id="' + pr.id + '" aria-label="One fewer">−</button><span class="num">' + q + '</span><button class="iconbtn sm" data-act="cartadd" data-id="' + pr.id + '" aria-label="One more">+</button></span>' : '<button class="btn small" data-act="cartadd" data-id="' + pr.id + '">Add to bag</button>';
+      h += q ? '<span class="qty"><button class="iconbtn sm" data-act="cartdec" data-key="' + key + '" aria-label="One fewer">−</button><span class="num">' + q + '</span><button class="iconbtn sm" data-act="cartadd" data-key="' + key + '" aria-label="One more">+</button></span>' : '<button class="btn small" data-act="cartadd" data-key="' + key + '">Add to bag</button>';
       h += '</div></article>';
     });
     h += '</section>';
     if (hiddenStim) h += '<div class="flag info">Pre-workout is hidden for you because of your health answers. It contains caffeine; check with your doctor first.</div>';
     h += '<p class="small muted">Supplements are optional: your meal plan reaches its targets with food. Supplement claims are not evaluated by health authorities.</p>';
     // seller view
-    h += '<section class="card"><div class="cardhead"><h3>Seller view</h3><button class="chip" data-act="sellerview" aria-pressed="' + !!S.sellerView + '">' + (S.sellerView ? 'On' : 'Off') + '</button></div>';
-    if (S.sellerView) {
+    var sv = sellerOn();
+    h += '<section class="card"><div class="cardhead"><h3>Seller view</h3><button class="chip" data-act="sellerview" aria-pressed="' + sv + '">' + (sv ? 'On' : 'Off') + '</button></div>';
+    if (sv) h += '<p class="small muted">Seller view is on for this phone only. Order links you receive on WhatsApp will show your cost and profit here; customers who open a link see only the items.</p>';
+    if (sv) {
       h += '<p class="small muted">How each price is built. ' + esc(OM.PRODUCT_PRICES_NOTE) + '</p><div class="tablewrap"><table class="small"><thead><tr><th>Item</th><th class="r">Amazon</th><th class="r">Goods J$</th><th class="r">Freight</th><th class="r">Duty</th><th class="r">GCT</th><th class="r">Fees</th><th class="r">Landed</th><th class="r">Price</th><th class="r">Profit</th></tr></thead><tbody>';
       OM.PRODUCTS.forEach(function (pr) { var l = OM.landed(pr); h += '<tr><td>' + esc(pr.name.replace('Optimum Nutrition', 'ON')) + ' ' + esc(pr.size.split(' · ')[0]) + '</td><td class="r">US$' + pr.usd.toFixed(2) + '</td><td class="r">' + jm(l.goods) + '</td><td class="r">' + jm(l.freight) + '</td><td class="r">' + jm(l.duty) + '</td><td class="r">' + jm(l.gct) + '</td><td class="r">' + jm(l.fees) + '</td><td class="r">' + jm(l.cost) + '</td><td class="r"><strong>' + jm(l.price) + '</strong></td><td class="r">' + jm(l.profit) + '</td></tr>'; });
       h += '</tbody></table></div><h4 class="small">Where each Amazon price came from</h4><ul class="lines small" id="pricesources">';
@@ -291,6 +315,35 @@
       h += '</ul><ul class="lines small muted"><li>' + esc(cfg.fxNote) + ' → J$' + cfg.fx + '.</li><li>' + esc(cfg.usTaxNote) + '.</li><li>' + esc(cfg.freightNote) + '.</li><li>' + esc(cfg.dutyNote) + '.</li><li>Markup ' + Math.round(cfg.markup * 100) + '% on landed cost, rounded up to J$' + cfg.roundTo + '.</li><li>Supplements need a Ministry of Health import permit before they are imported for sale.</li></ul>';
     }
     h += '</section>';
+    return h;
+  }
+
+  /* ---------- order sheet: what to buy on Amazon for one customer order ---------- */
+  var ORDER = OM.parseOrder(location.search);
+  function orderTicks() { try { return JSON.parse(localStorage.getItem('omgym-orders') || '{}'); } catch (e) { return {}; } }
+  function renderOrder() {
+    var o = ORDER, cfg = OM.STORE, ticks = orderTicks()[o.id] || {}, sv = sellerOn();
+    var h = '<section class="dayhead"><span class="label">Customer order' + (o.name ? ' · ' + esc(o.name) : '') + '</span><h1>Order <span class="nowrap">' + esc(o.id || '') + '</span></h1></section>';
+    if (!o.lines.length) return h + '<div class="flag warn">This order link has no items OMGym recognises. Ask the customer to send it again from the Store.</div><div><button class="btn" data-act="closeorder">Open OMGym</button></div>';
+    var t = OM.orderSummary(o.lines, cfg);
+    h += '<section class="kpis"><div class="kpi"><div class="v num">US$' + t.usd.toFixed(2) + '</div><div class="u">on Amazon, before tax</div></div><div class="kpi"><div class="v num">' + t.items + '</div><div class="u">items</div></div><div class="kpi"><div class="v num">' + (Math.round(t.lb * 10) / 10) + ' lb</div><div class="u">to ship</div></div></section>';
+    h += '<p class="small muted">Buy these on Amazon and ship them to your forwarder. Check each price on Amazon before you pay; the customer was quoted <strong>' + jm(t.price) + '</strong>.</p>';
+    h += '<section class="card">';
+    o.lines.forEach(function (ln) {
+      var pk = ln.pk, a = OM.amazonLink(pk.prod, pk.variant), done = !!ticks[pk.key];
+      h += '<div class="orderrow' + (done ? ' ticked' : '') + '">' + pic(pk.prod.pic, 'pic sm') + '<div class="ordinfo"><div class="nm"><strong>' + ln.qty + ' × ' + esc(pk.prod.name) + '</strong></div><div class="small">' + esc(pk.prod.size.split(' · ')[0]) + (pk.variant ? ' · ' + esc(pk.prod.vlabel) + ': <strong>' + esc(pk.variant.label) + '</strong>' : '') + '</div><div class="small muted num">About US$' + pk.prod.usd.toFixed(2) + ' each · ' + pk.prod.lb + ' lb each</div><div class="ordact"><a class="btn small" href="' + esc(a.url) + '" target="_blank" rel="noopener">' + (a.exact ? 'Open on Amazon' : 'Find on Amazon') + '</a><label class="small tick"><input type="checkbox" data-act="ordtick" data-key="' + esc(pk.key) + '"' + (done ? ' checked' : '') + '> Ordered</label></div>' + (a.exact ? '' : '<div class="small muted">Search link: pick the listing that matches the size' + (pk.variant && pk.prod.vlabel === 'Flavour' ? ' and flavour' : '') + ' above.</div>') + '</div></div>';
+    });
+    h += '</section>';
+    if (sv) {
+      h += '<section class="card"><h3>Your numbers</h3><div class="tablewrap"><table class="small"><tbody>' +
+        '<tr><td>Amazon, before tax</td><td class="r">US$' + t.usd.toFixed(2) + '</td></tr>' +
+        '<tr><td>Amazon with 7% Florida tax (refundable with the airway bill)</td><td class="r">US$' + t.usdTax.toFixed(2) + '</td></tr>' +
+        '<tr><td>Freight, ' + (Math.round(t.lb * 10) / 10) + ' lb at J$' + cfg.freightPerLb + '</td><td class="r">' + jm(t.freight) + '</td></tr>' +
+        '<tr><td>Landed cost incl. duty, GCT and fees</td><td class="r">' + jm(t.cost) + '</td></tr>' +
+        '<tr><td>Customer pays</td><td class="r"><strong>' + jm(t.price) + '</strong></td></tr>' +
+        '<tr><td>Your profit</td><td class="r"><strong>' + jm(t.profit) + '</strong></td></tr></tbody></table></div><p class="small muted">Worked out with today\'s prices in the app (J$' + cfg.fx + ' per US$). If Amazon\'s price has moved, your profit moves with it.</p></section>';
+    }
+    h += '<div><button class="btn ghost" data-act="closeorder">Open OMGym</button></div>';
     return h;
   }
 
@@ -375,12 +428,14 @@
 
   function render() {
     var v = $('#view');
+    if (ORDER) { v.innerHTML = renderOrder(); document.querySelectorAll('nav.tabs button').forEach(function (b) { b.removeAttribute('aria-current'); }); return; }
     var fn = { today: renderToday, food: renderFood, shop: renderShop, store: renderStore, progress: renderProgress, me: renderMe }[tab];
     v.innerHTML = fn();
     document.querySelectorAll('nav.tabs button').forEach(function (b) { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var badge = document.getElementById('bagcount'), n = cartCount(); if (badge) { badge.textContent = n; badge.hidden = !n; }
   }
-  function go(t) { tab = t; render(); window.scrollTo(0, 0); }
+  function go(t) { if (ORDER) closeOrder(); tab = t; render(); window.scrollTo(0, 0); }
+  function closeOrder() { ORDER = null; try { history.replaceState(null, '', location.pathname); } catch (e) { } }
 
   /* ---------- setup sheet ---------- */
   var draft = null, step = 0, stepErr = '';
@@ -547,10 +602,13 @@
         dd.sets[ex] = ticking ? n : n - 1; save(); render();
         if (ticking) startRest(+t.dataset.rest || 60); break;
       case 'skiprest': stopRest(); break;
-      case 'cartadd': S.cart = S.cart || {}; S.cart[t.dataset.id] = (S.cart[t.dataset.id] || 0) + 1; orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
-      case 'cartdec': S.cart[t.dataset.id] = Math.max(0, (S.cart[t.dataset.id] || 0) - 1); if (!S.cart[t.dataset.id]) delete S.cart[t.dataset.id]; orderCopied = false; save(); render(); break;
+      case 'cartadd': S.cart = S.cart || {}; var ak = t.dataset.key || OM.cartKey(t.dataset.id); S.cart[ak] = Math.min(50, (S.cart[ak] || 0) + 1); orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
+      case 'cartdec': var dk = t.dataset.key || t.dataset.id; S.cart[dk] = Math.max(0, (S.cart[dk] || 0) - 1); if (!S.cart[dk]) delete S.cart[dk]; orderCopied = false; save(); render(); break;
+      case 'emptybag': S.cart = {}; orderCopied = false; save(); render(); break;
+      case 'gostore': storeCat = 'all'; go('store'); var el = document.getElementById('var-' + t.dataset.id); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } break;
+      case 'closeorder': closeOrder(); go('store'); break;
       case 'storecat': storeCat = t.dataset.c; render(); break;
-      case 'sellerview': S.sellerView = !S.sellerView; save(); render(); break;
+      case 'sellerview': setSeller(!sellerOn()); save(); render(); break;
       case 'nudgehide': S.nudgeHide = S.nudgeHide || {}; S.nudgeHide[t.dataset.key] = true; save(); render(); break;
       case 'copyorder':
         var ta = document.getElementById('order-text');
@@ -593,13 +651,15 @@
     var t = ev.target;
     if (t.id === 'order-name') {
       S.orderName = t.value; save();
-      var ord = OM.orderText(S.cart || {}, OM.STORE, S.orderName), a = document.getElementById('wa-link'), ta = document.getElementById('order-text');
+      var ord = OM.orderText(S.cart || {}, OM.STORE, S.orderName, TODAY), a = document.getElementById('wa-link'), ta = document.getElementById('order-text');
       if (a) a.href = 'https://wa.me/' + OM.STORE.whatsapp + '?text=' + encodeURIComponent(ord.text);
       if (ta) ta.value = ord.text;
     }
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    if (t.dataset && t.dataset.act === 'pickvar') { pickVar[t.dataset.id] = t.value; render(); var el = document.getElementById('var-' + t.dataset.id); if (el) el.focus(); return; }
+    if (t.dataset && t.dataset.act === 'ordtick' && ORDER) { var all = orderTicks(), mine = all[ORDER.id] = all[ORDER.id] || {}; mine[t.dataset.key] = t.checked; try { localStorage.setItem('omgym-orders', JSON.stringify(all)); } catch (e) { } render(); return; }
     if (t.dataset && t.dataset.act === 'load') {
       if (needSetup()) { t.value = ''; return; }
       var dd = day(TODAY); dd.loads = dd.loads || {};

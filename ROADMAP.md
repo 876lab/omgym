@@ -25,6 +25,7 @@
 - Store tab sells supplements and gym gear the owner buys on Amazon and ships through a Miami freight forwarder. Orders go to the owner's WhatsApp (+1 658 218 4432); nothing is charged in the app.
 - Price = (Amazon price + 7% Miami-Dade sales tax) × FX, + J$600/lb freight, + Jamaica Customs (20% duty on CIF, 15% GCT on CIF + duty, 0.3% standards fee, 0.5% environmental levy, J$100 stamp duty over J$5,500 CIF), then 15% markup on landed cost, rounded up to J$50. Settings live in `STORE` in `src/core.js`; products in `PRODUCTS`.
 - Rules: keep the markup at 15% and freight at J$600/lb unless the owner changes them; never show pre-workout (caffeine) to under-18s, pregnant users or anyone with a health-screen "yes"; flag milk in whey for vegan or dairy-free users; add-on prompts stay one per screen, dismissible, with no fake scarcity, countdowns or invented reviews.
+- Orders: the customer's WhatsApp message ends with an order link (`?o=`, `&id=`, `&n=`) to the public site, which opens the order sheet with Amazon links. Bag keys are `productId.variantId`. Exact Amazon links (`asin`) only for listings actually seen on Amazon; everything else uses a search link with the product, size and flavour. Cost and profit on the order sheet only when Seller view is on for that phone (`localStorage['omgym-seller']`).
 - Legal: supplements need a Ministry of Health import permit (Pharmaceutical Chemical and Food Additives Import Permit; one permit covers up to ten products) and post-import inspection by FSPID for processed foods. The owner should also register the business and check GCT registration with TAJ.
 
 ## Backlog
@@ -40,6 +41,8 @@
 - [ ] Meal-prep view: cook once, eat three days.
 - [ ] Suggest next session's weights from logged loads (add 2.5–5% when all sets hit the top of the range).
 - [ ] Simple exercise illustrations (no copyrighted images).
+- [ ] Owner's own product photos for the Store once stock arrives (replace the drawn pictures; never copy Amazon or brand photos).
+- [ ] Add exact Amazon listings (ASINs) for the other Store items once the owner sends the links he buys from.
 - [ ] Monthly price refresh from the CAC grocery survey and Observer Market Bag.
 - [ ] Sync between the Home Screen app and the claude.ai version (needs the owner's decision on accounts).
 

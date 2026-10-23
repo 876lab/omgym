@@ -204,6 +204,29 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   // whey 5 lb reflects the Oct 2026 tracker price, and the store never sells below landed cost
   ok(whey.usd === 114.99, 'whey 5 lb at Oct 2026 Amazon tracker price');
   for (const pr of OM.PRODUCTS) ok(OM.landed(pr).profit > 0, 'positive margin ' + pr.id);
+  // flavours, Amazon links, order links
+  ok(OM.cartKey('on-whey-5') === 'on-whey-5.drc' && OM.cartKey('jump-rope') === 'jump-rope', 'default flavour key');
+  const merged = OM.normalizeCart({ 'on-whey-5': 1, 'on-whey-5.drc': 2, 'on-whey-5.nope': 1, 'ghost': 3, 'gloves.l': 0 });
+  ok(merged['on-whey-5.drc'] === 4 && Object.keys(merged).length === 1, 'old bag keys merge into one line: ' + JSON.stringify(merged));
+  const a1 = OM.amazonLink(whey, OM.variantOf(whey, 'vic'));
+  ok(a1.exact && a1.url === 'https://www.amazon.com/dp/B000GISU1M', 'exact Amazon link for a flavour seen on Amazon');
+  const iso = OM.productById('iso100-5'), a2 = OM.amazonLink(iso, OM.variantOf(iso, 'fbr'));
+  ok(!a2.exact && /amazon\.com\/s\?k=/.test(a2.url) && /Fudge%20Brownie/.test(a2.url), 'search link includes the flavour');
+  const gl = OM.productById('gloves'), a3 = OM.amazonLink(gl, OM.variantOf(gl, 'l'));
+  ok(!/Large/.test(a3.url), 'glove size is not put in the search text');
+  for (const pr of OM.PRODUCTS) { ok(pr.pic && pr.q, 'picture and Amazon search text for ' + pr.id); (pr.variants || []).forEach(v => ok(!v.asin || /^B0[0-9A-Z]{8}$/.test(v.asin), 'ASIN format ' + v.asin)); }
+  const bag = { 'on-whey-5.vic': 2, 'jump-rope': 1, 'gloves.xl': 1 };
+  const ot = OM.orderText(bag, cfg, ' Kim B ', '2026-10-23');
+  ok(/order OM-1023-[A-Z2-9]{4}/.test(ot.text) && ot.text.includes('Vanilla Ice Cream') && ot.text.includes('XL') && ot.text.includes(ot.url), 'order message has number, flavours, sizes and link');
+  ok(ot.url.startsWith('https://876lab.github.io/omgym/?o=') && !/[*~_\s]/.test(ot.url), 'order link is WhatsApp-safe (no * ~ _ or spaces)');
+  ok(OM.orderText(bag, cfg, 'Kim B', '2026-10-23').id === ot.id && OM.orderText({ 'jump-rope': 2 }, cfg, 'Kim B', '2026-10-23').id !== ot.id, 'order number is stable for the same bag and changes with it');
+  const po = OM.parseOrder(ot.url.split('?')[1]);
+  ok(po.id === ot.id && po.name === 'Kim B' && po.lines.length === 3 && po.lines.find(l => l.pk.key === 'on-whey-5.vic').qty === 2, 'order link opens back into the same items');
+  ok(OM.parseOrder('?o=' + encodeURIComponent('ghost.x.2,on-whey-5.drc.999,jump-rope.x.-1') + '&id=X').lines.length === 1, 'unknown items and silly quantities ignored');
+  ok(OM.parseOrder('?foo=1') === null, 'no order in a normal link');
+  const sum = OM.orderSummary(po.lines, cfg);
+  near(sum.price, ot.total, 0.01, 'order sheet total matches the quote');
+  near(sum.usd, 114.99 * 2 + 9.99 + 19.99, 0.01, 'Amazon subtotal');
   console.log('Store prices: ' + OM.PRODUCTS.map(x => x.id + ' J$' + OM.landed(x).price.toLocaleString()).join(', '));
 }
 console.log(`Workouts generated: ${wcount}, session length ${minM}-${maxM} min`);

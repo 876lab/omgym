@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23: Store flavours, pictures and order links
+- Customers pick a flavour (whey, ISO100, Orgain, C4) or glove size before adding to the bag; the bag lists each flavour or size on its own line. Older bags merge into the new format.
+- Simple drawn pictures for every Store item (generic shapes, no brand artwork), also on the add-on prompts.
+- The WhatsApp message now carries an order number (same bag, name and day give the same number) and an order link. The link opens an order sheet on the public site: each item with quantity and flavour/size, "Open on Amazon" (exact listing for ON Gold Standard 5 lb flavours, ASINs seen on Amazon) or "Find on Amazon" (search with the exact product, size and flavour), price and weight, "Ordered" ticks remembered on the phone, Amazon subtotal and shipping weight.
+- Cost, landed cost and profit on the order sheet show only on a phone with Seller view switched on; customers who open the link see the items only.
+- Sources: Amazon product pages for ON Gold Standard 5 lb (ASINs B000QSNYGI, B000QSTBNS, B000GISU1M, B000QSRO1Y, from search results).
+
 ## 2026-10-23 (night run): Store price check and price sources
 - Store prices re-checked. Whey has risen in the US: ON Gold Standard 5 lb US$89.99 → US$114.99 (Store J$30,800 → J$37,700), 2 lb US$41.99 → US$64.99 (J$14,650 → J$21,000); Orgain plant protein US$29.99 → US$32.99 (J$11,300 → J$12,150). Other items unchanged.
 - Every Store product now carries its price source, date and confidence (Amazon, Amazon price tracker, another US store, estimate). Seller view lists them and flags prices over 30 days old or never confirmed ("Check again"). New `priceCheck()` in core.js with tests.

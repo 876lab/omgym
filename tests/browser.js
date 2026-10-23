@@ -93,13 +93,19 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('nav [data-tab=store]');
   ok(await page.locator('.prod').count() >= 10, 'store lists products');
   ok(/Pre-workout/.test(await page.locator('#view').innerText()), 'pre-workout shown for a cleared adult');
-  await page.locator('.prod [data-act=cartadd][data-id=on-whey-5]').click();
-  await page.locator('.prod [data-act=cartadd][data-id=jump-rope]').click();
-  await page.locator('.bag [data-act=cartadd][data-id=on-whey-5]').click();
+  ok(await page.locator('.prod .pic svg').count() >= 10, 'every product has a picture');
+  await page.selectOption('#var-on-whey-5', 'vic');
+  await page.locator('.prod [data-act=cartadd][data-key="on-whey-5.vic"]').click();
+  await page.locator('.prod [data-act=cartadd][data-key="jump-rope"]').click();
+  await page.locator('.bag [data-act=cartadd][data-key="on-whey-5.vic"]').click();
+  ok(/Vanilla Ice Cream/.test(await page.innerText('.bag')), 'bag shows the flavour');
   ok((await page.innerText('#bagcount')) === '3', 'bag badge counts items');
   await page.fill('#order-name', 'Cargill');
   const wa = await page.getAttribute('#wa-link', 'href');
-  ok(wa.startsWith('https://wa.me/16582184432?text=') && decodeURIComponent(wa).includes('2 × Optimum Nutrition') && decodeURIComponent(wa).includes('Name: Cargill'), 'WhatsApp order link');
+  const msg = decodeURIComponent(wa.split('?text=')[1]);
+  ok(wa.startsWith('https://wa.me/16582184432?text=') && msg.includes('2 × Optimum Nutrition') && msg.includes('Vanilla Ice Cream') && msg.includes('Name: Cargill'), 'WhatsApp order message');
+  const orderLink = msg.split('\n').pop();
+  ok(orderLink.startsWith('https://876lab.github.io/omgym/?o='), 'WhatsApp message ends with the order link');
   await page.click('.prod-top + h3 >> nth=0').catch(() => {});
   await page.click('[data-act=storecat][data-c=gear]');
   ok(await page.locator('.prod').count() === 6, 'gear filter');
@@ -109,6 +115,28 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(/WheyIndex/.test(await page.locator('#pricesources').innerText()) && /check again/i.test(await page.locator('#pricesources').innerText()), 'price sources show origin and stale flag');
   ok(!(await overflow()), 'no horizontal overflow on store');
   await page.screenshot({ path: OUT + '/shot-store.png', fullPage: true });
+  // open the order link the owner receives (served locally instead of GitHub Pages)
+  const local = url.split('?')[0] + '?' + orderLink.split('?')[1];
+  const sheet = await ctx.newPage(); sheet.on('pageerror', e => errors.push(e.message));
+  await sheet.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await sheet.goto(local);
+  const st1 = await sheet.locator('#view').innerText();
+  ok(/order OM-\d{4}-/i.test(st1) && /cargill/i.test(st1), 'order sheet shows number and name');
+  ok(await sheet.locator('a[href="https://www.amazon.com/dp/B000GISU1M"]').count() === 1, 'exact Amazon link for vanilla 5 lb');
+  ok(await sheet.locator('a[href*="amazon.com/s?k="]').count() === 1, 'search link for the jump rope');
+  ok(/2 × Optimum Nutrition/.test(st1) && /Vanilla Ice Cream/.test(st1), 'order sheet quantities and flavour');
+  ok(/Your profit/.test(st1), 'seller sees profit on this phone (Seller view is on)');
+  await sheet.locator('[data-act=ordtick]').first().check();
+  ok(await sheet.locator('.orderrow.ticked').count() === 1, 'tick an item as ordered');
+  ok(!(await sheet.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), 'order sheet fits a phone');
+  await sheet.screenshot({ path: OUT + '/shot-order.png', fullPage: true });
+  await sheet.close();
+  // a customer opening the same link on another phone sees no costs
+  const other = await browser.newContext({ viewport: { width: 390, height: 844 } }); const cp = await other.newPage();
+  await cp.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await cp.goto(local); const cust = await cp.locator('#view').innerText();
+  ok(/Open on Amazon/.test(cust) && !/Your profit|Landed/.test(cust), 'customers do not see cost or profit');
+  await other.close();
   // progress
   await page.click('nav [data-tab=progress]');
   for (const [d, kg] of [[-20, 92.3], [-16, 92.2], [-12, 92.4], [-8, 92.1], [-4, 92.2]]) {

@@ -483,6 +483,7 @@ var OM = (function () {
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
     { d: '2026-10-23', t: 'Store price check', b: ['Whey prices have gone up in the US: the 5 lb Gold Standard is now about US$115 and the 2 lb about US$65, so their Store prices went up.', 'Seller view now lists where each Amazon price came from and when, and marks the ones to confirm on Amazon before you order.', 'Exchange rate checked with the Bank of Jamaica (22 Oct): still J$162 per US$ with the card fee.'] },
+    { d: '2026-10-23', t: 'Store: flavours, pictures, order links', b: ['Choose your flavour or glove size before adding to the bag.', 'Every Store item has a picture.', 'Your WhatsApp order now includes an order number and a link so OMGym can order exactly what you picked.'] },
     { d: '2026-10-23', t: 'OMGym Store', b: ['New Store tab: protein powder, creatine, pre-workout and gym gear, delivered to Jamaica in about 1–2 weeks.', 'Prices include shipping, customs duty and GCT. Order on WhatsApp.'] },
     { d: '2026-10-23', t: 'Supermarket packs and shellfish', b: ['Prices are now quoted per pack (a 2 kg bag of rice, a whole chicken, a tin of mackerel), with the store and date for each.', 'Shellfish added to allergies.', 'A rest timer starts when you tick a set; a week view shows your training days.', 'Each exercise links to demo videos. Plates keep a proper portion of starch.'] },
     { d: '2026-10-22', t: 'First version', b: ['Workouts, meals, shopping list, weigh-ins and calorie targets.'] }
@@ -668,23 +669,24 @@ var OM = (function () {
     dutyNote: 'Jamaica Customs: 20% import duty, 15% GCT on CIF + duty, 0.3% standards fee and 0.5% environmental levy on CIF, J$100 stamp duty when CIF is over J$5,500',
     markup: 0.15, roundTo: 50,
     whatsapp: '16582184432', // owner's WhatsApp, international form (+1 658 218 4432)
+    orderBase: 'https://876lab.github.io/omgym/', // order links always open the public site
     leadTime: 'about 1–2 weeks'
   };
   // usd: typical Amazon price (check on Amazon before ordering), lb: billed shipping weight.
   var PRODUCTS = [
-    { id: 'on-whey-5', cat: 'protein', name: 'Optimum Nutrition Gold Standard 100% Whey', size: '5 lb tub · 74 servings', usd: 114.99, lb: 6, servings: 74, perServing: '24 g protein a scoop', tags: ['dairy'], desc: 'The best-known whey. One scoop in water or milk after training.', src: 'Amazon price on the WheyIndex tracker, US$114.99 (top of its range); Optimum Nutrition\'s own store sells a tub for US$131.99 (2-pack price, 23 Oct 2026)', date: '2026-10-01', conf: 'tracker' },
-    { id: 'on-whey-2', cat: 'protein', name: 'Optimum Nutrition Gold Standard 100% Whey', size: '2 lb tub · 29 servings', usd: 64.99, lb: 3, servings: 29, perServing: '24 g protein a scoop', tags: ['dairy'], desc: 'Smaller tub to try a flavour first.', src: 'Vitacost US$64.99 (Amazon could not be read)', date: '2026-10-23', conf: 'retailer' },
-    { id: 'iso100-5', cat: 'protein', name: 'Dymatize ISO100 Hydrolyzed Whey Isolate', size: '5 lb tub · 71 servings', usd: 119.99, lb: 6, servings: 71, perServing: '25 g protein a scoop', tags: ['dairy'], desc: 'Whey isolate: very low lactose, mixes thin.', src: 'Amazon US$109.99 on the Rocketium tracker (Jan 2026); Walmart lists US$203.98 (Oct 2026, likely a marketplace seller). Kept at US$119.99 until checked on Amazon', date: '2026-01-29', conf: 'estimate' },
-    { id: 'orgain-plant', cat: 'protein', name: 'Orgain Organic Plant-Based Protein', size: '2.03 lb tub · 20 servings', usd: 32.99, lb: 3, servings: 20, perServing: '21 g protein a scoop', tags: [], desc: 'Pea, rice and chia protein. Dairy-free and vegan.', src: 'Vitacost US$32.99 (Amazon could not be read)', date: '2026-10-23', conf: 'retailer' },
-    { id: 'on-creatine', cat: 'creatine', name: 'Optimum Nutrition Micronized Creatine', size: '600 g · 120 servings', usd: 34.99, lb: 2, servings: 120, perServing: '5 g creatine a scoop', tags: [], desc: 'The most researched supplement for strength. 5 g a day, any time.', src: 'Walmart US$32.50; kept at US$34.99 to allow for Amazon\'s price moving', date: '2026-10-23', conf: 'retailer' },
-    { id: 'nutricost-creatine', cat: 'creatine', name: 'Nutricost Creatine Monohydrate', size: '500 g · 100 servings', usd: 19.95, lb: 1.5, servings: 100, perServing: '5 g creatine a scoop', tags: [], desc: 'Budget creatine, same active ingredient.', src: 'Typical Amazon price, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
-    { id: 'c4-original', cat: 'preworkout', name: 'Cellucor C4 Original Pre-Workout', size: '60 servings', usd: 42.99, lb: 1.5, servings: 60, perServing: '150 mg caffeine a scoop', tags: [], stim: true, desc: 'Energy before training. Contains caffeine: skip coffee that day.', src: 'Amazon list price US$49.99, often US$29.99 before coupons (Slickdeals, Apr 2026)', date: '2026-04-07', conf: 'estimate' },
-    { id: 'gloves', cat: 'gear', name: 'Weightlifting gloves', size: 'Padded palm, wrist strap · S–XL', usd: 19.99, lb: 0.5, tags: [], desc: 'Better grip on bars and dumbbells, fewer calluses.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
-    { id: 'jump-rope', cat: 'gear', name: 'Adjustable speed jump rope', size: 'Steel cable, ball-bearing handles', usd: 9.99, lb: 0.5, tags: [], desc: 'Ten minutes of skipping covers a cardio finisher anywhere.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
-    { id: 'bands', cat: 'gear', name: 'Resistance loop bands', size: 'Set of 5 strengths', usd: 12.99, lb: 0.5, tags: [], desc: 'Warm-ups, glute work and home sessions.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
-    { id: 'shaker', cat: 'gear', name: 'BlenderBottle Classic shaker', size: '28 oz with whisk ball', usd: 9.99, lb: 0.5, tags: [], desc: 'Lump-free protein shakes.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
-    { id: 'straps', cat: 'gear', name: 'Lifting straps', size: 'Padded cotton, pair', usd: 9.99, lb: 0.5, tags: [], desc: 'Hold heavier rows and deadlifts when grip gives out first.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
-    { id: 'wraps', cat: 'gear', name: 'Wrist wraps', size: '18 in, pair', usd: 11.99, lb: 0.5, tags: [], desc: 'Support for pressing days.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' }
+    { id: 'on-whey-5', pic: 'tub', q: 'Optimum Nutrition Gold Standard 100% Whey Protein 5 lb', vlabel: 'Flavour', variants: [{ id: 'drc', label: 'Double Rich Chocolate', asin: 'B000QSNYGI' }, { id: 'emc', label: 'Extreme Milk Chocolate', asin: 'B000QSTBNS' }, { id: 'vic', label: 'Vanilla Ice Cream', asin: 'B000GISU1M' }, { id: 'str', label: 'Delicious Strawberry', asin: 'B000QSRO1Y' }], cat: 'protein', name: 'Optimum Nutrition Gold Standard 100% Whey', size: '5 lb tub · 74 servings', usd: 114.99, lb: 6, servings: 74, perServing: '24 g protein a scoop', tags: ['dairy'], desc: 'The best-known whey. One scoop in water or milk after training.', src: 'Amazon price on the WheyIndex tracker, US$114.99 (top of its range); Optimum Nutrition\'s own store sells a tub for US$131.99 (2-pack price, 23 Oct 2026)', date: '2026-10-01', conf: 'tracker' },
+    { id: 'on-whey-2', pic: 'tub', q: 'Optimum Nutrition Gold Standard 100% Whey Protein 2 lb', vlabel: 'Flavour', variants: [{ id: 'drc', label: 'Double Rich Chocolate' }, { id: 'vic', label: 'Vanilla Ice Cream' }, { id: 'emc', label: 'Extreme Milk Chocolate' }], cat: 'protein', name: 'Optimum Nutrition Gold Standard 100% Whey', size: '2 lb tub · 29 servings', usd: 64.99, lb: 3, servings: 29, perServing: '24 g protein a scoop', tags: ['dairy'], desc: 'Smaller tub to try a flavour first.', src: 'Vitacost US$64.99 (Amazon could not be read)', date: '2026-10-23', conf: 'retailer' },
+    { id: 'iso100-5', pic: 'tub', q: 'Dymatize ISO100 Hydrolyzed Whey Isolate 5 lb', vlabel: 'Flavour', variants: [{ id: 'gch', label: 'Gourmet Chocolate' }, { id: 'gva', label: 'Gourmet Vanilla' }, { id: 'fbr', label: 'Fudge Brownie' }], cat: 'protein', name: 'Dymatize ISO100 Hydrolyzed Whey Isolate', size: '5 lb tub · 71 servings', usd: 119.99, lb: 6, servings: 71, perServing: '25 g protein a scoop', tags: ['dairy'], desc: 'Whey isolate: very low lactose, mixes thin.', src: 'Amazon US$109.99 on the Rocketium tracker (Jan 2026); Walmart lists US$203.98 (Oct 2026, likely a marketplace seller). Kept at US$119.99 until checked on Amazon', date: '2026-01-29', conf: 'estimate' },
+    { id: 'orgain-plant', pic: 'plant', q: 'Orgain Organic Plant Based Protein Powder 2.03 lb', vlabel: 'Flavour', variants: [{ id: 'ccf', label: 'Creamy Chocolate Fudge' }, { id: 'vb', label: 'Vanilla Bean' }], cat: 'protein', name: 'Orgain Organic Plant-Based Protein', size: '2.03 lb tub · 20 servings', usd: 32.99, lb: 3, servings: 20, perServing: '21 g protein a scoop', tags: [], desc: 'Pea, rice and chia protein. Dairy-free and vegan.', src: 'Vitacost US$32.99 (Amazon could not be read)', date: '2026-10-23', conf: 'retailer' },
+    { id: 'on-creatine', pic: 'jar', q: 'Optimum Nutrition Micronized Creatine Monohydrate Powder Unflavored 600g', cat: 'creatine', name: 'Optimum Nutrition Micronized Creatine', size: '600 g · 120 servings', usd: 34.99, lb: 2, servings: 120, perServing: '5 g creatine a scoop', tags: [], desc: 'The most researched supplement for strength. 5 g a day, any time.', src: 'Walmart US$32.50; kept at US$34.99 to allow for Amazon\'s price moving', date: '2026-10-23', conf: 'retailer' },
+    { id: 'nutricost-creatine', pic: 'jar', q: 'Nutricost Creatine Monohydrate Micronized Powder 500g', cat: 'creatine', name: 'Nutricost Creatine Monohydrate', size: '500 g · 100 servings', usd: 19.95, lb: 1.5, servings: 100, perServing: '5 g creatine a scoop', tags: [], desc: 'Budget creatine, same active ingredient.', src: 'Typical Amazon price, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
+    { id: 'c4-original', pic: 'bolt', q: 'Cellucor C4 Original Pre Workout Powder 60 Servings', vlabel: 'Flavour', variants: [{ id: 'fp', label: 'Fruit Punch' }, { id: 'ibr', label: 'Icy Blue Razz' }, { id: 'cl', label: 'Cherry Limeade' }], cat: 'preworkout', name: 'Cellucor C4 Original Pre-Workout', size: '60 servings', usd: 42.99, lb: 1.5, servings: 60, perServing: '150 mg caffeine a scoop', tags: [], stim: true, desc: 'Energy before training. Contains caffeine: skip coffee that day.', src: 'Amazon list price US$49.99, often US$29.99 before coupons (Slickdeals, Apr 2026)', date: '2026-04-07', conf: 'estimate' },
+    { id: 'gloves', pic: 'gloves', q: 'weightlifting gloves padded palm wrist support men women', vlabel: 'Size', variants: [{ id: 's', label: 'Small' }, { id: 'm', label: 'Medium' }, { id: 'l', label: 'Large' }, { id: 'xl', label: 'XL' }], cat: 'gear', name: 'Weightlifting gloves', size: 'Padded palm, wrist strap · S–XL', usd: 19.99, lb: 0.5, tags: [], desc: 'Better grip on bars and dumbbells, fewer calluses.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
+    { id: 'jump-rope', pic: 'rope', q: 'adjustable speed jump rope steel cable ball bearing', cat: 'gear', name: 'Adjustable speed jump rope', size: 'Steel cable, ball-bearing handles', usd: 9.99, lb: 0.5, tags: [], desc: 'Ten minutes of skipping covers a cardio finisher anywhere.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
+    { id: 'bands', pic: 'bands', q: 'resistance loop exercise bands set of 5', cat: 'gear', name: 'Resistance loop bands', size: 'Set of 5 strengths', usd: 12.99, lb: 0.5, tags: [], desc: 'Warm-ups, glute work and home sessions.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
+    { id: 'shaker', pic: 'shaker', q: 'BlenderBottle Classic Shaker Bottle 28 oz', cat: 'gear', name: 'BlenderBottle Classic shaker', size: '28 oz with whisk ball', usd: 9.99, lb: 0.5, tags: [], desc: 'Lump-free protein shakes.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
+    { id: 'straps', pic: 'straps', q: 'lifting straps padded cotton pair', cat: 'gear', name: 'Lifting straps', size: 'Padded cotton, pair', usd: 9.99, lb: 0.5, tags: [], desc: 'Hold heavier rows and deadlifts when grip gives out first.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' },
+    { id: 'wraps', pic: 'wraps', q: 'wrist wraps weightlifting 18 inch pair', cat: 'gear', name: 'Wrist wraps', size: '18 in, pair', usd: 11.99, lb: 0.5, tags: [], desc: 'Support for pressing days.', src: 'Typical Amazon price for this kind of item, not yet confirmed', date: '2026-10-22', conf: 'estimate' }
   ];
   var PRODUCT_PRICES_NOTE = 'Amazon blocks automated price checks, so each price comes from a price tracker or another US store, with its date. Confirm on Amazon before ordering, especially items marked "confirm".';
   // How sure each Amazon price is, and whether it needs checking again (over 30 days old or never confirmed).
@@ -715,18 +717,69 @@ var OM = (function () {
     var conflict = prod.tags.filter(function (t) { return ex.indexOf(t) >= 0; });
     return { hidden: blocked, conflict: conflict };
   }
-  function orderText(cart, cfg, name) {
-    cfg = cfg || STORE;
-    var lines = [], total = 0;
-    Object.keys(cart).forEach(function (id) {
-      var q = cart[id]; if (!q) return;
-      var pr = PRODUCTS.filter(function (x) { return x.id === id; })[0]; if (!pr) return;
-      var l = landed(pr, cfg); total += l.price * q;
-      lines.push(q + ' × ' + pr.name + ' (' + pr.size.split(' · ')[0] + ') — J$' + (l.price * q).toLocaleString('en-US'));
+  // Bag keys are "productId.variantId" ("productId" for items with no choices).
+  function productById(id) { return PRODUCTS.filter(function (x) { return x.id === id; })[0]; }
+  function variantOf(prod, vid) {
+    if (!prod || !prod.variants || !prod.variants.length) return null;
+    return prod.variants.filter(function (v) { return v.id === vid; })[0] || prod.variants[0];
+  }
+  function cartKey(id, vid) { var pr = productById(id), v = variantOf(pr, vid); return v ? id + '.' + v.id : id; }
+  function parseKey(key) {
+    var i = key.indexOf('.'), id = i < 0 ? key : key.slice(0, i), pr = productById(id);
+    if (!pr) return null;
+    var v = variantOf(pr, i < 0 ? '' : key.slice(i + 1));
+    return { key: cartKey(id, v && v.id), prod: pr, variant: v };
+  }
+  // merge old or duplicate keys into one line per product and flavour/size
+  function normalizeCart(cart) {
+    var out = {};
+    Object.keys(cart || {}).forEach(function (k) {
+      var q = Math.max(0, Math.min(50, Math.round(cart[k] || 0))), pk = parseKey(k);
+      if (!q || !pk) return; out[pk.key] = (out[pk.key] || 0) + q;
     });
-    if (!lines.length) return { text: '', total: 0, count: 0 };
-    var text = 'Hi! I would like to order from OMGym:\n' + lines.join('\n') + '\nTotal: J$' + total.toLocaleString('en-US') + (name ? '\nName: ' + name : '');
-    return { text: text, total: total, count: lines.length };
+    return out;
+  }
+  function amazonLink(prod, variant) {
+    if (variant && variant.asin) return { url: 'https://www.amazon.com/dp/' + variant.asin, exact: true };
+    var text = (prod.q || prod.name + ' ' + prod.size.split(' · ')[0]) + (variant && prod.vlabel === 'Flavour' ? ' ' + variant.label : '');
+    return { url: 'https://www.amazon.com/s?k=' + encodeURIComponent(text), exact: false };
+  }
+  function itemTitle(pk) { return pk.prod.name + ', ' + pk.prod.size.split(' · ')[0] + (pk.variant ? ', ' + pk.variant.label : ''); }
+  function shortHash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } var a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = ''; h = h >>> 0; for (var j = 0; j < 4; j++) { o += a[h % 32]; h = Math.floor(h / 32); } return o; }
+  // Same bag, name and day always give the same order number.
+  function orderId(cart, name, dateStr) { var c = normalizeCart(cart); return 'OM-' + dateStr.slice(5, 7) + dateStr.slice(8, 10) + '-' + shortHash(Object.keys(c).sort().map(function (k) { return k + ':' + c[k]; }).join(',') + '|' + (name || '').trim().toLowerCase()); }
+  function orderUrl(cart, name, id, cfg) {
+    cfg = cfg || STORE; var c = normalizeCart(cart);
+    var o = Object.keys(c).map(function (k) { var pk = parseKey(k); return pk.prod.id + '.' + (pk.variant ? pk.variant.id : 'x') + '.' + c[k]; }).join(',');
+    return cfg.orderBase + '?o=' + encodeURIComponent(o) + '&id=' + encodeURIComponent(id) + (name ? '&n=' + encodeURIComponent(name.trim().slice(0, 40)) : '');
+  }
+  function parseOrder(search) {
+    var q = {}; String(search || '').replace(/^\?/, '').split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); try { q[decodeURIComponent(i < 0 ? kv : kv.slice(0, i))] = decodeURIComponent((i < 0 ? '' : kv.slice(i + 1)).replace(/\+/g, ' ')); } catch (e) { } });
+    if (!q.o) return null;
+    var lines = [];
+    q.o.split(',').forEach(function (part) {
+      var f = part.split('.'); if (f.length < 3) return;
+      var pk = parseKey(f[1] === 'x' ? f[0] : f[0] + '.' + f[1]), n = Math.max(0, Math.min(50, parseInt(f[2], 10) || 0));
+      if (pk && n) lines.push({ pk: pk, qty: n });
+    });
+    return { id: (q.id || '').slice(0, 20), name: (q.n || '').slice(0, 40), lines: lines };
+  }
+  function orderSummary(lines, cfg) {
+    cfg = cfg || STORE; var t = { usd: 0, usdTax: 0, lb: 0, freight: 0, cost: 0, price: 0, profit: 0, items: 0 };
+    lines.forEach(function (ln) { var l = landed(ln.pk.prod, cfg); t.items += ln.qty; t.usd += ln.pk.prod.usd * ln.qty; t.usdTax += (ln.pk.prod.usd + l.usTax) * ln.qty; t.lb += ln.pk.prod.lb * ln.qty; t.freight += l.freight * ln.qty; t.cost += l.cost * ln.qty; t.price += l.price * ln.qty; t.profit += l.profit * ln.qty; });
+    return t;
+  }
+  function orderText(cart, cfg, name, dateStr) {
+    cfg = cfg || STORE;
+    var c = normalizeCart(cart), lines = [], total = 0;
+    Object.keys(c).forEach(function (k) {
+      var pk = parseKey(k), q = c[k], l = landed(pk.prod, cfg); total += l.price * q;
+      lines.push(q + ' × ' + itemTitle(pk) + ' — J$' + (l.price * q).toLocaleString('en-US'));
+    });
+    if (!lines.length) return { text: '', total: 0, count: 0, id: '', url: '' };
+    var id = orderId(c, name, dateStr || ymd(new Date())), url = orderUrl(c, name, id, cfg);
+    var text = 'Hi! I would like to order from OMGym (order ' + id + '):\n' + lines.join('\n') + '\nTotal: J$' + total.toLocaleString('en-US') + (name ? '\nName: ' + name.trim() : '') + '\n\nOrder details for OMGym:\n' + url;
+    return { text: text, total: total, count: lines.length, id: id, url: url };
   }
 
   /* ---------- progress ---------- */
@@ -767,7 +820,7 @@ var OM = (function () {
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
     trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES,
-    STORE: STORE, PRODUCTS: PRODUCTS, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
+    STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
 if (typeof module !== 'undefined') module.exports = OM;
