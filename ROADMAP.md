@@ -28,6 +28,7 @@
 - Legal: supplements need a Ministry of Health import permit (Pharmaceutical Chemical and Food Additives Import Permit; one permit covers up to ten products) and post-import inspection by FSPID for processed foods. The owner should also register the business and check GCT registration with TAJ.
 
 ## Backlog
+- [ ] **Owner request, do first (2026-10-23):** a "What's new" button in the header, like Futures Radar's (`#openHelp` icon with a `newdot` that shows when there are entries the viewer hasn't seen). Tapping it opens a panel listing `CHANGES` from `src/core.js` (newest first, plain-language bullets). Remember the last seen entry per viewer in browser storage so the dot clears after opening. Keep the existing What's new section on the Plan tab. Add browser tests (dot shows on first visit, clears after opening, panel lists the newest entry).
 - [x] (2026-10-23) Confirm each Store product's Amazon price (Amazon blocks automated reading; ask the owner for screenshots or use whatever source becomes readable) and refresh `STORE.fx` from the Bank of Jamaica weekly.
 - [ ] Owner: open Amazon for items marked "Estimate" or "Check again" in Seller view (ISO100, C4, Nutricost, all gear) and send screenshots; then set `conf: 'amazon'` with the date. Whey prices rose ~28% in 2026, so re-check protein monthly.
 - [ ] Show a gentle "price may have changed" note on Store items whose source is over 60 days old (customer side), using `priceCheck()`.
