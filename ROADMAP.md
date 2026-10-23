@@ -28,7 +28,9 @@
 - Legal: supplements need a Ministry of Health import permit (Pharmaceutical Chemical and Food Additives Import Permit; one permit covers up to ten products) and post-import inspection by FSPID for processed foods. The owner should also register the business and check GCT registration with TAJ.
 
 ## Backlog
-- [ ] Confirm each Store product's Amazon price (Amazon blocks automated reading; ask the owner for screenshots or use whatever source becomes readable) and refresh `STORE.fx` from the Bank of Jamaica weekly.
+- [x] (2026-10-23) Confirm each Store product's Amazon price (Amazon blocks automated reading; ask the owner for screenshots or use whatever source becomes readable) and refresh `STORE.fx` from the Bank of Jamaica weekly.
+- [ ] Owner: open Amazon for items marked "Estimate" or "Check again" in Seller view (ISO100, C4, Nutricost, all gear) and send screenshots; then set `conf: 'amazon'` with the date. Whey prices rose ~28% in 2026, so re-check protein monthly.
+- [ ] Show a gentle "price may have changed" note on Store items whose source is over 60 days old (customer side), using `priceCheck()`.
 - [ ] Compare Store prices with local stores (PriceSmart, supplement shops in Kingston) so the owner knows where he is competitive.
 - [ ] **Live store prices (blocked: PriceSmart blocks automated reading, Hi-Lo's online shop isn't reachable, Loshusan hides prices from automated readers).** Ways forward for the owner to choose: share receipts or screenshots of the store apps, or connect Claude in Chrome on a computer for a weekly price check. Until then the owner can tap Edit price and pick the store.
 - [ ] More plant protein for vegan plans: soya chunks, chickpeas (tin), with Loshusan prices.
@@ -43,3 +45,4 @@
 ## Notes from runs
 - 2026-10-23: Store added. Amazon, PriceSmart and the Jamaica trade portal's 9506 (exercise equipment) and 4203 (gloves) pages could not be read, so gym gear uses the standard 20% duty (conservative). Protein powder 2106.90 rates confirmed on the Jamaica Trade Information Portal.
 - 2026-10-23: Store sites checked. PriceSmart (robots block), Hi-Lo online shop (not reachable), Loshusan (prices load by script, not readable). Used Loshusan prices from earlier indexed pages, the CAC survey (outlets include Hi-Lo Constant Spring) and the agriculture ministry's supermarket survey (includes Hi-Lo, Loshusan, PriceSmart).
+- 2026-10-23 (night): Price check found no newer dated grocery prices. PriceSmart (permission request timed out / robots), Loshusan and Hi-Lo not readable; Observer Market Bag tag page newest is 9 Oct (16 Oct already used). Amazon blocks robots and camelcamelcamel failed, so Store prices came from WheyIndex (Amazon tracker), Vitacost, Walmart and ON's own store. npm could not reach the registry; tests ran with the global Playwright.

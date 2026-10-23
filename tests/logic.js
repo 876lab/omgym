@@ -189,6 +189,21 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   ok(o.count === 2 && o.total === OM.landed(whey).price * 2 + OM.landed(OM.PRODUCTS.find(x => x.id === 'jump-rope')).price, 'order total');
   ok(/Name: Kim/.test(o.text) && /2 × Optimum Nutrition/.test(o.text), 'order text');
   ok(OM.orderText({}, cfg).count === 0, 'empty bag');
+  // price provenance: every Amazon price has a source, a valid date and a known confidence level
+  for (const pr of OM.PRODUCTS) {
+    ok(typeof pr.src === 'string' && pr.src.length > 10, 'price source ' + pr.id);
+    ok(/^\d{4}-\d{2}-\d{2}$/.test(pr.date) && OM.dayNum(pr.date) <= OM.dayNum('2026-10-23'), 'price date ' + pr.id);
+    ok(Object.keys(OM.PRICE_CONF).includes(pr.conf), 'price confidence ' + pr.id);
+  }
+  ok(/^\d{4}-\d{2}-\d{2}$/.test(cfg.fxDate) && cfg.fx >= 150 && cfg.fx <= 175, 'exchange rate dated and plausible');
+  const pc = (conf, date, today) => OM.priceCheck({ conf, date }, today);
+  ok(!pc('amazon', '2026-10-01', '2026-10-31').stale && !pc('amazon', '2026-10-01', '2026-10-31').confirm, 'fresh Amazon price needs no check');
+  ok(pc('amazon', '2026-10-01', '2026-11-01').stale, 'Amazon price over 30 days old needs a check');
+  ok(pc('tracker', '2026-10-20', '2026-10-23').confirm && !pc('tracker', '2026-10-20', '2026-10-23').stale, 'tracker price fresh but still to confirm');
+  ok(pc('estimate', undefined, '2026-10-23').stale && pc('mystery', '2026-10-23', '2026-10-23').label === 'Estimate', 'missing date or unknown level treated as estimate');
+  // whey 5 lb reflects the Oct 2026 tracker price, and the store never sells below landed cost
+  ok(whey.usd === 114.99, 'whey 5 lb at Oct 2026 Amazon tracker price');
+  for (const pr of OM.PRODUCTS) ok(OM.landed(pr).profit > 0, 'positive margin ' + pr.id);
   console.log('Store prices: ' + OM.PRODUCTS.map(x => x.id + ' J$' + OM.landed(x).price.toLocaleString()).join(', '));
 }
 console.log(`Workouts generated: ${wcount}, session length ${minM}-${maxM} min`);

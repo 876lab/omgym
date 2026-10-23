@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23 (night run): Store price check and price sources
+- Store prices re-checked. Whey has risen in the US: ON Gold Standard 5 lb US$89.99 → US$114.99 (Store J$30,800 → J$37,700), 2 lb US$41.99 → US$64.99 (J$14,650 → J$21,000); Orgain plant protein US$29.99 → US$32.99 (J$11,300 → J$12,150). Other items unchanged.
+- Every Store product now carries its price source, date and confidence (Amazon, Amazon price tracker, another US store, estimate). Seller view lists them and flags prices over 30 days old or never confirmed ("Check again"). New `priceCheck()` in core.js with tests.
+- Exchange rate re-checked: Bank of Jamaica 22 Oct 2026, buying J$157.83 / selling J$159.65 (midpoint J$158.74) + 2% card fee → J$162, unchanged.
+- Grocery price check: no newer dated supermarket, CAC or Market Bag prices than those already in the app (latest Market Bag on the tag page is 9 Oct; 16 Oct already used). No grocery prices changed.
+- Sources: Bank of Jamaica indicative rates via AllRatesToday (22 Oct 2026); WheyIndex Amazon tracker (1 Oct 2026); Optimum Nutrition US store (23 Oct 2026); Vitacost (23 Oct 2026); Walmart (23 Oct 2026); Rocketium Amazon tracker (Jan 2026); Slickdeals (Apr 2026); Jamaica Observer Market Bag tag page.
+
 ## 2026-10-23: OMGym Store
 - New Store tab: whey and plant protein, creatine, pre-workout, gloves, jump rope, resistance bands, shaker, lifting straps, wrist wraps. Bag with quantity controls and a "Send order on WhatsApp" button (owner: +1 658 218 4432), or copy the order.
 - Prices include Amazon price, Florida sales tax, J$600/lb freight, Jamaica Customs duty, GCT and fees, plus 15% markup. A Seller view shows the full breakdown and profit per item.

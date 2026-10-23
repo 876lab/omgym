@@ -105,6 +105,8 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(await page.locator('.prod').count() === 6, 'gear filter');
   await page.click('[data-act=sellerview]');
   ok(/landed/i.test(await page.locator('#view').innerText()) && /import permit/i.test(await page.locator('#view').innerText()), 'seller view shows breakdown');
+  ok(await page.locator('#pricesources li').count() === 13, 'seller view lists a source for every product');
+  ok(/WheyIndex/.test(await page.locator('#pricesources').innerText()) && /check again/i.test(await page.locator('#pricesources').innerText()), 'price sources show origin and stale flag');
   ok(!(await overflow()), 'no horizontal overflow on store');
   await page.screenshot({ path: OUT + '/shot-store.png', fullPage: true });
   // progress
