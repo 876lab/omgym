@@ -26,7 +26,8 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   const errors = [];
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const profile = { name: 'Kim', units: 'metric', sex: 'male', age: 34, heightCm: 178, weightKg: 88, goalKg: 82, neckCm: 40, waistCm: 96, activity: 'light', experience: 'advanced', days: [1, 2, 4, 5], style: 'weights', equipment: 'gym', pace: 'standard', injuries: [], parq: [false, false, false, false, false, false, false], pregnant: false, region: 'JM', diet: 'none', allergies: [] };
+  // today is always a training day, so the Today check below works on any day of the week
+  const profile = { name: 'Kim', units: 'metric', sex: 'male', age: 34, heightCm: 178, weightKg: 88, goalKg: 82, neckCm: 40, waistCm: 96, activity: 'light', experience: 'advanced', days: [1, 2, 4, 5].includes(new Date().getDay()) ? [1, 2, 4, 5] : [1, 2, 4, new Date().getDay()], style: 'weights', equipment: 'gym', pace: 'standard', injuries: [], parq: [false, false, false, false, false, false, false], pregnant: false, region: 'JM', diet: 'none', allergies: [] };
   await ctx.addInitScript(p => { if (!localStorage.getItem('omgym-state-v1')) localStorage.setItem('omgym-state-v1', JSON.stringify({ v: 1, profile: p, startDate: '2026-10-19', weights: [{ d: '2026-10-19', kg: 88 }], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: {} })); }, profile);
   const page = await ctx.newPage();
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
@@ -42,7 +43,7 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   ok(!(await page.isVisible('#invoice')), 'invoice needs the 3+ years confirmation');
   await page.check('#pro-years'); await page.click('[data-act=pronew]');
   const invTxt = await page.locator('#invoice').innerText();
-  ok(/90605 000606999/.test(invTxt) && /CARGILL BROWN/.test(invTxt) && /Scotiabank/.test(invTxt) && /J\$1,596\.50/.test(invTxt) && /US\$10\.00/.test(invTxt), 'invoice: Scotiabank details, J$ at BOJ rate, US$10');
+  ok(/90605 000606999/.test(invTxt) && /CARGILL BROWN/.test(invTxt) && /Scotiabank/.test(invTxt) && new RegExp('J\\$' + (Math.round(10 * OM.PRO.boj.rate * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace('.', '\\.')).test(invTxt) && /US\$10\.00/.test(invTxt), 'invoice: Scotiabank details, J$ at BOJ rate, US$10');
   ok(!/GCT|tax/i.test(invTxt.replace(/Terms[\s\S]*/, '')), 'no tax lines on the invoice');
   ok(/Cargill\.brown@gmail\.com/.test(invTxt), 'PayPal address on the invoice');
   const invNo = invTxt.match(/PRO-\d{4}-[A-Z2-9]{6}-\d+/)[0];

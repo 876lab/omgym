@@ -265,6 +265,31 @@
   var pickVar = {};
   function inCart(id) { return Object.keys(S.cart || {}).some(function (k) { return k === id || k.indexOf(id + '.') === 0; }); }
   // seller mode is remembered on this device only, so order links never show costs to customers
+  /* ---------- What's new: header button with a dot until the viewer has seen the newest entry ---------- */
+  var NEWSKEY = 'omgym-news-seen', newsOpenUnseen = 0, newsMem = '';
+  function newsSeen() { try { return localStorage.getItem(NEWSKEY) || ''; } catch (e) { return newsMem; } }
+  function setNewsSeen(k) { try { localStorage.setItem(NEWSKEY, k); } catch (e) { } newsMem = k; }
+  function updateNewsDot() {
+    var n = OM.unseenChanges(OM.CHANGES, newsSeen()), dot = document.getElementById('newdot'), b = document.getElementById('newsbtn');
+    if (dot) dot.hidden = !n;
+    if (b) b.setAttribute('aria-label', n ? 'What\'s new: ' + n + ' new update' + (n === 1 ? '' : 's') : 'What\'s new');
+  }
+  function renderNews() {
+    var h = '<div class="wrap"><div class="newshead"><h2 id="news-h">What\'s new</h2><button class="iconbtn" data-act="closenews" aria-label="Close">×</button></div>';
+    h += '<section class="card">' + OM.CHANGES.map(function (c, i) {
+      return '<div class="newsitem"><span class="label">' + esc(niceDate(c.d, { day: 'numeric', month: 'short', year: 'numeric' })) + (i < newsOpenUnseen ? ' <span class="pill new">New</span>' : '') + '</span><strong>' + esc(c.t) + '</strong><ul class="lines small">' + c.b.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+    }).join('') + '</section>';
+    h += '<div><button class="btn ghost" data-act="closenews">Close</button></div></div>';
+    $('#news').innerHTML = h;
+  }
+  function openNews() {
+    newsOpenUnseen = OM.unseenChanges(OM.CHANGES, newsSeen());
+    renderNews(); $('#news').hidden = false; $('#news').scrollTop = 0; document.body.style.overflow = 'hidden';
+    if (OM.CHANGES.length) setNewsSeen(OM.changeKey(OM.CHANGES[0]));
+    updateNewsDot();
+    var c = $('#news [data-act=closenews]'); if (c) c.focus();
+  }
+  function closeNews() { $('#news').hidden = true; document.body.style.overflow = ''; var b = document.getElementById('newsbtn'); if (b) b.focus(); }
   function sellerOn() { try { return localStorage.getItem('omgym-seller') === '1'; } catch (e) { return !!S.sellerView; } }
   function setSeller(on) { try { localStorage.setItem('omgym-seller', on ? '1' : '0'); } catch (e) { } S.sellerView = on; }
   // simple drawn pictures (generic, no brand artwork)
@@ -585,6 +610,7 @@
     v.innerHTML = fn();
     document.querySelectorAll('nav.tabs button').forEach(function (b) { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var badge = document.getElementById('bagcount'), n = cartCount(); if (badge) { badge.textContent = n; badge.hidden = !n; }
+    updateNewsDot();
     var pb = document.getElementById('probtn'); if (pb) { pb.classList.toggle('on', proActive()); pb.setAttribute('aria-current', tab === 'pro' ? 'page' : 'false'); }
   }
   function go(t) { if (ORDER) closeOrder(); tab = t; render(); window.scrollTo(0, 0); }
@@ -751,6 +777,8 @@
         toast(qk === 'budget' ? OM.BUDGETS[OM.budgetTier(qp)].label + ' budget: meals and list updated' : 'Prices for ' + prices().meta.label + (OM.cuisineOf(qp) === 'us' ? ', American dishes' : OM.cuisineOf(qp) === 'jm' ? ', Jamaican dishes' : ''));
         break;
       case 'closesetup': closeSetup(); break;
+      case 'news': openNews(); break;
+      case 'closenews': closeNews(); break;
       case 'seg': readSheet();
         var k = t.dataset.k, v = t.dataset.v;
         if (k.indexOf('parq') === 0) draft.parq[+k.slice(4)] = v === 'yes';
@@ -867,7 +895,7 @@
   window.addEventListener('focus', refreshToday);
   setInterval(refreshToday, 60000);
   if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) { try { navigator.serviceWorker.register('sw.js').catch(function () { }); } catch (e) { } }
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('#sheet').hidden) closeSetup(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key !== 'Escape') return; if (!$('#news').hidden) closeNews(); else if (!$('#sheet').hidden) closeSetup(); });
 
   var h0 = (location.hash || '').slice(1);
   if (VALID_TABS.indexOf(h0) >= 0) tab = h0;

@@ -20,6 +20,29 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   for (const t of ['food', 'shop', 'store', 'progress', 'me', 'today']) { await page.click(`nav [data-tab=${t}]`); ok((await page.locator('#view').innerText()).length > 200, 'tab renders ' + t); }
   const overflow = async () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   await page.screenshot({ path: OUT + '/shot-example-today.png', fullPage: true });
+  // What's new button in the header
+  ok(await page.isVisible('#newsbtn') && await page.isVisible('#newdot'), "what's new dot shows on first visit");
+  ok(/\d+ new update/.test(await page.getAttribute('#newsbtn', 'aria-label')), "what's new button says how many are new");
+  ok(await page.isVisible('#probtn'), 'PRO button still in the header');
+  ok(!(await overflow()), 'no overflow with the new header button');
+  await page.click('#newsbtn');
+  ok(await page.isVisible('#news'), "what's new panel opens");
+  { const newest = await page.evaluate(() => OM.CHANGES[0].t); const first = await page.locator('#news .newsitem strong').first().innerText(); ok(first === newest, "panel lists the newest entry first: " + first); }
+  ok(await page.locator('#news .newsitem').count() === await page.evaluate(() => OM.CHANGES.length), 'panel lists every entry');
+  ok(await page.locator('#news .pill.new').count() === await page.evaluate(() => OM.CHANGES.length), 'every entry marked New on first visit');
+  ok(await page.isHidden('#newdot'), 'dot clears after opening');
+  await page.screenshot({ path: OUT + '/shot-news.png' });
+  await page.keyboard.press('Escape');
+  ok(await page.isHidden('#news'), 'Escape closes the panel');
+  ok(await page.evaluate(() => localStorage.getItem('omgym-news-seen') === OM.changeKey(OM.CHANGES[0])), 'last seen entry remembered');
+  await page.reload();
+  ok(await page.isHidden('#newdot'), 'dot stays cleared after reload');
+  await page.click('#newsbtn'); ok(await page.locator('#news .pill.new').count() === 0, 'nothing marked New on the next visit');
+  await page.click('#news .btn[data-act=closenews]'); ok(await page.isHidden('#news'), 'Close button closes the panel');
+  await page.evaluate(() => localStorage.setItem('omgym-news-seen', OM.changeKey(OM.CHANGES[1]))); await page.reload();
+  ok(await page.isVisible('#newdot'), 'dot shows again when a newer entry arrives');
+  await page.click('#newsbtn'); ok(await page.locator('#news .pill.new').count() === 1, 'only the newer entry is marked New');
+  await page.keyboard.press('Escape');
   // setup flow
   await page.click('[data-act=setup]');
   await page.click('[data-act=next]'); ok(await page.isVisible('.err'), 'validation blocks empty step');
@@ -207,6 +230,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.click('nav [data-tab=today]');
   await page.screenshot({ path: OUT + '/shot-dark.png', fullPage: false });
+  await page.click('#newsbtn'); await page.screenshot({ path: OUT + '/shot-news-dark.png' }); await page.keyboard.press('Escape');
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   ok(bg === 'rgb(14, 21, 18)', 'dark background ' + bg);
   // reset

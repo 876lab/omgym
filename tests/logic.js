@@ -152,6 +152,20 @@ ok(Object.keys(OM.PRICES.JM.items).length === Object.keys(OM.ING).length, 'every
 const ptS = OM.priceTable(base, { egg: { pr: 1100, store: 'Hi-Lo', date: '23 Oct 2026' } });
 ok(ptS.items.egg.store === 'Hi-Lo' && /Hi-Lo/.test(ptS.items.egg.src), 'store recorded on your price');
 ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1].d, 'changes log newest first');
+// What's new button: unseen count
+{
+  const C = OM.CHANGES, keys = C.map(OM.changeKey);
+  ok(new Set(keys).size === keys.length, 'each What\'s new entry has a unique date + title');
+  for (let i = 1; i < C.length; i++) ok(C[i - 1].d >= C[i].d, 'changes sorted newest first ' + i);
+  for (const c of C) ok(/^\d{4}-\d{2}-\d{2}$/.test(c.d) && c.t && c.b.length >= 1 && c.b.length <= 4, 'change entry complete ' + c.t);
+  ok(OM.unseenChanges(C, null) === C.length && OM.unseenChanges(C, '') === C.length, 'first visit: everything is new');
+  ok(OM.unseenChanges(C, keys[0]) === 0, 'seen newest: nothing new');
+  ok(OM.unseenChanges(C, keys[2]) === 2, 'two newer entries since last visit');
+  ok(OM.unseenChanges(C) === C.length, 'defaults to the app\'s CHANGES');
+  const L = [{ d: '2026-10-25', t: 'C' }, { d: '2026-10-24', t: 'B' }, { d: '2026-10-22', t: 'A' }];
+  ok(OM.unseenChanges(L, '2026-10-23 Renamed') === 2, 'renamed entry falls back to the date');
+  ok(OM.unseenChanges(L, '2026-10-25 Old title') === 0, 'renamed newest entry: nothing new');
+}
 
 // 6b. Budget levels, foods I buy, dish style by region, PRO protein top-up
 {
@@ -215,7 +229,7 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   for (const pr of OM.PRODUCTS) {
     const l = OM.landed(pr);
     const goods = pr.usd * 1.07 * cfg.fx, freight = pr.lb * 600, cif = goods + freight, duty = cif * 0.2, gct = (cif + duty) * 0.15;
-    const fees = cif * 0.008 + (cif > 5500 ? 100 : 0), cost = goods + freight + duty + gct + fees;
+    const fees = cif * (0.003 + 0.0085) + (cif > 5500 ? 100 : 0), cost = goods + freight + duty + gct + fees;
     near(l.cost, cost, 0.01, 'landed cost ' + pr.id);
     ok(l.price >= cost * 1.15 && l.price < cost * 1.15 + 50, '15% markup, rounded up to J$50: ' + pr.id);
     ok(l.price % 50 === 0, 'price rounded ' + pr.id);
@@ -317,7 +331,7 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   ok(OM.invoiceNo('K7Q2XM', '2026-10-23', 2) === 'PRO-2610-K7Q2XM-2', 'invoice number');
   const inv = { name: 'Kim *Big* B_', no: 'PRO-2610-K7Q2XM-1', id: 'K7Q2XM', start: '2026-10-23', until: '2026-11-23' };
   const txt = OM.proProofText(inv, 'bns');
-  ok(/J\$1,596\.50/.test(txt) && /23 Oct 2026 to 23 Nov 2026/.test(txt) && /Ref: OMPRO\.K7Q2XM\.20261023\.20261123\.PRO-2610-K7Q2XM-1\.bns/.test(txt), 'proof message: amount, dates, ref');
+  ok(new RegExp('J\\$' + (Math.round(10 * OM.PRO.boj.rate * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace('.', '\\.')).test(txt) && /23 Oct 2026 to 23 Nov 2026/.test(txt) && /Ref: OMPRO\.K7Q2XM\.20261023\.20261123\.PRO-2610-K7Q2XM-1\.bns/.test(txt), 'proof message: amount, dates, ref');
   const pp = OM.parseProof('blah\n' + txt + '\nthanks');
   ok(pp && pp.id === 'K7Q2XM' && pp.start === '2026-10-23' && pp.until === '2026-11-23' && pp.no === inv.no && pp.method === 'bns' && pp.name === inv.name, 'PRO Desk reads the proof message');
   ok(OM.parseProof('hello') === null, 'no ref, no parse');
@@ -337,7 +351,7 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   const keep = [P.lynk, P.showBank];
   P.lynk = 'omgym'; P.showBank = false;
   ok(JSON.stringify(OM.proPayMethods()) === '["lynk","pp"]', 'with Lynk set, bank details can be switched off');
-  ok(/J\$1,596\.50/.test(OM.proProofText(inv, 'lynk')) && /Paid by: Lynk/.test(OM.proProofText(inv, 'lynk')) && OM.parseProof(OM.proProofText(inv, 'lynk')).method === 'lynk', 'Lynk proof message');
+  ok(new RegExp('J\\$' + (Math.round(10 * OM.PRO.boj.rate * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace('.', '\\.')).test(OM.proProofText(inv, 'lynk')) && /Paid by: Lynk/.test(OM.proProofText(inv, 'lynk')) && OM.parseProof(OM.proProofText(inv, 'lynk')).method === 'lynk', 'Lynk proof message');
   P.lynk = keep[0]; P.showBank = keep[1];
 }
 const proSig = (async () => {

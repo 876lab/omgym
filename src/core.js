@@ -456,10 +456,10 @@ var OM = (function () {
         cornmeal: { u: '400 g bag (Foska)', g: 400, pr: 169, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
         flour: { u: '1 kg bag (JF Mills)', g: 1000, pr: 369, store: 'Loshusan', src: 'Loshusan online J$368.58; CAC survey J$322–350', date: 'Oct 2026', conf: 'store' },
         bread: { u: '2 lb loaf (National hardo)', g: 907, pr: 560, store: 'Hi-Lo and 8 other supermarkets', src: 'CAC survey: same price at all 9 outlets incl. Hi-Lo', date: 'Jul 2026', conf: 'survey' },
-        sweetpot: { u: 'per lb, weighed', g: 454, pr: 450, weighed: true, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
+        sweetpot: { u: 'per lb, weighed', g: 454, pr: 450, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: '23 Oct 2026', conf: 'market' },
         yam: { u: 'per lb, weighed', g: 454, pr: 500, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
         gbanana: { u: 'per lb, weighed', g: 454, pr: 150, weighed: true, store: 'Market', src: 'Spanish Town Market J$400 a hand (about 1.4 kg), converted', date: 'Jul 2026', conf: 'market' },
-        ipotato: { u: 'per lb, weighed', g: 454, pr: 300, weighed: true, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
+        ipotato: { u: 'per lb, weighed', g: 454, pr: 250, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: '23 Oct 2026', conf: 'market' },
         redpeas: { u: '1 lb bag', g: 454, pr: 650, store: 'Estimate', src: 'Online grocers J$250–882/lb; check your supermarket', date: 'Oct 2026', conf: 'estimate' },
         broadbeans: { u: '400 g tin (Lasco)', g: 400, pr: 290, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$267–314', date: 'Jul 2026', conf: 'survey' },
         chicken: { u: 'whole frozen chicken (about 1.8 kg)', g: 1800, pr: 1710, store: 'Hi-Lo, Loshusan, PriceSmart and others', src: 'CAC survey J$849–1,033/kg (Jul 2026); agriculture ministry supermarket survey incl. Hi-Lo, Loshusan and PriceSmart J$849–950/kg', date: 'Jul 2026', conf: 'survey' },
@@ -472,10 +472,10 @@ var OM = (function () {
         milk: { u: '1 L carton', g: 1030, pr: 700, store: 'Estimate', src: 'Price guide, March 2026; check your supermarket', date: 'Mar 2026', conf: 'estimate' },
         callaloo: { u: '1 bundle (about 450 g)', g: 450, pr: 290, store: 'Estimate', src: 'MyVoice crop tracker J$638/kg retail', date: '13 Oct 2026', conf: 'estimate' },
         cabbage: { u: '1 head (about 1 kg)', g: 1000, pr: 900, store: 'Estimate', src: 'Reported J$500–1,400 a head in October (drought)', date: 'Oct 2026', conf: 'estimate' },
-        carrot: { u: '1 lb bag', g: 454, pr: 500, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        tomato: { u: 'per lb, weighed', g: 454, pr: 500, weighed: true, store: 'Market', src: 'Observer Market Bag, Mandeville Market', date: '16 Oct 2026', conf: 'market' },
-        onion: { u: '3 lb bag', g: 1361, pr: 850, store: 'Estimate', src: 'J$300/lb at Mandeville Market, converted', date: '16 Oct 2026', conf: 'estimate' },
-        scallion: { u: '1 bundle (about 100 g)', g: 100, pr: 100, store: 'Estimate', src: 'J$400/lb at Mandeville Market, converted', date: '16 Oct 2026', conf: 'estimate' },
+        carrot: { u: '1 lb bag', g: 454, pr: 500, store: 'Market', src: 'Observer Market Bag, Coronation Market J$500/lb', date: '23 Oct 2026', conf: 'market' },
+        tomato: { u: 'per lb, weighed', g: 454, pr: 400, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: '23 Oct 2026', conf: 'market' },
+        onion: { u: '3 lb bag', g: 1361, pr: 750, store: 'Estimate', src: 'J$250/lb at Coronation Market (Observer Market Bag), converted', date: '23 Oct 2026', conf: 'estimate' },
+        scallion: { u: '1 bundle (about 100 g)', g: 100, pr: 70, store: 'Estimate', src: 'J$300/lb at Coronation Market (Observer Market Bag), converted', date: '23 Oct 2026', conf: 'estimate' },
         pumpkin: { u: 'per lb, weighed', g: 454, pr: 400, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
         rbanana: { u: '1 hand (about 6, 700 g)', g: 700, pr: 500, store: 'Estimate', src: 'J$1,000 a dozen at Coronation Market, converted', date: 'Aug 2026', conf: 'estimate' },
         greekyog: { u: '1.13 kg tub (Chobani plain)', g: 1130, pr: 3100, tier: 3, store: 'JA Deals (online grocer)', src: 'JA Deals J$2,700 before GCT; usually at PriceSmart and the larger Hi-Lo and Loshusan stores', date: 'Oct 2026', conf: 'store' },
@@ -585,6 +585,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-24', t: 'What\'s new button and price check', b: ['New sparkle button at the top: an orange dot shows when OMGym has something new. Tap it to see every update, newest first. The dot clears once you have looked.', 'Market prices from Coronation Market (23 Oct): tomatoes J$400/lb, Irish potato J$250/lb, onions J$250/lb and escallion J$300/lb are a little cheaper; sweet potato and carrot unchanged.', 'Store: Jamaica\'s environmental levy on imports went up from 0.5% to 0.85% on 1 October, so 8 Store items went up by J$50 (whey, ISO100, C4, jump rope, shaker, straps, wraps). Exchange rate unchanged at J$162 per US$.'] },
     { d: '2026-10-23', t: 'Food budgets and US meals', b: ['Choose a food budget: Budget, Standard or Premium. The Shopping list shows what a week of food costs at each level, and you can set a weekly limit.', 'Tick the foods you buy (Greek yogurt, cottage cheese, berries, whey, chicken breast, salmon and more) and the plan builds meals around them.', 'Switch between Jamaica, USA and elsewhere at the top of Meals and the Shopping list. The USA now gets American dishes with Walmart prices.', 'PRO: a daily protein top-up (tuna, whey, Greek yogurt or chicken breast) so cut and bulk plans reach the higher protein target.'] },
     { d: '2026-10-23', t: 'Store price check', b: ['Whey prices have gone up in the US: the 5 lb Gold Standard is now about US$115 and the 2 lb about US$65, so their Store prices went up.', 'Seller view now lists where each Amazon price came from and when, and marks the ones to confirm on Amazon before you order.', 'Exchange rate checked with the Bank of Jamaica (22 Oct): still J$162 per US$ with the card fee.'] },
     { d: '2026-10-23', t: 'OMGym PRO', b: ['New PRO section for lifters with 3+ years of training: choose cut, lean bulk or maintain, with higher protein on a cut, harder training weeks and weekly check-ins.', 'US$10 a month. Tap PRO at the top, create your invoice, pay by Scotiabank transfer or PayPal, and send your proof on WhatsApp.', 'PRO opens for 3 days while OMGym checks your payment, then runs for the month you paid for. Nothing renews by itself.'] },
@@ -593,6 +594,17 @@ var OM = (function () {
     { d: '2026-10-23', t: 'Supermarket packs and shellfish', b: ['Prices are now quoted per pack (a 2 kg bag of rice, a whole chicken, a tin of mackerel), with the store and date for each.', 'Shellfish added to allergies.', 'A rest timer starts when you tick a set; a week view shows your training days.', 'Each exercise links to demo videos. Plates keep a proper portion of starch.'] },
     { d: '2026-10-22', t: 'First version', b: ['Workouts, meals, shopping list, weigh-ins and calorie targets.'] }
   ];
+  // "What's new" button: each entry is known by its date and title; the viewer's last seen key is kept in their browser.
+  function changeKey(c) { return c.d + ' ' + c.t; }
+  // How many entries the viewer has not seen yet (all of them on a first visit).
+  function unseenChanges(list, lastKey) {
+    list = list || CHANGES;
+    if (!lastKey) return list.length;
+    for (var i = 0; i < list.length; i++) if (changeKey(list[i]) === lastKey) return i;
+    // the entry was renamed or removed: count entries dated after the last one seen
+    var d = String(lastKey).slice(0, 10);
+    return list.filter(function (c) { return c.d > d; }).length;
+  }
   var SLOTS = [
     { key: 'b', name: 'Breakfast', share: 0.25, pshare: 0.26 },
     { key: 'l', name: 'Lunch', share: 0.30, pshare: 0.33 },
@@ -874,11 +886,11 @@ var OM = (function () {
   // Pricing per item: Amazon price + US sales tax, converted to J$; freight per lb; Jamaica Customs charges on CIF;
   // then the seller's markup on the landed cost, rounded up.
   var STORE = {
-    fx: 162, fxDate: '2026-10-22', fxNote: 'J$158.74 per US$ (Bank of Jamaica, 22 Oct 2026: midpoint of J$157.83 buying and J$159.65 selling) plus about 2% card fee',
+    fx: 162, fxDate: '2026-10-22', fxNote: 'J$158.73 per US$ (Bank of Jamaica website, 22 Oct 2026, latest posted on 24 Oct: midpoint of J$157.87 buying and J$159.59 selling) plus about 2% card fee',
     freightPerLb: 600, freightNote: 'Freight forwarder rate, J$600 per lb (owner)',
     usSalesTax: 0.07, usTaxNote: 'Miami-Dade sales tax 7% on Amazon orders to a Florida forwarder; refundable through tax-exempt@amazon.com with the airway bill',
-    duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.005, stampDuty: 100, stampOver: 5500,
-    dutyNote: 'Jamaica Customs: 20% import duty, 15% GCT on CIF + duty, 0.3% standards fee and 0.5% environmental levy on CIF, J$100 stamp duty when CIF is over J$5,500',
+    duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.0085, stampDuty: 100, stampOver: 5500,
+    dutyNote: 'Jamaica Customs: 20% import duty, 15% GCT on CIF + duty, 0.3% standards fee and 0.85% environmental levy on CIF (levy raised from 0.5% on 1 Oct 2026), J$100 stamp duty when CIF is over J$5,500',
     markup: 0.15, roundTo: 50,
     whatsapp: '16582184432', // owner's WhatsApp, international form (+1 658 218 4432)
     orderBase: 'https://876lab.github.io/omgym/', // order links always open the public site
@@ -1001,7 +1013,7 @@ var OM = (function () {
   // The app checks the signature with this public key, so links cannot be made up or edited.
   var PRO = {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
-    boj: { rate: 159.65, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026' },
+    boj: { rate: 159.59, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026 (latest on boj.org.jm on 24 Oct)' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
     paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
     lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first
@@ -1147,7 +1159,7 @@ var OM = (function () {
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS, TOPUP: TOPUP,
     BUDGETS: BUDGETS, LIKEABLE: LIKEABLE, budgetTier: budgetTier, cuisineOf: cuisineOf, ingName: ingName, weekCostByTier: weekCostByTier, mealCtx: mealCtx,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
