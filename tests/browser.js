@@ -7,7 +7,11 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   const page = await ctx.newPage();
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/ERR_FAILED|fonts/.test(m.text())) errors.push(m.text()); });
-  const url = process.env.SITE || ('file://' + require('path').resolve(__dirname, '..', 'index.html'));
+  // The Store may be paused (STORE.paused). Locally, the full walk-through runs on a copy with the Store open,
+  // and the real build is checked separately for the paused Store at the end.
+  const fs = require('fs'), path = require('path'), INDEX = path.resolve(__dirname, '..', 'index.html');
+  let url = process.env.SITE;
+  if (!url) { const open = path.join(OUT, 'index-open.html'); fs.writeFileSync(open, fs.readFileSync(INDEX, 'utf8').replace(/paused: (true|false),/, 'paused: false,')); url = 'file://' + open; }
   await page.goto(url);
   if (process.env.SITE) {
     for (const f of ['manifest.webmanifest', 'icons/apple-touch-icon.png', 'icons/icon-192.png']) {
@@ -139,7 +143,9 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(/Greek yogurt/.test(capText), 'Foods I buy appear on the list');
   await page.screenshot({ path: OUT + '/shot-budget.png', fullPage: true });
   // store
+  const storeOpen = await page.evaluate(() => !OM.STORE.paused);
   await page.click('nav [data-tab=store]');
+  if (storeOpen) {
   ok(await page.locator('.prod').count() >= 10, 'store lists products');
   ok(/Pre-workout/.test(await page.locator('#view').innerText()), 'pre-workout shown for a cleared adult');
   ok(await page.locator('.prod .pic svg').count() >= 10, 'every product has a picture');
@@ -186,6 +192,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await cp.goto(local); const cust = await cp.locator('#view').innerText();
   ok(/Open on Amazon/.test(cust) && !/Your profit|Landed/.test(cust), 'customers do not see cost or profit');
   await other.close();
+  } else ok(await page.isVisible('#store-paused') && await page.locator('.prod').count() === 0, 'live Store shows the paused notice');
   // progress
   await page.click('nav [data-tab=progress]');
   for (const [d, kg] of [[-20, 92.3], [-16, 92.2], [-12, 92.4], [-8, 92.1], [-4, 92.2]]) {
@@ -221,8 +228,8 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('nav [data-tab=shop]');
   ok(await page.isVisible('text=US prices standing in for Toronto'), 'other-region notice');
   ok((await page.locator('.kpi .v').first().innerText()).startsWith('C$'), 'custom currency');
-  await page.click('nav [data-tab=store]'); await page.click('[data-act=storecat][data-c=all]');
-  { const st = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')).profile.parq); const vt2 = await page.locator('#view').innerText(); const cards = (await page.locator('.prod h3').allInnerTexts()).join('|'); ok(!/C4/i.test(cards) && /Pre-workout is hidden/.test(vt2), 'pre-workout hidden after health-screen yes ' + JSON.stringify(st)); }
+  await page.click('nav [data-tab=store]'); if (storeOpen) await page.click('[data-act=storecat][data-c=all]');
+  if (storeOpen) { const st = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')).profile.parq); const vt2 = await page.locator('#view').innerText(); const cards = (await page.locator('.prod h3').allInnerTexts()).join('|'); ok(!/C4/i.test(cards) && /Pre-workout is hidden/.test(vt2), 'pre-workout hidden after health-screen yes ' + JSON.stringify(st)); }
   await page.click('nav [data-tab=food]');
   const vt = await page.locator('#view').innerText();
   ok(!/\b(chicken|egg|eggs|tuna|sardine|mackerel|milk)\b/i.test(vt.replace(/Extra red peas, eggs or a glass of milk/,'')), 'vegan meals have no animal foods');
@@ -238,6 +245,31 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(await page.isVisible('text=You are looking at an example plan'), 'reset returns to example');
   // desktop width
   await page.setViewportSize({ width: 1280, height: 900 }); ok(!(await overflow()), 'desktop no overflow');
+  // the real build: Store paused
+  if (!process.env.SITE && fs.readFileSync(INDEX, 'utf8').includes('paused: true,')) {
+    const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    await pctx.addInitScript(() => { if (!localStorage.getItem('omgym-state-v1')) localStorage.setItem('omgym-state-v1', JSON.stringify({ v: 1, profile: { name: 'Kim', units: 'metric', sex: 'male', age: 34, heightCm: 178, weightKg: 88, goalKg: 82, neckCm: 40, waistCm: 96, activity: 'light', experience: 'intermediate', days: [0, 1, 2, 3, 4, 5, 6], style: 'mix', equipment: 'gym', pace: 'standard', injuries: [], parq: [false, false, false, false, false, false, false], pregnant: false, region: 'JM', diet: 'none', allergies: [] }, startDate: '2026-10-19', weights: [{ d: '2026-10-19', kg: 88 }], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: { 'on-whey-5.vic': 2, 'jump-rope': 1 } })); });
+    const pp = await pctx.newPage(); pp.on('pageerror', e => errors.push(e.message));
+    await pp.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await pp.goto('file://' + INDEX);
+    for (const t of ['today', 'food']) { await pp.click(`nav [data-tab=${t}]`); ok(await pp.locator('.nudge').count() === 0, 'no Store prompts while paused: ' + t); }
+    ok(await pp.isHidden('#bagcount'), 'bag badge hidden while paused');
+    await pp.click('nav [data-tab=store]');
+    const ptxt = await pp.locator('#view').innerText();
+    ok(await pp.isVisible('#store-paused') && /paused/i.test(ptxt), 'paused Store shows the notice');
+    ok(await pp.locator('.prod').count() === 0 && await pp.locator('[data-act=cartadd]').count() === 0 && await pp.locator('#wa-link').count() === 0, 'paused Store: no products, no Add to bag, no WhatsApp order');
+    ok(!/J\$\d/.test(ptxt), 'paused Store shows no prices');
+    ok(/your saved bag/i.test(ptxt) && /× 2/.test(ptxt), 'saved bag kept while paused');
+    await pp.screenshot({ path: OUT + '/shot-store-paused.png', fullPage: true });
+    await pp.click('[data-act=sellerview]');
+    ok(/The Store is paused/i.test(await pp.locator('#view').innerText()), 'Seller view still works and says the Store is paused');
+    await pp.click('nav [data-tab=shop]');
+    ok(!/OMGym Store/.test(await pp.locator('#view').innerText()), 'shopping list does not send people to the paused Store');
+    await pp.emulateMedia({ colorScheme: 'dark' }); await pp.click('nav [data-tab=store]');
+    await pp.screenshot({ path: OUT + '/shot-store-paused-dark.png' });
+    ok(!(await pp.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), 'paused Store fits a phone');
+    await pctx.close();
+  }
   ok(errors.length === 0, 'no page errors: ' + errors.join(' | '));
   console.log(`BROWSER PASS ${pass} FAIL ${fail}`); if (fail) process.exitCode = 1;
   await browser.close();

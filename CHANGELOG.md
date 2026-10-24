@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-24: Store paused (owner decision)
+- `STORE.paused` (true) and `STORE.pauseNote` in core.js. While paused the Store tab shows a paused notice and the saved bag (items and quantities, no prices), with no product grid, no Add to bag, no WhatsApp order and no add-on prompts on Today or Meals; the bag badge is hidden; `cartadd` is refused with a toast. Saved bags are kept untouched. Seller view and order sheets for links already sent keep working; Seller view says the Store is paused.
+- Grocery whey (JM) uses a local shop price while the Store is paused: ON Gold Standard 5 lb J$13,800 at Fitness Junkies JA (Oct 2026), instead of the Store's J$37,800.
+- Why: a local comparison found whey at about a third of the Store price (J$13,800 vs J$37,800 for 5 lb; J$7,570 vs J$21,050 for 2 lb). Research on import routes, duties, the US$100 de minimis and MOHW permits is in the claude.ai doc "Bringing OMGym Store prices down".
+- To reopen: set `STORE.paused` to false, rebuild, run the tests.
+- Tests: the browser walk-through now runs on a copy with the Store open (tests/out/index-open.html), and 11 new checks cover the paused build (notice, no prices or ordering, saved bag kept, no prompts, badge hidden, Seller view, light and dark screenshots). Logic tests cover the whey price in both states.
+
 ## 2026-10-24 (night run): What's new button and price check
 - "What's new" button in the header (sparkle icon) with an orange dot while the viewer has unseen entries. Tapping it opens a full-screen panel listing every `CHANGES` entry newest first, with "New" on the ones not seen before; the dot clears after opening. The last seen entry is kept per viewer in browser storage (`omgym-news-seen`, key = date + title; falls back to the date if an entry is renamed). Escape or Close shuts the panel. The What's new card on the Plan tab stays. New `changeKey()` and `unseenChanges()` in core.js.
 - Grocery prices (Jamaica Observer Market Bag, Coronation Market, 23 Oct 2026): tomato J$500 → J$400/lb, Irish potato J$300 → J$250/lb, onion 3 lb bag J$850 → J$750 (J$250/lb), escallion bundle J$100 → J$70 (J$300/lb); sweet potato J$450/lb and carrot J$500/lb re-confirmed (dates moved to 23 Oct).

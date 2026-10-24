@@ -22,6 +22,7 @@
 7. One focused improvement per night. Never change repository settings or hosting, add paid services, keys or secrets.
 
 ## Store (added 2026-10-23)
+- **Paused by the owner on 2026-10-24** (`STORE.paused = true`) until import costs come down. Do not reopen, change prices or add products without the owner. Research: claude.ai doc "Bringing OMGym Store prices down: Jamaica import and shipping rules" (US$100 FOB de minimis covers commercial shipments per JCA; MOHW permit needed for supplements whatever the value; sea freight ~US$4.70/cu ft; 5 lb whey only competitive at about US$46 a tub bought).
 - Store tab sells supplements and gym gear the owner buys on Amazon and ships through a Miami freight forwarder. Orders go to the owner's WhatsApp (+1 658 218 4432); nothing is charged in the app.
 - Price = (Amazon price + 7% Miami-Dade sales tax) × FX, + J$600/lb freight, + Jamaica Customs (20% duty on CIF, 15% GCT on CIF + duty, 0.3% standards fee, 0.85% environmental levy (from 1 Oct 2026; was 0.5%), J$100 stamp duty over J$5,500 CIF), then 15% markup on landed cost, rounded up to J$50. Settings live in `STORE` in `src/core.js`; products in `PRODUCTS`.
 - Rules: keep the markup at 15% and freight at J$600/lb unless the owner changes them; never show pre-workout (caffeine) to under-18s, pregnant users or anyone with a health-screen "yes"; flag milk in whey for vegan or dairy-free users; add-on prompts stay one per screen, dismissible, with no fake scarcity, countdowns or invented reviews.
@@ -63,6 +64,8 @@
 - [ ] Monthly price refresh from the CAC grocery survey and Observer Market Bag.
 - [ ] PRO marker on Today for rest days too (rest days currently drop the "PRO Cut" pill; part of the PRO training upgrades).
 - [ ] What's new: optionally show a one-line toast "OMGym was updated: tap the sparkle to see what's new" on the first load after a new entry (one per update, dismissible).
+- [ ] Store reopening plan (owner decides): register the business name and get a TRN/TCC; apply for the MOHW import permit (up to 10 products); ask a Miami wholesaler or ON's Caribbean distributor for resale prices; then reopen with gear and creatine shipped under US$100 per airway bill (no duty or GCT) and whey only if bought at about US$46 a tub or less.
+- [ ] Store formula: add the J$2,500 Customs Administrative Fee on dutiable packages and a "per package under US$100" (de minimis) mode before reopening; confirm duty rates for creatine (HS 2925?) and gear (9506.91, 4203) on the trade portal.
 - [ ] Sync between the Home Screen app and the claude.ai version (needs the owner's decision on accounts).
 
 ## Notes from runs

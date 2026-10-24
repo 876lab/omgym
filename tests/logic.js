@@ -172,7 +172,16 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
   for (const reg of ['JM', 'US']) for (const [id, it] of Object.entries(OM.PRICES[reg].items)) ok(!it.tier || [1, 2, 3].includes(it.tier), `tier valid ${reg} ${id}`);
   ok(Object.keys(OM.PRICES.US.items).length === Object.keys(OM.ING).length, 'every ingredient has a US price');
   OM.LIKEABLE.forEach(id => ok(!!OM.ING[id], 'likeable food exists ' + id));
-  ok(OM.priceTable({ region: 'JM' }, {}).items.whey.pr === OM.landed(OM.productById('on-whey-5')).price, 'JM whey priced from the OMGym Store');
+  {
+    const was = OM.STORE.paused;
+    OM.STORE.paused = false;
+    ok(OM.priceTable({ region: 'JM' }, {}).items.whey.pr === OM.landed(OM.productById('on-whey-5')).price, 'JM whey priced from the OMGym Store while it is open');
+    OM.STORE.paused = true;
+    const wp = OM.priceTable({ region: 'JM' }, {}).items.whey;
+    ok(wp.pr === 13800 && /Fitness Junkies/.test(wp.store) && wp.conf === 'store', 'JM whey priced from a local shop while the Store is paused');
+    ok(OM.priceTable({ region: 'US' }, {}).items.whey.pr === OM.PRICES.US.items.whey.pr, 'US whey unaffected by the Store pause');
+    OM.STORE.paused = was;
+  }
   ok(OM.priceTable({ region: 'US' }, {}).items.bread.name === 'White sandwich bread', 'US shopping list uses US names');
   const tierOf = (pt, id) => pt.items[id].tier || 1;
   const allIds = p => { const pt = OM.priceTable(p, {}), T = OM.calcTargets(p); const ids = new Set(), tpls = new Set(); let prot = 0;
@@ -237,6 +246,7 @@ ok(OM.trend(ws.slice(0, 3), '2026-10-21') === null, 'not enough data -> no trend
   }
   ok(cfg.freightPerLb === 600 && cfg.markup === 0.15 && cfg.duty === 0.2 && cfg.gct === 0.15, 'store settings match owner + Customs');
   ok(/^1\d{10}$/.test(cfg.whatsapp), 'WhatsApp number in international form');
+  ok(typeof cfg.paused === 'boolean' && cfg.pauseNote.length > 40, 'Store pause switch and note present');
   const c4 = OM.PRODUCTS.find(x => x.stim);
   ok(OM.productView(c4, { age: 16 }).hidden, 'pre-workout hidden under 18');
   ok(OM.productView(c4, { age: 30, pregnant: true }).hidden, 'pre-workout hidden in pregnancy');

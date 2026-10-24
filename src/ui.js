@@ -309,7 +309,7 @@
   function jm(v) { return 'J$' + Math.round(v).toLocaleString('en-US'); }
   function cartCount() { return Object.keys(S.cart || {}).reduce(function (a, k) { return a + (S.cart[k] || 0); }, 0); }
   function nudge(id, why) {
-    var pr = prod(id); if (!pr) return '';
+    var pr = prod(id); if (!pr || OM.STORE.paused) return '';
     var key = TODAY + ':' + id;
     if ((S.nudgeHide || {})[key] || inCart(id) || OM.productView(pr, P()).hidden) return '';
     var l = OM.landed(pr);
@@ -317,7 +317,19 @@
     return '<section class="nudge">' + pic(pr.pic, 'pic sm') + '<div class="nudge-txt"><span class="label">From the OMGym Store</span><strong>' + esc(pr.name) + '</strong><span class="small muted">' + esc(why) + '</span></div><div class="nudge-act"><span class="num nudge-price">' + jm(l.price) + '</span>' + addBtn + '<button class="linkbtn small" data-act="nudgehide" data-key="' + key + '">Not now</button></div></section>';
   }
   function storeRegionNote() { return P().region !== 'JM' ? '<div class="flag info">The OMGym Store delivers in Jamaica only. Prices are in J$ and include shipping to Jamaica, customs duty and GCT.</div>' : ''; }
+  function renderStorePaused() {
+    var cfg = OM.STORE;
+    var h = '<section class="dayhead"><span class="label">Paused for now</span><h1>OMGym Store</h1></section>';
+    h += '<section class="card hero" id="store-paused"><h3>The Store is paused</h3><p>' + esc(cfg.pauseNote) + '</p><p class="small muted">Nothing can be ordered right now. Your meal plan still reaches its targets with food.</p></section>';
+    S.cart = OM.normalizeCart(S.cart);
+    var keys = Object.keys(S.cart).filter(function (k) { return S.cart[k] && OM.parseKey(k); });
+    if (keys.length) {
+      h += '<section class="card bag"><h3>Your saved bag</h3>' + keys.map(function (k) { var pk = OM.parseKey(k); return '<div class="logrow"><span>' + esc(pk.prod.name) + ' <span class="small muted">' + esc(pk.prod.size.split(' · ')[0]) + (pk.variant ? ', ' + esc(pk.variant.label) : '') + '</span></span><span class="num">× ' + S.cart[k] + '</span><span></span></div>'; }).join('') + '<p class="small muted">Prices will be checked again when the Store reopens.</p><div><button class="linkbtn small" data-act="emptybag">Empty the bag</button></div></section>';
+    }
+    return h + renderSeller(cfg);
+  }
   function renderStore() {
+    if (OM.STORE.paused) return renderStorePaused();
     var p = P(), cfg = OM.STORE;
     var h = '<section class="dayhead"><span class="label">Delivered to Jamaica in ' + esc(cfg.leadTime) + '</span><h1>OMGym Store</h1><p class="small muted">Prices include shipping, customs duty and GCT. Pay and arrange delivery with OMGym on WhatsApp.</p></section>';
     h += storeRegionNote();
@@ -354,8 +366,10 @@
     h += '</section>';
     if (hiddenStim) h += '<div class="flag info">Pre-workout is hidden for you because of your health answers. It contains caffeine; check with your doctor first.</div>';
     h += '<p class="small muted">Supplements are optional: your meal plan reaches its targets with food. Supplement claims are not evaluated by health authorities.</p>';
-    // seller view
-    var sv = sellerOn();
+    return h + renderSeller(cfg);
+  }
+  function renderSeller(cfg) {
+    var h = '', sv = sellerOn();
     h += '<section class="card"><div class="cardhead"><h3>Seller view</h3><button class="chip" data-act="sellerview" aria-pressed="' + sv + '">' + (sv ? 'On' : 'Off') + '</button></div>';
     if (sv) h += '<p class="small muted">Seller view is on for this phone only. Order links you receive on WhatsApp will show your cost and profit here; customers who open a link see only the items.</p>';
     if (sv) {
@@ -363,7 +377,7 @@
       OM.PRODUCTS.forEach(function (pr) { var l = OM.landed(pr); h += '<tr><td>' + esc(pr.name.replace('Optimum Nutrition', 'ON')) + ' ' + esc(pr.size.split(' · ')[0]) + '</td><td class="r">US$' + pr.usd.toFixed(2) + '</td><td class="r">' + jm(l.goods) + '</td><td class="r">' + jm(l.freight) + '</td><td class="r">' + jm(l.duty) + '</td><td class="r">' + jm(l.gct) + '</td><td class="r">' + jm(l.fees) + '</td><td class="r">' + jm(l.cost) + '</td><td class="r"><strong>' + jm(l.price) + '</strong></td><td class="r">' + jm(l.profit) + '</td></tr>'; });
       h += '</tbody></table></div><h4 class="small">Where each Amazon price came from</h4><ul class="lines small" id="pricesources">';
       OM.PRODUCTS.forEach(function (pr) { var c = OM.priceCheck(pr, TODAY); h += '<li><strong>' + esc(pr.name.replace('Optimum Nutrition', 'ON')) + ' ' + esc(pr.size.split(' · ')[0]) + '</strong> US$' + pr.usd.toFixed(2) + ' <span class="pill ' + (pr.conf === 'estimate' ? 'estimate' : 'retail') + '">' + esc(c.label) + '</span>' + (c.stale ? ' <span class="pill estimate">Check again</span>' : '') + '<br><span class="muted">' + esc(pr.src || '') + (pr.date ? ' · ' + esc(pr.date) : '') + '</span></li>'; });
-      h += '</ul><ul class="lines small muted"><li>' + esc(cfg.fxNote) + ' → J$' + cfg.fx + '.</li><li>' + esc(cfg.usTaxNote) + '.</li><li>' + esc(cfg.freightNote) + '.</li><li>' + esc(cfg.dutyNote) + '.</li><li>Markup ' + Math.round(cfg.markup * 100) + '% on landed cost, rounded up to J$' + cfg.roundTo + '.</li><li>Supplements need a Ministry of Health import permit before they are imported for sale.</li></ul>';
+      h += '</ul><ul class="lines small muted">' + (cfg.paused ? '<li><strong>The Store is paused: customers see no prices and cannot order.</strong> Set STORE.paused to false in core.js to reopen.</li>' : '') + '<li>' + esc(cfg.fxNote) + ' → J$' + cfg.fx + '.</li><li>' + esc(cfg.usTaxNote) + '.</li><li>' + esc(cfg.freightNote) + '.</li><li>' + esc(cfg.dutyNote) + '.</li><li>Markup ' + Math.round(cfg.markup * 100) + '% on landed cost, rounded up to J$' + cfg.roundTo + '.</li><li>Supplements need a Ministry of Health import permit before they are imported for sale.</li></ul>';
     }
     h += '</section>';
     return h;
@@ -609,7 +623,7 @@
     var fn = { today: renderToday, food: renderFood, shop: renderShop, store: renderStore, progress: renderProgress, me: renderMe, pro: renderPro }[tab];
     v.innerHTML = fn();
     document.querySelectorAll('nav.tabs button').forEach(function (b) { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-    var badge = document.getElementById('bagcount'), n = cartCount(); if (badge) { badge.textContent = n; badge.hidden = !n; }
+    var badge = document.getElementById('bagcount'), n = OM.STORE.paused ? 0 : cartCount(); if (badge) { badge.textContent = n; badge.hidden = !n; }
     updateNewsDot();
     var pb = document.getElementById('probtn'); if (pb) { pb.classList.toggle('on', proActive()); pb.setAttribute('aria-current', tab === 'pro' ? 'page' : 'false'); }
   }
@@ -799,7 +813,7 @@
         dd.sets[ex] = ticking ? n : n - 1; save(); render();
         if (ticking) startRest(+t.dataset.rest || 60); break;
       case 'skiprest': stopRest(); break;
-      case 'cartadd': S.cart = S.cart || {}; var ak = t.dataset.key || OM.cartKey(t.dataset.id); S.cart[ak] = Math.min(50, (S.cart[ak] || 0) + 1); orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
+      case 'cartadd': if (OM.STORE.paused) { toast('The Store is paused for now.'); break; } S.cart = S.cart || {}; var ak = t.dataset.key || OM.cartKey(t.dataset.id); S.cart[ak] = Math.min(50, (S.cart[ak] || 0) + 1); orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
       case 'cartdec': var dk = t.dataset.key || t.dataset.id; S.cart[dk] = Math.max(0, (S.cart[dk] || 0) - 1); if (!S.cart[dk]) delete S.cart[dk]; orderCopied = false; save(); render(); break;
       case 'pronew': startProInvoice(); break;
       case 'promethod': var oi = PD.invoices.filter(function (i) { return !unlockFor(i.no) && i.status !== 'void'; }).slice(-1)[0]; if (oi) { oi.method = t.dataset.m; proSave(); render(); } break;

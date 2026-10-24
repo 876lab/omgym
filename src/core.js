@@ -480,7 +480,7 @@ var OM = (function () {
         rbanana: { u: '1 hand (about 6, 700 g)', g: 700, pr: 500, store: 'Estimate', src: 'J$1,000 a dozen at Coronation Market, converted', date: 'Aug 2026', conf: 'estimate' },
         greekyog: { u: '1.13 kg tub (Chobani plain)', g: 1130, pr: 3100, tier: 3, store: 'JA Deals (online grocer)', src: 'JA Deals J$2,700 before GCT; usually at PriceSmart and the larger Hi-Lo and Loshusan stores', date: 'Oct 2026', conf: 'store' },
         cottage: { u: '16 oz tub (imported)', g: 454, pr: 1300, tier: 3, store: 'Estimate', src: 'No Jamaican shelf price found online; US price (US$2.87 for 24 oz) × import costs. Not every store stocks it: try PriceSmart or Hi-Lo', date: 'Oct 2026', conf: 'estimate' },
-        whey: { u: '5 lb tub (ON Gold Standard)', g: 2268, pr: 37700, fromStore: 'on-whey-5', tier: 3, store: 'OMGym Store', src: 'OMGym Store price, delivered with duty and GCT', date: 'Oct 2026', conf: 'store' },
+        whey: { u: '5 lb tub (ON Gold Standard)', g: 2268, pr: 37700, fromStore: 'on-whey-5', local: { pr: 13800, store: 'Fitness Junkies JA (online, Kingston)', src: 'Fitness Junkies JA lists ON Gold Standard 5 lb at J$13,800; check it is in stock', date: 'Oct 2026', conf: 'store' }, tier: 3, store: 'OMGym Store', src: 'OMGym Store price, delivered with duty and GCT', date: 'Oct 2026', conf: 'store' },
         chickbreast: { u: '1 kg pack, boneless skinless', g: 1000, pr: 1340, store: 'Estimate', src: 'Kingston shoppers\' prices J$670 per 500 g (Expatistan, Jun 2026)', date: 'Jun 2026', conf: 'estimate' },
         beef: { u: '1 kg pack, beef mince', g: 1000, pr: 1600, tier: 2, store: 'Kingston supermarkets incl. Hi-Lo, Loshusan, PriceSmart', src: 'Agriculture ministry supermarket survey: local beef mince J$1,400–1,693/kg (Nov 2025). Ask for lean', date: 'Nov 2025', conf: 'survey' },
         turkey: { u: '1 lb frozen pack (imported)', g: 454, pr: 1300, tier: 3, store: 'Estimate', src: 'US price (US$5.46 per 1.2 lb) × import costs; PriceSmart is the likeliest stockist', date: 'Oct 2026', conf: 'estimate' },
@@ -585,6 +585,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-24', t: 'Store paused', b: ['The OMGym Store is paused while we find a cheaper way to bring products into Jamaica. Nothing can be ordered for now.', 'Anything already in your bag is saved for when the Store reopens.', 'Meal plans that use whey now show a local shop price instead of the Store price.'] },
     { d: '2026-10-24', t: 'What\'s new button and price check', b: ['New sparkle button at the top: an orange dot shows when OMGym has something new. Tap it to see every update, newest first. The dot clears once you have looked.', 'Market prices from Coronation Market (23 Oct): tomatoes J$400/lb, Irish potato J$250/lb, onions J$250/lb and escallion J$300/lb are a little cheaper; sweet potato and carrot unchanged.', 'Store: Jamaica\'s environmental levy on imports went up from 0.5% to 0.85% on 1 October, so 8 Store items went up by J$50 (whey, ISO100, C4, jump rope, shaker, straps, wraps). Exchange rate unchanged at J$162 per US$.'] },
     { d: '2026-10-23', t: 'Food budgets and US meals', b: ['Choose a food budget: Budget, Standard or Premium. The Shopping list shows what a week of food costs at each level, and you can set a weekly limit.', 'Tick the foods you buy (Greek yogurt, cottage cheese, berries, whey, chicken breast, salmon and more) and the plan builds meals around them.', 'Switch between Jamaica, USA and elsewhere at the top of Meals and the Shopping list. The USA now gets American dishes with Walmart prices.', 'PRO: a daily protein top-up (tuna, whey, Greek yogurt or chicken breast) so cut and bulk plans reach the higher protein target.'] },
     { d: '2026-10-23', t: 'Store price check', b: ['Whey prices have gone up in the US: the 5 lb Gold Standard is now about US$115 and the 2 lb about US$65, so their Store prices went up.', 'Seller view now lists where each Amazon price came from and when, and marks the ones to confirm on Amazon before you order.', 'Exchange rate checked with the Bank of Jamaica (22 Oct): still J$162 per US$ with the card fee.'] },
@@ -631,7 +632,8 @@ var OM = (function () {
     Object.keys(base.items).forEach(function (id) {
       var b = base.items[id];
       var it = { u: b.u, g: b.g, pr: b.pr, weighed: !!b.weighed, store: b.store, src: b.src, date: b.date, conf: b.conf, tier: b.tier || 1, name: b.name || ING[id].name, short: b.short };
-      if (b.fromStore) { var sp = productById(b.fromStore); if (sp) it.pr = landed(sp).price; }
+      if (b.fromStore && STORE.paused && b.local) { it.pr = b.local.pr; it.store = b.local.store; it.src = b.local.src; it.date = b.local.date; it.conf = b.local.conf; }
+      else if (b.fromStore) { var sp = productById(b.fromStore); if (sp) it.pr = landed(sp).price; }
       if (region === 'OTHER') { it.conf = 'placeholder'; it.store = 'Placeholder'; it.src = 'US price used as a placeholder. Enter what your store charges.'; }
       var c = custom && custom[id];
       if (c && typeof c.pr === 'number') {
@@ -894,7 +896,12 @@ var OM = (function () {
     markup: 0.15, roundTo: 50,
     whatsapp: '16582184432', // owner's WhatsApp, international form (+1 658 218 4432)
     orderBase: 'https://876lab.github.io/omgym/', // order links always open the public site
-    leadTime: 'about 1–2 weeks'
+    leadTime: 'about 1–2 weeks',
+    // Owner paused all Store sales on 24 Oct 2026 until import costs come down (see the import research doc).
+    // While paused: no prices, no Add to bag, no WhatsApp orders, no add-on prompts. Saved bags are kept.
+    // To reopen, set paused: false.
+    paused: true,
+    pauseNote: 'The OMGym Store is paused while we find a cheaper way to bring products into Jamaica, so we can offer better prices. Your bag is saved for when we reopen.'
   };
   // usd: typical Amazon price (check on Amazon before ordering), lb: billed shipping weight.
   var PRODUCTS = [
