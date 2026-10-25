@@ -227,6 +227,17 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 .pro-word { color: var(--mango); }
 .newsbtn { appearance: none; position: relative; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; padding: 0; flex: none; }
 .newsbtn svg { width: 20px; height: 20px; }
+.newsbtn .q { font-family: var(--display); font-weight: 800; font-size: 1.1rem; line-height: 1; }
+.gstep { display: grid; gap: 10px; }
+.gstep h3 { margin: 0; }
+.gstep .lines li { margin-block: 4px; }
+.gdots { display: flex; gap: 6px; justify-content: center; margin: 4px 0 2px; }
+.gdots button { appearance: none; width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; }
+.gdots button[aria-current="step"] { background: var(--iron); width: 22px; border-radius: 6px; }
+.gnav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+.gicon { width: 44px; height: 44px; border-radius: 12px; background: var(--sunk); display: grid; place-items: center; color: var(--iron); }
+.gicon svg { width: 24px; height: 24px; }
+.welcome { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 2px solid var(--iron); }
 .newdot { position: absolute; top: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: var(--mango); box-shadow: 0 0 0 2px var(--bg); }
 .news .wrap { max-width: 680px; }
 .newshead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -270,7 +281,7 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
   <div class="wrap">
     <header class="top">
       <div class="brand" aria-label="OMGym">OM<b>GYM</b></div>
-      <div class="topright"><div class="status" id="status">Loading your plan…</div><button class="newsbtn" id="newsbtn" data-act="news" aria-label="What's new" aria-haspopup="dialog" aria-controls="news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg><span class="newdot" id="newdot" hidden></span></button><button class="probtn" id="probtn" data-act="tab" data-tab="pro" aria-label="OMGym PRO">PRO</button></div>
+      <div class="topright"><div class="status" id="status">Loading your plan…</div><button class="newsbtn" id="helpbtn" data-act="guide" aria-label="How to use OMGym" aria-haspopup="dialog" aria-controls="guide"><span aria-hidden="true" class="q">?</span></button><button class="newsbtn" id="newsbtn" data-act="news" aria-label="What's new" aria-haspopup="dialog" aria-controls="news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg><span class="newdot" id="newdot" hidden></span></button><button class="probtn" id="probtn" data-act="tab" data-tab="pro" aria-label="OMGym PRO">PRO</button></div>
     </header>
     <main id="view" aria-live="polite"></main>
   </div>
@@ -285,6 +296,7 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
     </div>
   </nav>
   <div class="sheet" id="sheet" hidden></div>
+  <div class="sheet news" id="guide" role="dialog" aria-modal="true" aria-labelledby="guide-h" hidden></div>
   <div class="sheet news" id="news" role="dialog" aria-modal="true" aria-labelledby="news-h" hidden></div>
   <div class="toast" id="toast" role="status" hidden></div>
   <div class="restbar" id="rest" role="timer" aria-live="polite" hidden><span id="rest-t" class="num">Rest</span><button class="btn small ghost" data-act="skiprest">Skip</button></div>

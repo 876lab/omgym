@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-25: How to use OMGym (owner request) and "hard dough" spelling
+- "?" button in the header opens an 8-step guide (Welcome, Today, Meals, List, Progress, Plan, PRO and the Store, Tips) with dots, Back/Next and a "Show me" button that opens that tab (or setup on the first step). Escape or × closes it. First-time viewers see a "New here? Take the 1-minute tour" card on Today; it goes away once the guide is opened or "Not now" is tapped (`omgym-guide-seen`, per browser). The Store step follows `STORE.paused`.
+- Spelling (owner): "hardo" → "hard dough" in the ingredient name, pack and four dish names. Ingredient id `bread` unchanged, so saved data is unaffected.
+- Tests: 11 browser checks (welcome card, step 1, Next, dots, Done, Show me, card gone, ? button, Escape); the US dish check also looks for "hard dough".
+
 ## 2026-10-25: Build my own meal (user feedback; free taste, full in PRO)
 - Meals tab card "Build my own meal": base (wrap, rice bowl, sandwich, whole-wheat sandwich, pasta, boiled food, sweet potato) with Small/Regular/Large, up to 2 proteins (13 choices) with size, vegetables, extras (oil/dressing, yogurt sauce, peanut sauce), lunch or dinner. Shows kcal/protein/carbs/fat, a verdict for the person's goal (within 75–115% of the slot's calories; protein at least 80% of the slot's share), ingredient amounts with the pack to buy and where (no per-serving cost), and a how-to. Diet and allergies decide the choices.
 - PRO: "Fit to my goal" resizes the main protein and base with the planner's solver (base may grow up to a single plate's cap for big appetites; if one plate still can't reach the target it says to add a side); "Add to lunch/dinner" stores the meal in `S.swaps[date].cl|cd` (shown as "My meal" with Remove, counted in the shopping list, untouched by the PRO top-up); "Save" keeps up to 10 in `S.myMeals`. Built meals only count while PRO is active (`mySwaps()`). Free users see the PRO buttons, which open the PRO tab.

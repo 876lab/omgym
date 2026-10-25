@@ -134,7 +134,7 @@
     var plan = OM.planDay(D, p, T, pt, mySwaps());
     var shop = weekShop();
     var dd = S.days[D] || { sets: {}, habits: {} };
-    var h = exampleBanner() + flagsHtml(T);
+    var h = welcomeCard() + exampleBanner() + flagsHtml(T);
     if (!isToday) h += '<div class="flag info" id="otherday">' + (future ? 'This is a preview of ' + esc(niceDate(D)) + '. You can log it on the day.' : 'You are logging ' + esc(niceDate(D)) + '. Tick sets, weights and habits as you did them.') + ' <button class="linkbtn" data-act="wday" data-d="' + TODAY + '">Back to today</button></div>';
     h += '<section class="dayhead"><span class="label">' + esc(niceDate(D)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min' + (w.pro ? ' · <span class="pill done">PRO ' + esc(OM.PRO_PHASES[proPlan().phase].label) + '</span>' : '') + '</span></section>';
     h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">' + (isToday ? 'kcal today' : 'kcal a day') + '</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(shop.total, pt) + '</div><div class="u">week\'s shop</div></div></section>';
@@ -361,6 +361,40 @@
     var c = $('#news [data-act=closenews]'); if (c) c.focus();
   }
   function closeNews() { $('#news').hidden = true; document.body.style.overflow = ''; var b = document.getElementById('newsbtn'); if (b) b.focus(); }
+  /* ---------- How to use OMGym: a short guided tour, one step per screen ---------- */
+  var GUIDEKEY = 'omgym-guide-seen', guideStep = 0, guideMem = '';
+  function guideSeen() { try { return localStorage.getItem(GUIDEKEY) === '1'; } catch (e) { return guideMem === '1'; } }
+  function setGuideSeen() { try { localStorage.setItem(GUIDEKEY, '1'); } catch (e) { } guideMem = '1'; }
+  var GI = {
+    hi: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>', today: '<path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/>', food: '<circle cx="12" cy="13" r="7"/><path d="M12 6V3M9 13h6"/>',
+    shop: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>', progress: '<path d="M4 18l5-6 4 3 7-9"/>', me: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+    pro: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>', tips: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>'
+  };
+  function guideSteps() {
+    var store = OM.STORE.paused ? 'The Store tab is paused for now while we bring import costs down; anything in your bag is saved.' : 'The Store tab sells supplements and gym gear delivered to Jamaica. Add to your bag, then order on WhatsApp.';
+    return [
+      { ic: 'hi', t: 'Welcome to OMGym', b: ['Your workouts, meals and shopping list in one place, built around your body, your goal and your budget.', 'Sessions take about 45 minutes. Meals use food from PriceSmart, Hi-Lo, Loshusan and the market, with prices per pack.', 'Start by setting up your plan: about 2 minutes, five short steps.'], go: S.profile ? null : 'setup', goLabel: 'Set up my plan' },
+      { ic: 'today', t: 'Today: your workout', b: ['Today shows the workout for the day, exercise by exercise.', 'Tap a numbered box when you finish a set: a rest timer starts by itself.', 'Type the weight you used. Next time it shows as "Last".', 'Tap Finish workout at the end. Forgot a day? Tap that day in the week strip and log it.'], go: 'today' },
+      { ic: 'food', t: 'Meals: what to eat', b: ['Breakfast, lunch, dinner and a snack, sized to your calories and protein, with amounts and how to cook them.', 'Not feeling a meal? Tap Swap. Use ‹ › to see other days.', 'At the top: switch Budget, Standard or Premium, and Jamaica or USA prices.', 'Build my own meal: pick a wrap, bowl or plate and what goes in it, and see if it fits your goal.'], go: 'food' },
+      { ic: 'shop', t: 'List: your shopping', b: ['Everything for the next 7 days, in the packs the store sells (a 2 kg bag of rice, a whole chicken).', 'Tick items as you shop.', 'Price different at your store? Tap Edit price and type what you paid. Your plan uses your prices from then on.'], go: 'shop' },
+      { ic: 'progress', t: 'Progress: weigh in', b: ['Weigh yourself once or twice a week, first thing in the morning, and add it here.', 'OMGym shows your trend, not the day-to-day ups and downs.', 'After a few weeks it suggests small calorie changes if you are moving faster or slower than planned.'], go: 'progress' },
+      { ic: 'me', t: 'Plan: your settings', b: ['Your calorie and protein targets and where the numbers come from.', 'Tap Edit my details to change your weight, goal, training days, foods or allergies.', 'Your data: Copy my data to move to another phone; Start over to reset.'], go: 'me' },
+      { ic: 'pro', t: 'PRO and the Store', b: ['PRO (US$10 a month) is for lifters with 3+ years of training: cut, lean bulk or maintain phases, harder training, weekly check-ins, and meals you build fitted to your goal.', 'Tap PRO at the top to see it and pay by bank transfer or PayPal.', store], go: 'pro' },
+      { ic: 'tips', t: 'Tips', b: ['On iPhone: open OMGym in Safari, tap Share, then Add to Home Screen. It opens like an app.', 'The sparkle button at the top shows what\'s new. The ? button opens this guide any time.', 'Questions or ideas? Message OMGym on WhatsApp.'], go: null }
+    ];
+  }
+  function renderGuide() {
+    var st = guideSteps(), n = st.length, i = Math.max(0, Math.min(n - 1, guideStep)), g = st[i];
+    var h = '<div class="wrap"><div class="newshead"><h2 id="guide-h">How to use OMGym</h2><button class="iconbtn" data-act="closeguide" aria-label="Close">×</button></div>';
+    h += '<section class="card gstep" id="gstep"><div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + GI[g.ic] + '</svg></div><span class="label">Step ' + (i + 1) + ' of ' + n + '</span><h3>' + esc(g.t) + '</h3><ul class="lines">' + g.b.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+      (g.go ? '<div><button class="btn small" data-act="guidego" data-to="' + g.go + '">' + esc(g.goLabel || 'Show me') + '</button></div>' : '') + '</section>';
+    h += '<div class="gdots" role="group" aria-label="Steps">' + st.map(function (x, k) { return '<button data-act="guidestep" data-i="' + k + '" aria-label="Step ' + (k + 1) + ': ' + esc(x.t) + '"' + (k === i ? ' aria-current="step"' : '') + '></button>'; }).join('') + '</div>';
+    h += '<div class="gnav"><button class="btn ghost small" data-act="guidestep" data-i="' + (i - 1) + '"' + (i ? '' : ' disabled') + '>Back</button>' + (i < n - 1 ? '<button class="btn small" data-act="guidestep" data-i="' + (i + 1) + '">Next</button>' : '<button class="btn small" data-act="closeguide">Done</button>') + '</div></div>';
+    $('#guide').innerHTML = h;
+  }
+  function openGuide(i) { guideStep = i || 0; renderGuide(); $('#guide').hidden = false; $('#guide').scrollTop = 0; document.body.style.overflow = 'hidden'; setGuideSeen(); var c = $('#guide [data-act=closeguide]'); if (c) c.focus(); }
+  function closeGuide() { $('#guide').hidden = true; document.body.style.overflow = ''; render(); var b = document.getElementById('helpbtn'); if (b) b.focus(); }
+  function welcomeCard() { return guideSeen() ? '' : '<section class="card welcome" id="welcome"><div><strong>New here?</strong><div class="small muted">Take the 1-minute tour of OMGym.</div></div><div class="datarow" style="margin:0"><button class="btn small" data-act="guide">Start the tour</button><button class="linkbtn" data-act="guidedismiss">Not now</button></div></section>'; }
   function sellerOn() { try { return localStorage.getItem('omgym-seller') === '1'; } catch (e) { return !!S.sellerView; } }
   function setSeller(on) { try { localStorage.setItem('omgym-seller', on ? '1' : '0'); } catch (e) { } S.sellerView = on; }
   // simple drawn pictures (generic, no brand artwork)
@@ -866,6 +900,11 @@
         break;
       case 'closesetup': closeSetup(); break;
       case 'news': openNews(); break;
+      case 'guide': openGuide(0); break;
+      case 'closeguide': closeGuide(); break;
+      case 'guidestep': guideStep = +t.dataset.i; renderGuide(); $('#guide').scrollTop = 0; break;
+      case 'guidedismiss': setGuideSeen(); render(); break;
+      case 'guidego': var gto = t.dataset.to; $('#guide').hidden = true; document.body.style.overflow = ''; if (gto === 'setup') openSetup(); else go(gto); break;
       case 'closenews': closeNews(); break;
       case 'seg': readSheet();
         var k = t.dataset.k, v = t.dataset.v;
@@ -1032,7 +1071,7 @@
   window.addEventListener('focus', refreshToday);
   setInterval(refreshToday, 60000);
   if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) { try { navigator.serviceWorker.register('sw.js').catch(function () { }); } catch (e) { } }
-  document.addEventListener('keydown', function (ev) { if (ev.key !== 'Escape') return; if (!$('#news').hidden) closeNews(); else if (!$('#sheet').hidden) closeSetup(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key !== 'Escape') return; if (!$('#guide').hidden) closeGuide(); else if (!$('#news').hidden) closeNews(); else if (!$('#sheet').hidden) closeSetup(); });
 
   var h0 = (location.hash || '').slice(1);
   if (VALID_TABS.indexOf(h0) >= 0) tab = h0;

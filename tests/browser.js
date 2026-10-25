@@ -86,6 +86,21 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
     const load = page.locator('input[data-act=load]').first(); if (await load.count()) { await load.fill('20'); await load.press('Tab'); }
   }
   ok(await page.locator('.week .wd').count() === 7, 'week strip shows 7 days');
+  // How to use OMGym: welcome card, step-by-step guide, Show me, Escape
+  { ok(await page.isVisible('#welcome') && /New here/.test(await page.innerText('#welcome')), 'first visit: New here? card on Today');
+    await page.click('#welcome [data-act=guide]');
+    ok(await page.isVisible('#guide') && /Step 1 of 8/i.test(await page.innerText('#gstep')), 'guide opens at step 1');
+    await page.click('#guide .gnav [data-act=guidestep]:not([disabled]) >> text=Next');
+    ok(/Today: your workout/i.test(await page.innerText('#gstep')), 'Next goes to the Today step');
+    await page.screenshot({ path: OUT + '/shot-guide.png', fullPage: false });
+    await page.click('#guide .gdots button >> nth=7'); ok(/Tips/i.test(await page.innerText('#gstep')) && await page.isVisible('#guide [data-act=closeguide] >> text=Done'), 'dots jump to a step; last step says Done');
+    await page.click('#guide .gdots button >> nth=3'); await page.click('[data-act=guidego]');
+    ok(await page.isHidden('#guide') && /Shopping list/i.test(await page.innerText('#view')), 'Show me opens that tab');
+    await page.click('nav [data-tab=today]');
+    ok(!(await page.isVisible('#welcome')), 'welcome card gone once the guide was opened');
+    await page.click('#helpbtn'); ok(await page.isVisible('#guide'), '? button opens the guide any time');
+    await page.keyboard.press('Escape'); ok(await page.isHidden('#guide'), 'Escape closes the guide');
+  }
   ok(/week's shop/.test(await page.innerText('.kpis')), 'today shows week shop total');
   await page.click('[data-act=done]'); ok(await page.isVisible('text=Workout logged'), 'workout logged');
   await page.click('[data-act=habit][data-h=water]');
@@ -177,7 +192,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(/^\$[\d,.]+$/.test(await page.locator('.kpi .v').first().innerText()) && /Walmart/.test(usText), 'quick switch to USA: dollars and US stores');
   await page.click('nav [data-tab=food]');
   ok(/American/.test(await page.locator('.quick').innerText()), 'USA uses American dishes');
-  ok(!/hardo bread|callaloo|Mackerel/i.test(await page.locator('#view').innerText()), 'no Jamaican-only dishes in the US plan');
+  ok(!/hard dough|hardo bread|callaloo|Mackerel/i.test(await page.locator('#view').innerText()), 'no Jamaican-only dishes in the US plan');
   ok(!(await overflow()), 'no horizontal overflow with the quick bar');
   await page.click('.quick [data-k=region][data-v=JM]'); await page.click('.quick [data-k=budget][data-v="1"]');
   await page.click('nav [data-tab=shop]');

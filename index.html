@@ -244,6 +244,17 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 .pro-word { color: var(--mango); }
 .newsbtn { appearance: none; position: relative; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; padding: 0; flex: none; }
 .newsbtn svg { width: 20px; height: 20px; }
+.newsbtn .q { font-family: var(--display); font-weight: 800; font-size: 1.1rem; line-height: 1; }
+.gstep { display: grid; gap: 10px; }
+.gstep h3 { margin: 0; }
+.gstep .lines li { margin-block: 4px; }
+.gdots { display: flex; gap: 6px; justify-content: center; margin: 4px 0 2px; }
+.gdots button { appearance: none; width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; }
+.gdots button[aria-current="step"] { background: var(--iron); width: 22px; border-radius: 6px; }
+.gnav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+.gicon { width: 44px; height: 44px; border-radius: 12px; background: var(--sunk); display: grid; place-items: center; color: var(--iron); }
+.gicon svg { width: 24px; height: 24px; }
+.welcome { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 2px solid var(--iron); }
 .newdot { position: absolute; top: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: var(--mango); box-shadow: 0 0 0 2px var(--bg); }
 .news .wrap { max-width: 680px; }
 .newshead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -287,7 +298,7 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
   <div class="wrap">
     <header class="top">
       <div class="brand" aria-label="OMGym">OM<b>GYM</b></div>
-      <div class="topright"><div class="status" id="status">Loading your plan…</div><button class="newsbtn" id="newsbtn" data-act="news" aria-label="What's new" aria-haspopup="dialog" aria-controls="news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg><span class="newdot" id="newdot" hidden></span></button><button class="probtn" id="probtn" data-act="tab" data-tab="pro" aria-label="OMGym PRO">PRO</button></div>
+      <div class="topright"><div class="status" id="status">Loading your plan…</div><button class="newsbtn" id="helpbtn" data-act="guide" aria-label="How to use OMGym" aria-haspopup="dialog" aria-controls="guide"><span aria-hidden="true" class="q">?</span></button><button class="newsbtn" id="newsbtn" data-act="news" aria-label="What's new" aria-haspopup="dialog" aria-controls="news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg><span class="newdot" id="newdot" hidden></span></button><button class="probtn" id="probtn" data-act="tab" data-tab="pro" aria-label="OMGym PRO">PRO</button></div>
     </header>
     <main id="view" aria-live="polite"></main>
   </div>
@@ -302,6 +313,7 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
     </div>
   </nav>
   <div class="sheet" id="sheet" hidden></div>
+  <div class="sheet news" id="guide" role="dialog" aria-modal="true" aria-labelledby="guide-h" hidden></div>
   <div class="sheet news" id="news" role="dialog" aria-modal="true" aria-labelledby="news-h" hidden></div>
   <div class="toast" id="toast" role="status" hidden></div>
   <div class="restbar" id="rest" role="timer" aria-live="polite" hidden><span id="rest-t" class="num">Rest</span><button class="btn small ghost" data-act="skiprest">Skip</button></div>
@@ -706,7 +718,7 @@ var OM = (function () {
     oats: { name: 'Rolled oats', short: 'oats', k: 379, p: 13.2, c: 67.7, f: 6.5, y: 1, grp: 'Starches', cup: 80 },
     cornmeal: { name: 'Cornmeal', short: 'cornmeal', k: 366, p: 7.5, c: 78, f: 2, y: 1, grp: 'Starches', cup: 150 },
     flour: { name: 'Flour (for dumplings)', k: 364, p: 10.3, c: 76, f: 1, y: 1, grp: 'Starches', cup: 125, tags: ['gluten'] },
-    bread: { name: 'Hardo bread, sliced', short: 'hardo bread', k: 266, p: 8.9, c: 49, f: 3.3, y: 1, grp: 'Starches', slice: 40, tags: ['gluten'] },
+    bread: { name: 'Hard dough bread, sliced', short: 'hard dough bread', k: 266, p: 8.9, c: 49, f: 3.3, y: 1, grp: 'Starches', slice: 40, tags: ['gluten'] },
     sweetpot: { name: 'Sweet potato', short: 'sweet potato', k: 86, p: 1.6, c: 20, f: 0.1, y: 0.85, grp: 'Ground provisions' },
     yam: { name: 'Yellow yam', short: 'yellow yam', k: 118, p: 1.5, c: 28, f: 0.2, y: 0.85, grp: 'Ground provisions' },
     gbanana: { name: 'Green banana', short: 'green banana', k: 89, p: 1.1, c: 23, f: 0.3, y: 0.65, grp: 'Ground provisions' },
@@ -771,7 +783,7 @@ var OM = (function () {
         oats: { u: '800 g bag (Foska)', g: 800, pr: 662, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
         cornmeal: { u: '400 g bag (Foska)', g: 400, pr: 169, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
         flour: { u: '1 kg bag (JF Mills)', g: 1000, pr: 369, store: 'Loshusan', src: 'Loshusan online J$368.58; CAC survey J$322–350', date: 'Oct 2026', conf: 'store' },
-        bread: { u: '2 lb loaf (National hardo)', g: 907, pr: 560, store: 'Hi-Lo and 8 other supermarkets', src: 'CAC survey: same price at all 9 outlets incl. Hi-Lo', date: 'Jul 2026', conf: 'survey' },
+        bread: { u: '2 lb loaf (National hard dough)', g: 907, pr: 560, store: 'Hi-Lo and 8 other supermarkets', src: 'CAC survey: same price at all 9 outlets incl. Hi-Lo', date: 'Jul 2026', conf: 'survey' },
         sweetpot: { u: 'per lb, weighed', g: 454, pr: 450, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: '23 Oct 2026', conf: 'market' },
         yam: { u: 'per lb, weighed', g: 454, pr: 500, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
         gbanana: { u: 'per lb, weighed', g: 454, pr: 150, weighed: true, store: 'Market', src: 'Spanish Town Market J$400 a hand (about 1.4 kg), converted', date: 'Jul 2026', conf: 'market' },
@@ -865,10 +877,10 @@ var OM = (function () {
   // pr: protein options (preference/cost picks), cb: carb options, fx: fixed [id, grams, optional]
   var MEALS = [
     { id: 'b_oats', slot: 'b', name: 'Oats porridge with peanut butter & banana, eggs on the side', pr: ['egg'], cb: ['oats'], fx: [['milk', 150, 1], ['pb', 15, 1], ['rbanana', 80, 1]], how: 'Simmer oats in the milk plus a little water for 5 min with a pinch of cinnamon and nutmeg. Top with sliced banana and peanut butter. Boil the eggs 9 min.' },
-    { id: 'b_callaloo', cu: 'jm', slot: 'b', name: 'Steamed callaloo & scrambled eggs with hardo bread', pr: ['egg', 'sardines'], cb: ['bread', 'sweetpot'], fx: [['callaloo', 120], ['onion', 30], ['tomato', 50], ['oil', 5]], how: 'Sauté onion and tomato in the oil, add chopped callaloo with a splash of water, cover 6–8 min. Scramble the eggs (or flake the sardines) into the pan. Serve with bread or boiled sweet potato.' },
+    { id: 'b_callaloo', cu: 'jm', slot: 'b', name: 'Steamed callaloo & scrambled eggs with hard dough bread', pr: ['egg', 'sardines'], cb: ['bread', 'sweetpot'], fx: [['callaloo', 120], ['onion', 30], ['tomato', 50], ['oil', 5]], how: 'Sauté onion and tomato in the oil, add chopped callaloo with a splash of water, cover 6–8 min. Scramble the eggs (or flake the sardines) into the pan. Serve with bread or boiled sweet potato.' },
     { id: 'b_mackerel', cu: 'jm', slot: 'b', name: 'Mackerel & tomato stew with boiled green banana', pr: ['mackerel', 'sardines'], cb: ['gbanana', 'yam', 'ipotato'], fx: [['onion', 30], ['tomato', 60], ['scallion', 10], ['oil', 5]], how: 'Peel and boil green banana 15–20 min. Sauté onion, escallion and tomato, add the fish with its sauce, add thyme and black pepper, simmer 5 min.' },
     { id: 'b_cornmeal', cu: 'jm', slot: 'b', name: 'Cornmeal porridge with boiled eggs', pr: ['egg'], cb: ['cornmeal'], fx: [['milk', 200, 1]], how: 'Whisk cornmeal into cold water, then bring to a boil while stirring. Add the milk, nutmeg and vanilla, simmer 10 min. Use less sweetener than usual.' },
-    { id: 'b_sardine', cu: 'jm', slot: 'b', name: 'Sardines & tomato on hardo bread', pr: ['sardines', 'tuna', 'egg'], cb: ['bread', 'sweetpot'], fx: [['tomato', 80], ['onion', 20]], how: 'Mash the fish with diced tomato, onion, lime and pepper. Pile onto toasted bread.' },
+    { id: 'b_sardine', cu: 'jm', slot: 'b', name: 'Sardines & tomato on hard dough bread', pr: ['sardines', 'tuna', 'egg'], cb: ['bread', 'sweetpot'], fx: [['tomato', 80], ['onion', 20]], how: 'Mash the fish with diced tomato, onion, lime and pepper. Pile onto toasted bread.' },
     { id: 'm_broadbean', cu: 'jm', slot: 'ld', plant: true, name: 'Broad bean & pumpkin stew with rice', names: { redpeas: 'Red peas & pumpkin stew with rice', soya: '{p} & pumpkin stew with rice' }, hows: { soya: 'Soak the soya chunks in hot water 10 min and squeeze dry. Sauté onion, escallion, garlic and thyme in the oil, add the chunks, tomato and diced pumpkin with a cup of water, simmer 12 min. Serve over rice or boiled provisions.' }, pr: ['broadbeans', 'redpeas', 'soya'], cb: ['rice', 'yam', 'ipotato'], fx: [['pumpkin', 120], ['tomato', 50], ['onion', 30], ['scallion', 10], ['oil', 6]], how: 'Sauté onion, escallion, garlic and thyme in the oil, add tomato and diced pumpkin with a cup of water, simmer 12 min. Add the drained beans for 5 min. Serve over rice or boiled provisions.' },
     { id: 'b_pboats', slot: 'b', plant: true, name: 'Peanut butter oats with banana (plant-based)', pr: ['pb'], cb: ['oats', 'cornmeal'], fx: [['rbanana', 80]], how: 'Cook the oats (or cornmeal) in water with cinnamon and a pinch of salt. Stir in peanut butter and top with sliced banana.' },
     { id: 'b_peascallaloo', cu: 'jm', slot: 'b', plant: true, name: 'Stewed peas & callaloo with boiled green banana', names: { soya: '{p} & callaloo with boiled green banana' }, hows: { soya: 'Soak the soya chunks in hot water 10 min, squeeze dry and season with thyme, garlic and black pepper. Sauté onion, add the chunks and callaloo with a splash of water, cover 6–8 min. Boil the green banana 15–20 min.' }, pr: ['redpeas', 'soya'], cb: ['gbanana', 'sweetpot', 'bread'], fx: [['callaloo', 100], ['onion', 25], ['oil', 5]], how: 'Use red peas cooked ahead in a batch. Warm them with sautéed onion and callaloo, thyme and black pepper. Boil the green banana 15–20 min.' },
@@ -881,11 +893,11 @@ var OM = (function () {
     { id: 'm_tunasalad', slot: 'ld', name: 'Tuna & potato salad with cabbage slaw', pr: ['tuna', 'sardines', 'egg'], cb: ['ipotato', 'sweetpot'], fx: [['cabbage', 100], ['carrot', 50], ['onion', 20], ['oil', 10]], how: 'Boil diced potato 12 min and cool. Mix with the fish, onion, lime juice, oil, salt and pepper. Shred cabbage and carrot for the slaw.' },
     { id: 'm_steamchicken', cu: 'jm', slot: 'ld', name: 'Brown-stew chicken with {c} & steamed cabbage', pr: ['chicken'], cb: ['sweetpot', 'yam'], fx: [['cabbage', 150], ['carrot', 50], ['onion', 30], ['scallion', 10], ['tomato', 40], ['oil', 6]], how: 'Season the chicken well, ideally overnight: onion, escallion, garlic, thyme, pimento, black pepper, a little scotch bonnet and browning. Brown it in the oil, add the tomato and a splash of water, cover and stew 30 min until the gravy thickens. Steam the cabbage and carrot with a little onion 5–8 min. Boil the yam or sweet potato 20 min.' },
     { id: 'm_peasrice', cu: 'jm', slot: 'ld', plant: true, name: 'Red peas & rice with steamed callaloo', pr: ['redpeas'], cb: ['rice'], fx: [['callaloo', 120], ['onion', 30], ['oil', 6]], how: 'Boil the soaked peas until soft, cook rice in the peas water with escallion and thyme. Steam callaloo with onion.' },
-    { id: 's_pbbread', cu: 'jm', slot: 's', name: 'Peanut butter on hardo bread', pr: ['pb'], cb: ['bread'], fx: [], how: 'Thin spread of peanut butter on bread.' },
+    { id: 's_pbbread', cu: 'jm', slot: 's', name: 'Peanut butter on hard dough bread', pr: ['pb'], cb: ['bread'], fx: [], how: 'Thin spread of peanut butter on bread.' },
     { id: 's_banegg', slot: 's', name: 'Ripe banana & boiled eggs', pr: ['egg'], cb: ['rbanana'], fx: [], how: 'Boil eggs ahead and keep them in the fridge for quick snacks.' },
     { id: 's_tunabread', slot: 's', name: 'Tuna or sardine sandwich', pr: ['tuna', 'sardines'], cb: ['bread'], fx: [['tomato', 40]], how: 'Mash the fish with lime and pepper, add sliced tomato.' },
     { id: 's_pbbanana', slot: 's', name: 'Banana with peanut butter', pr: ['pb'], cb: ['rbanana'], fx: [], how: 'Slice the banana and dip in peanut butter.' },
-    { id: 's_peasdip', cu: 'jm', slot: 's', plant: true, name: 'Red peas dip with hardo bread or sweet potato', pr: ['redpeas'], cb: ['bread', 'sweetpot'], fx: [['oil', 5]], how: 'Blend cooked red peas with garlic, lime, the oil, salt and scotch bonnet to taste. Keeps 4 days in the fridge.' },
+    { id: 's_peasdip', cu: 'jm', slot: 's', plant: true, name: 'Red peas dip with hard dough bread or sweet potato', pr: ['redpeas'], cb: ['bread', 'sweetpot'], fx: [['oil', 5]], how: 'Blend cooked red peas with garlic, lime, the oil, salt and scotch bonnet to taste. Keeps 4 days in the fridge.' },
     { id: 's_porridge', slot: 's', name: 'Small bowl of oats with milk', pr: ['milk'], cb: ['oats'], fx: [], how: 'Cook oats in milk 5 min; add cinnamon.' },
     // Higher-protein dishes (budget levels decide who sees the pricier ones). fx entry: [id, grams, optional, swap if not in budget]
     { id: 'b_yogbowl', slot: 'b', name: '{p} bowl with {f} & oats', pr: ['greekyog', 'cottage'], cb: ['oats'], fx: [['berries', 100, 1, 'rbanana'], ['pb', 10, 1]], how: 'Spoon the yogurt (or cottage cheese) into a bowl, top with the fruit, raw or toasted oats and a little peanut butter. Thaw frozen berries in the fridge overnight.' },
@@ -912,6 +924,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-25', t: 'How to use OMGym', b: ['New ? button at the top: a short step-by-step tour of every tab, with a Show me button that takes you there.', 'First time on OMGym? A New here? card on Today offers the tour.', 'Spelling: hardo is now hard dough.'] },
     { d: '2026-10-25', t: 'Build my own meal', b: ['New on Meals: Build my own meal. Pick a wrap, rice bowl, sandwich, pasta or plate, choose up to 2 proteins, vegetables and extras, and see the calories, protein, whether it fits your goal, the packs to buy, where, and how to make it.', 'PRO: Fit to my goal resizes the meal for you, Add to lunch or dinner puts it in your plan and shopping list, and Save keeps up to 10 favourites.'] },
     { d: '2026-10-25', t: 'Log a day you forgot', b: ['Forgot to log a workout? On Today, tap that day in the week strip, then tick your sets, weights and habits and tap Log this workout.', 'Use the arrows to go back up to 4 weeks. Future days show a preview you can log on the day.'] },
     { d: '2026-10-25', t: 'Move my data', b: ['New on the Plan tab: Copy my data and Paste my data. Use them to move your plan, weigh-ins and workouts between the Home Screen app, Safari and the claude.ai version.', 'Nothing is uploaded: the code only goes where you paste it. Pasting shows what is in the code first, and you can undo once.', 'Fixed: pasting on iPhone no longer says the code is wrong.'] },
@@ -1755,7 +1768,7 @@ if (typeof module !== 'undefined') module.exports = OM;
     var plan = OM.planDay(D, p, T, pt, mySwaps());
     var shop = weekShop();
     var dd = S.days[D] || { sets: {}, habits: {} };
-    var h = exampleBanner() + flagsHtml(T);
+    var h = welcomeCard() + exampleBanner() + flagsHtml(T);
     if (!isToday) h += '<div class="flag info" id="otherday">' + (future ? 'This is a preview of ' + esc(niceDate(D)) + '. You can log it on the day.' : 'You are logging ' + esc(niceDate(D)) + '. Tick sets, weights and habits as you did them.') + ' <button class="linkbtn" data-act="wday" data-d="' + TODAY + '">Back to today</button></div>';
     h += '<section class="dayhead"><span class="label">' + esc(niceDate(D)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min' + (w.pro ? ' · <span class="pill done">PRO ' + esc(OM.PRO_PHASES[proPlan().phase].label) + '</span>' : '') + '</span></section>';
     h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">' + (isToday ? 'kcal today' : 'kcal a day') + '</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(shop.total, pt) + '</div><div class="u">week\'s shop</div></div></section>';
@@ -1982,6 +1995,40 @@ if (typeof module !== 'undefined') module.exports = OM;
     var c = $('#news [data-act=closenews]'); if (c) c.focus();
   }
   function closeNews() { $('#news').hidden = true; document.body.style.overflow = ''; var b = document.getElementById('newsbtn'); if (b) b.focus(); }
+  /* ---------- How to use OMGym: a short guided tour, one step per screen ---------- */
+  var GUIDEKEY = 'omgym-guide-seen', guideStep = 0, guideMem = '';
+  function guideSeen() { try { return localStorage.getItem(GUIDEKEY) === '1'; } catch (e) { return guideMem === '1'; } }
+  function setGuideSeen() { try { localStorage.setItem(GUIDEKEY, '1'); } catch (e) { } guideMem = '1'; }
+  var GI = {
+    hi: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>', today: '<path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/>', food: '<circle cx="12" cy="13" r="7"/><path d="M12 6V3M9 13h6"/>',
+    shop: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>', progress: '<path d="M4 18l5-6 4 3 7-9"/>', me: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+    pro: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>', tips: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>'
+  };
+  function guideSteps() {
+    var store = OM.STORE.paused ? 'The Store tab is paused for now while we bring import costs down; anything in your bag is saved.' : 'The Store tab sells supplements and gym gear delivered to Jamaica. Add to your bag, then order on WhatsApp.';
+    return [
+      { ic: 'hi', t: 'Welcome to OMGym', b: ['Your workouts, meals and shopping list in one place, built around your body, your goal and your budget.', 'Sessions take about 45 minutes. Meals use food from PriceSmart, Hi-Lo, Loshusan and the market, with prices per pack.', 'Start by setting up your plan: about 2 minutes, five short steps.'], go: S.profile ? null : 'setup', goLabel: 'Set up my plan' },
+      { ic: 'today', t: 'Today: your workout', b: ['Today shows the workout for the day, exercise by exercise.', 'Tap a numbered box when you finish a set: a rest timer starts by itself.', 'Type the weight you used. Next time it shows as "Last".', 'Tap Finish workout at the end. Forgot a day? Tap that day in the week strip and log it.'], go: 'today' },
+      { ic: 'food', t: 'Meals: what to eat', b: ['Breakfast, lunch, dinner and a snack, sized to your calories and protein, with amounts and how to cook them.', 'Not feeling a meal? Tap Swap. Use ‹ › to see other days.', 'At the top: switch Budget, Standard or Premium, and Jamaica or USA prices.', 'Build my own meal: pick a wrap, bowl or plate and what goes in it, and see if it fits your goal.'], go: 'food' },
+      { ic: 'shop', t: 'List: your shopping', b: ['Everything for the next 7 days, in the packs the store sells (a 2 kg bag of rice, a whole chicken).', 'Tick items as you shop.', 'Price different at your store? Tap Edit price and type what you paid. Your plan uses your prices from then on.'], go: 'shop' },
+      { ic: 'progress', t: 'Progress: weigh in', b: ['Weigh yourself once or twice a week, first thing in the morning, and add it here.', 'OMGym shows your trend, not the day-to-day ups and downs.', 'After a few weeks it suggests small calorie changes if you are moving faster or slower than planned.'], go: 'progress' },
+      { ic: 'me', t: 'Plan: your settings', b: ['Your calorie and protein targets and where the numbers come from.', 'Tap Edit my details to change your weight, goal, training days, foods or allergies.', 'Your data: Copy my data to move to another phone; Start over to reset.'], go: 'me' },
+      { ic: 'pro', t: 'PRO and the Store', b: ['PRO (US$10 a month) is for lifters with 3+ years of training: cut, lean bulk or maintain phases, harder training, weekly check-ins, and meals you build fitted to your goal.', 'Tap PRO at the top to see it and pay by bank transfer or PayPal.', store], go: 'pro' },
+      { ic: 'tips', t: 'Tips', b: ['On iPhone: open OMGym in Safari, tap Share, then Add to Home Screen. It opens like an app.', 'The sparkle button at the top shows what\'s new. The ? button opens this guide any time.', 'Questions or ideas? Message OMGym on WhatsApp.'], go: null }
+    ];
+  }
+  function renderGuide() {
+    var st = guideSteps(), n = st.length, i = Math.max(0, Math.min(n - 1, guideStep)), g = st[i];
+    var h = '<div class="wrap"><div class="newshead"><h2 id="guide-h">How to use OMGym</h2><button class="iconbtn" data-act="closeguide" aria-label="Close">×</button></div>';
+    h += '<section class="card gstep" id="gstep"><div class="gicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + GI[g.ic] + '</svg></div><span class="label">Step ' + (i + 1) + ' of ' + n + '</span><h3>' + esc(g.t) + '</h3><ul class="lines">' + g.b.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+      (g.go ? '<div><button class="btn small" data-act="guidego" data-to="' + g.go + '">' + esc(g.goLabel || 'Show me') + '</button></div>' : '') + '</section>';
+    h += '<div class="gdots" role="group" aria-label="Steps">' + st.map(function (x, k) { return '<button data-act="guidestep" data-i="' + k + '" aria-label="Step ' + (k + 1) + ': ' + esc(x.t) + '"' + (k === i ? ' aria-current="step"' : '') + '></button>'; }).join('') + '</div>';
+    h += '<div class="gnav"><button class="btn ghost small" data-act="guidestep" data-i="' + (i - 1) + '"' + (i ? '' : ' disabled') + '>Back</button>' + (i < n - 1 ? '<button class="btn small" data-act="guidestep" data-i="' + (i + 1) + '">Next</button>' : '<button class="btn small" data-act="closeguide">Done</button>') + '</div></div>';
+    $('#guide').innerHTML = h;
+  }
+  function openGuide(i) { guideStep = i || 0; renderGuide(); $('#guide').hidden = false; $('#guide').scrollTop = 0; document.body.style.overflow = 'hidden'; setGuideSeen(); var c = $('#guide [data-act=closeguide]'); if (c) c.focus(); }
+  function closeGuide() { $('#guide').hidden = true; document.body.style.overflow = ''; render(); var b = document.getElementById('helpbtn'); if (b) b.focus(); }
+  function welcomeCard() { return guideSeen() ? '' : '<section class="card welcome" id="welcome"><div><strong>New here?</strong><div class="small muted">Take the 1-minute tour of OMGym.</div></div><div class="datarow" style="margin:0"><button class="btn small" data-act="guide">Start the tour</button><button class="linkbtn" data-act="guidedismiss">Not now</button></div></section>'; }
   function sellerOn() { try { return localStorage.getItem('omgym-seller') === '1'; } catch (e) { return !!S.sellerView; } }
   function setSeller(on) { try { localStorage.setItem('omgym-seller', on ? '1' : '0'); } catch (e) { } S.sellerView = on; }
   // simple drawn pictures (generic, no brand artwork)
@@ -2487,6 +2534,11 @@ if (typeof module !== 'undefined') module.exports = OM;
         break;
       case 'closesetup': closeSetup(); break;
       case 'news': openNews(); break;
+      case 'guide': openGuide(0); break;
+      case 'closeguide': closeGuide(); break;
+      case 'guidestep': guideStep = +t.dataset.i; renderGuide(); $('#guide').scrollTop = 0; break;
+      case 'guidedismiss': setGuideSeen(); render(); break;
+      case 'guidego': var gto = t.dataset.to; $('#guide').hidden = true; document.body.style.overflow = ''; if (gto === 'setup') openSetup(); else go(gto); break;
       case 'closenews': closeNews(); break;
       case 'seg': readSheet();
         var k = t.dataset.k, v = t.dataset.v;
@@ -2653,7 +2705,7 @@ if (typeof module !== 'undefined') module.exports = OM;
   window.addEventListener('focus', refreshToday);
   setInterval(refreshToday, 60000);
   if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) { try { navigator.serviceWorker.register('sw.js').catch(function () { }); } catch (e) { } }
-  document.addEventListener('keydown', function (ev) { if (ev.key !== 'Escape') return; if (!$('#news').hidden) closeNews(); else if (!$('#sheet').hidden) closeSetup(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key !== 'Escape') return; if (!$('#guide').hidden) closeGuide(); else if (!$('#news').hidden) closeNews(); else if (!$('#sheet').hidden) closeSetup(); });
 
   var h0 = (location.hash || '').slice(1);
   if (VALID_TABS.indexOf(h0) >= 0) tab = h0;
