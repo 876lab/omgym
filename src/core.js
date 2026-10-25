@@ -435,6 +435,8 @@ var OM = (function () {
     // added 2026-10-25 for vegetarian and vegan protein. Soya chunks: USDA FoodData Central "Soy flour, defatted" (FDC 174273; soya chunks/TVP are extruded defatted soy flour), weighed dry.
     // Chickpeas: USDA "Chickpeas, canned, drained, rinsed" (FDC 173801), per drained gram; a 400 g tin drains to about 240 g (y 0.6).
     soya: { name: 'Soya chunks (dry)', short: 'soya chunks', k: 327, p: 51.5, c: 33.9, f: 1.2, y: 1, grp: 'Proteins', dry: true, tags: ['soy'] },
+    // added 2026-10-25 for "Build my own meal": USDA "Tortillas, ready-to-bake or -fry, flour, shelf stable" (FDC 167535); one 8-inch wrap is about 49 g
+    tortilla: { name: 'Flour tortilla wraps', short: 'wrap', k: 297, p: 8, c: 49, f: 7.6, y: 1, grp: 'Starches', wrap: 49, tags: ['gluten'] },
     chickpeas: { name: 'Chickpeas (tin)', short: 'chickpeas', k: 138, p: 7.04, c: 22.9, f: 2.47, y: 0.6, grp: 'Proteins', tin: 240 }
   };
   // Food budget levels. Each region marks pricier foods with tier 2 (Standard) or 3 (Premium); everything else is tier 1.
@@ -495,6 +497,7 @@ var OM = (function () {
         broccoli: { u: '1 lb frozen bag', g: 454, pr: 650, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
         mixveg: { u: '1 lb frozen bag', g: 454, pr: 550, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
         soya: { u: '8 oz bag (227 g)', g: 227, pr: 450, store: 'Estimate', src: 'No Jamaican shelf price found online; US Caribbean grocer price for an 8 oz bag (US$2.75, Jamaican Country Style) converted. Look in the dried-peas aisle or a health-food shop and check the price', date: 'Oct 2026', conf: 'estimate' },
+        tortilla: { u: '10 wraps, 8-inch (about 450 g)', g: 450, pr: 750, tier: 2, store: 'Estimate', src: 'No Jamaican shelf price found online; US price (US$2.50 for 10) × import costs. PriceSmart, Hi-Lo and Loshusan usually stock wraps: check your store', date: 'Oct 2026', conf: 'estimate' },
         chickpeas: { u: '400 g tin (Grace)', g: 400, pr: 330, store: 'Estimate', src: 'Loshusan stocks Grace 400 g but its price is not readable online; estimated from tinned broad beans (CAC J$267–314). Check your store', date: 'Oct 2026', conf: 'estimate' }
       }
     },
@@ -542,6 +545,7 @@ var OM = (function () {
         broccoli: { u: '12 oz bag, frozen florets (Great Value)', g: 340, pr: 1.16, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' },
         mixveg: { u: '12 oz bag, frozen (Great Value)', g: 340, pr: 0.98, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' },
         soya: { name: 'Textured vegetable protein (TVP, dry)', short: 'TVP', u: '12 oz bag (Bob\'s Red Mill TVP)', g: 340, pr: 10.00, store: 'Walmart', src: 'Walmart.com', date: '25 Oct 2026', conf: 'store' },
+        tortilla: { u: '10 ct medium flour tortillas, 16 oz (Great Value)', g: 454, pr: 2.50, store: 'Walmart', src: 'Walmart.com', date: '25 Oct 2026', conf: 'store' },
         chickpeas: { u: '15.5 oz can (Great Value)', g: 439, pr: 0.92, store: 'Walmart', src: 'Walmart.com', date: '25 Oct 2026', conf: 'store' }
       }
     }
@@ -598,6 +602,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-25', t: 'Build my own meal', b: ['New on Meals: Build my own meal. Pick a wrap, rice bowl, sandwich, pasta or plate, choose up to 2 proteins, vegetables and extras, and see the calories, protein, whether it fits your goal, the packs to buy, where, and how to make it.', 'PRO: Fit to my goal resizes the meal for you, Add to lunch or dinner puts it in your plan and shopping list, and Save keeps up to 10 favourites.'] },
     { d: '2026-10-25', t: 'Log a day you forgot', b: ['Forgot to log a workout? On Today, tap that day in the week strip, then tick your sets, weights and habits and tap Log this workout.', 'Use the arrows to go back up to 4 weeks. Future days show a preview you can log on the day.'] },
     { d: '2026-10-25', t: 'Move my data', b: ['New on the Plan tab: Copy my data and Paste my data. Use them to move your plan, weigh-ins and workouts between the Home Screen app, Safari and the claude.ai version.', 'Nothing is uploaded: the code only goes where you paste it. Pasting shows what is in the code first, and you can undo once.', 'Fixed: pasting on iPhone no longer says the code is wrong.'] },
     { d: '2026-10-25', t: 'Brown-stew chicken', b: ['The "steamed chicken" dinner is now brown-stew chicken with steamed cabbage and boiled yam or sweet potato, properly seasoned the Jamaican way. Thanks for the tip!', 'Fixed: the dish name now matches the food on the plate (it said sweet potato when the plan gave yellow yam).'] },
@@ -712,6 +717,7 @@ var OM = (function () {
     xc = Math.max(cMin, Math.min(cMax, xc));
     if (carbId === 'bread') xc = Math.round(xc / 20) * 20;
     else if (carbId === 'wwbread') xc = Math.max(32, Math.round(xc / 32) * 32);
+    else if (carbId === 'tortilla') xc = Math.max(49, Math.min(147, Math.round(xc / 49) * 49));
     else xc = Math.round(xc / 5) * 5;
     if (protId === 'whey') xp = Math.max(25, Math.round(xp / 15.5) * 15.5);
     else if (protId !== 'egg') xp = Math.round(xp / 5) * 5;
@@ -765,6 +771,9 @@ var OM = (function () {
     var meals = [];
     var usedIds = {};
     SLOTS.forEach(function (slot, si) {
+      // PRO: a meal the person built themselves for this day and slot ("Build my own meal")
+      var cdef = sw['c' + slot.key];
+      if (cdef && slot.key !== 's') { var bm = builtMeal(cdef, p, T, pt, slot.key); if (bm.ok) { meals.push({ slot: slot, tpl: { id: 'custom', name: bm.name, fx: [], custom: true }, custom: true, def: cdef, items: bm.items, tot: bm.tot, options: 1, protId: bm.protId, carbId: bm.baseId, kT: bm.kT, pT: bm.pT, how: bm.how }); return; } }
       var opts = slotOptions(slot.key, ex, c);
       if (!opts.length) { meals.push({ slot: slot, empty: true }); return; }
       var base = hash(dn * 7 + si * 131 + (slot.key === 'd' ? 3 : 0)) % opts.length;
@@ -808,7 +817,7 @@ var OM = (function () {
     var pSum = meals.reduce(function (a, m) { return a + (m.tot ? m.tot.p : 0); }, 0);
     var short = T.protein - pSum;
     if (short > 0.05 * T.protein) {
-      var leanMeals = meals.filter(function (m) { return m.tot && ING[m.protId].p / ING[m.protId].k >= 0.09; });
+      var leanMeals = meals.filter(function (m) { return m.tot && !m.custom && ING[m.protId].p / ING[m.protId].k >= 0.09; });
       leanMeals.forEach(function (m) {
         var items2 = solveMeal(m.tpl, m.protId, m.carbId, m.kT, m.pT + short / leanMeals.length, ex, c);
         var tot2 = mealTotals(items2, pt);
@@ -816,7 +825,7 @@ var OM = (function () {
       });
     }
     if (T.pro) proTopUp(meals, T, pt, c, dn);
-    meals.forEach(function (m) { if (m.tpl) m.name = mealName(m, pt); });
+    meals.forEach(function (m) { if (m.tpl && !m.custom) m.name = mealName(m, pt); else if (m.custom) m.name = m.tpl.name; });
     var day = { k: 0, p: 0, c: 0, f: 0, cost: 0 };
     meals.forEach(function (m) { if (m.tot) ['k', 'p', 'c', 'f', 'cost'].forEach(function (x) { day[x] += m.tot[x]; }); });
     return { date: dateStr, meals: meals, tot: day, budget: c.tier, cuisine: c.cu };
@@ -828,7 +837,7 @@ var OM = (function () {
     var have = meals.reduce(function (a, m) { return a + (m.tot ? m.tot.p : 0); }, 0);
     var gap = T.protein - have;
     if (gap < 0.04 * T.protein) return;
-    var host = meals.filter(function (m) { return m.tot && m.slot.key === 's'; })[0] || meals.filter(function (m) { return m.tot; }).slice(-1)[0];
+    var host = meals.filter(function (m) { return m.tot && m.slot.key === 's'; })[0] || meals.filter(function (m) { return m.tot && !m.custom; }).slice(-1)[0];
     if (!host) return;
     var opts = Object.keys(TOPUP).filter(function (id) { return okIng(id, c) && pt.items[id]; });
     var animal = opts.filter(function (id) { return id !== 'redpeas' && id !== 'soya'; });
@@ -845,7 +854,7 @@ var OM = (function () {
     host.items.push({ id: id, g: g, role: 'topup' });
     host.topup = tu.what;
     // take the same calories out of the starch in the other meals (never below half the original portion)
-    var others = meals.filter(function (m) { return m.tot && m !== host; });
+    var others = meals.filter(function (m) { return m.tot && m !== host && !m.custom; });
     var carbK = others.reduce(function (a, m) { var it = m.items.filter(function (x) { return x.role === 'carb'; })[0]; return a + (it ? ING[it.id].k * it.g / 100 : 0); }, 0);
     others.forEach(function (m) {
       var it = m.items.filter(function (x) { return x.role === 'carb'; })[0]; if (!it || !carbK) return;
@@ -1179,6 +1188,90 @@ var OM = (function () {
     return null;
   }
 
+  /* ---------- Build my own meal (free: build and check; PRO: fit to goal, add to the plan, save) ---------- */
+  // Portions are a regular single serving; size multiplies the base and the protein (Small 0.7, Regular 1, Large 1.4).
+  var BUILD = {
+    bases: [
+      { id: 'wrap', ing: 'tortilla', g: 98, label: 'Wrap', how: 'Warm the wraps in a dry pan, 20 seconds a side. Fill down the middle, fold the bottom up, then roll tightly.' },
+      { id: 'bowl', ing: 'rice', g: 75, label: 'Rice bowl', how: 'Cook the rice: 1 cup rice to 2 cups water with a pinch of salt, covered on low for 18 min. Spoon into a bowl and pile the rest on top.' },
+      { id: 'sandwich', ing: 'bread', g: 80, label: 'Sandwich', how: 'Toast the bread and layer the fillings, wettest ones in the middle so the bread stays crisp.' },
+      { id: 'wwsandwich', ing: 'wwbread', g: 64, label: 'Whole-wheat sandwich', how: 'Toast the bread and layer the fillings, wettest ones in the middle so the bread stays crisp.' },
+      { id: 'pasta', ing: 'pasta', g: 75, label: 'Pasta bowl', how: 'Boil the pasta in salted water 10 min, drain and toss with the rest.' },
+      { id: 'provisions', ing: 'yam', g: 250, label: 'Boiled food', how: 'Peel and boil the yam 20 min until a fork goes in easily.' },
+      { id: 'sweetpot', ing: 'sweetpot', g: 250, label: 'Sweet potato plate', how: 'Boil the sweet potato 20 min, or roast at 200°C for 35 min.' }
+    ],
+    proteins: { chickbreast: 120, chicken: 160, tuna: 100, egg: 100, beef: 120, turkey: 120, salmon: 120, sardines: 106, mackerel: 155, cottage: 150, soya: 50, chickpeas: 150, redpeas: 60 },
+    veg: { cabbage: 60, tomato: 60, onion: 30, callaloo: 60, carrot: 40, broccoli: 80, mixveg: 80, scallion: 10 },
+    extras: { oil: 5, greekyog: 50, pb: 16 },
+    prep: {
+      chickbreast: 'Season the chicken breast with garlic, thyme, black pepper and a little salt; pan-fry 6–7 min a side, rest 2 min and slice.',
+      chicken: 'Season the chicken and stew, bake (200°C, 35 min) or jerk it; pull the meat off the bone.',
+      tuna: 'Drain the tuna and mix with lime, black pepper and a little onion.', sardines: 'Mash the sardines with lime and pepper.', mackerel: 'Warm the mackerel in its sauce with onion and thyme.',
+      egg: 'Scramble or boil the eggs (9 min for hard-boiled).', beef: 'Brown the mince with onion and garlic, pour off any fat, season with thyme and pepper.', turkey: 'Brown the turkey with onion and garlic and season well.',
+      salmon: 'Season the salmon with lime and garlic; bake at 200°C for 12–15 min and flake.', cottage: 'Spoon the cottage cheese on cold.',
+      soya: 'Soak the soya chunks in hot water 10 min, squeeze dry, then fry with seasoning 5 min.', chickpeas: 'Drain and rinse the chickpeas; warm with curry powder or mash lightly.', redpeas: 'Use red peas cooked ahead (soak overnight, boil 60 min); warm with garlic and thyme.'
+    },
+    sizes: { 0.7: 'Small', 1: 'Regular', 1.4: 'Large' }
+  };
+  var BUILD_SLOT = { l: SLOTS[1], d: SLOTS[2] };
+  // which choices this person can pick (diet and allergies first; budget never hides a choice here)
+  function buildChoices(p) {
+    var ex = excludedTags(p || {}), ok = function (id) { return allowedIng(id, ex); };
+    return {
+      bases: BUILD.bases.filter(function (b) { return ok(b.ing); }),
+      proteins: Object.keys(BUILD.proteins).filter(ok), veg: Object.keys(BUILD.veg).filter(ok), extras: Object.keys(BUILD.extras).filter(ok)
+    };
+  }
+  function cleanDef(def, p) {
+    var ch = buildChoices(p), d = def || {};
+    var base = ch.bases.filter(function (b) { return b.id === d.base; })[0] || null;
+    var pick = function (arr, allowed, max) { return (Array.isArray(arr) ? arr : []).filter(function (id, i, a) { return allowed.indexOf(id) >= 0 && a.indexOf(id) === i; }).slice(0, max); };
+    var sz = function (v) { v = +v; return v === 0.7 || v === 1.4 ? v : 1; };
+    return { base: base ? base.id : null, prot: pick(d.prot, ch.proteins, 2), veg: pick(d.veg, ch.veg, 6), extra: pick(d.extra, ch.extras, 3), bs: sz(d.bs), ps: sz(d.ps), fit: !!d.fit, name: typeof d.name === 'string' ? d.name.slice(0, 40) : '' };
+  }
+  function listJoin(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function builtName(d, pt) {
+    if (d.name) return d.name;
+    var b = BUILD.bases.filter(function (x) { return x.id === d.base; })[0];
+    var ps = d.prot.map(function (id) { return shortName(id, pt); });
+    var lbl = b.id === 'provisions' ? 'boiled food' : b.label.toLowerCase();
+    return cap1((ps.length ? ps.join(' & ') + ' ' : '') + lbl);
+  }
+  // Build the meal: items in edible grams, totals, the slot's targets and a plain verdict for the person's goal.
+  // fit (PRO): resize the base and the main protein to hit the slot's calories and protein, using the planner's solver.
+  function builtMeal(def, p, T, pt, slotKey) {
+    var d = cleanDef(def, p);
+    if (!d.base) return { ok: false, msg: 'Pick a base first.' };
+    var base = BUILD.bases.filter(function (b) { return b.id === d.base; })[0], slot = BUILD_SLOT[slotKey] || BUILD_SLOT.l;
+    var kT = T.kcal * slot.share, pT = T.protein * slot.pshare, ex = excludedTags(p);
+    var items;
+    if (d.fit && d.prot.length) {
+      var fx = d.prot.slice(1).map(function (id) { return [id, BUILD.proteins[id]]; }).concat(d.veg.map(function (id) { return [id, BUILD.veg[id]]; }), d.extra.map(function (id) { return [id, BUILD.extras[id]]; }));
+      items = solveMeal({ fx: fx }, d.prot[0], base.ing, kT, pT, ex, null);
+      // big appetites (muscle gain): let the base grow past the planner's caps, up to a plate one person can eat
+      var kNow = mealTotals(items, pt).k, cb = items.filter(function (x) { return x.role === 'carb'; })[0];
+      if (cb && kNow < 0.9 * kT) {
+        var capG = { tortilla: 196, bread: 200, wwbread: 192, rice: 200, pasta: 200, yam: 600, sweetpot: 600 }[cb.id] || cb.g;
+        var addG = (0.97 * kT - kNow) / (ING[cb.id].k / 100), g2 = Math.min(capG, cb.g + addG);
+        cb.g = cb.id === 'tortilla' ? Math.round(g2 / 49) * 49 : cb.id === 'bread' ? Math.round(g2 / 20) * 20 : cb.id === 'wwbread' ? Math.round(g2 / 32) * 32 : Math.round(g2 / 5) * 5;
+      }
+    } else {
+      var bg = base.ing === 'tortilla' ? Math.max(49, Math.round(base.g * d.bs / 49) * 49) : base.ing === 'bread' ? Math.round(base.g * d.bs / 40) * 40 : base.ing === 'wwbread' ? Math.max(32, Math.round(base.g * d.bs / 32) * 32) : Math.round(base.g * d.bs / 5) * 5;
+      items = [{ id: base.ing, g: bg, role: 'carb' }];
+      d.prot.forEach(function (id, i) { var g = BUILD.proteins[id] * d.ps * (d.prot.length > 1 ? 0.6 : 1); g = id === 'egg' ? Math.max(50, Math.round(g / 50) * 50) : Math.round(g / 5) * 5; items.splice(i, 0, { id: id, g: g, role: 'protein' }); });
+      d.veg.forEach(function (id) { items.push({ id: id, g: BUILD.veg[id], role: 'fixed' }); });
+      d.extra.forEach(function (id) { items.push({ id: id, g: BUILD.extras[id], role: 'fixed' }); });
+    }
+    var tot = mealTotals(items, pt);
+    var r = tot.k / kT, goalWord = T.goalType === 'lose' ? 'losing fat' : T.goalType === 'gain' ? 'building muscle' : 'holding your weight';
+    var kcal = r > 1.15 ? { ok: false, key: 'over', text: 'About ' + Math.round(tot.k - kT) + ' kcal more than a ' + slot.name.toLowerCase() + ' for ' + goalWord + '. Try a smaller base, one protein or less oil.' }
+      : r < (d.fit ? 0.85 : 0.75) ? { ok: false, key: 'under', text: 'Light for a main meal (' + Math.round(kT - tot.k) + ' kcal under). ' + (d.fit ? 'This is as big as this plate gets: add a side (fruit, a glass of milk or peanut butter toast) or pick a rice or pasta base.' : 'Add a bigger base or more protein.') }
+      : { ok: true, key: 'fits', text: 'Right size for a ' + slot.name.toLowerCase() + ' while ' + goalWord + '.' };
+    var protein = tot.p >= 0.8 * pT ? { ok: true, text: 'Good protein: ' + Math.round(tot.p) + ' g of the ' + Math.round(pT) + ' g this meal should bring.' } : { ok: false, text: 'Short on protein by about ' + Math.round(pT - tot.p) + ' g. ' + (d.prot.length ? 'Pick Large protein or add a second one.' : 'Add a protein.') };
+    var how = base.how + ' ' + d.prot.map(function (id) { return BUILD.prep[id]; }).join(' ') + (d.veg.length ? ' Wash and slice the ' + listJoin(d.veg.map(function (id) { return shortName(id, pt); })) + (d.veg.some(function (id) { return id === 'cabbage' || id === 'callaloo' || id === 'broccoli' || id === 'mixveg'; }) ? '; steam the greens 4–5 min or eat them raw.' : '.') : '') + (d.extra.indexOf('greekyog') >= 0 ? ' Stir lime, garlic and black pepper into the yogurt for a sauce.' : '');
+    return { ok: true, def: d, name: builtName(d, pt), items: items, tot: tot, kT: kT, pT: pT, kcal: kcal, protein: protein, fits: kcal.ok && protein.ok, how: how, protId: d.prot[0] || base.ing, baseId: base.ing };
+  }
+
   /* ---------- move my data: one text code, never uploaded anywhere ---------- */
   var DATA_PREFIX = 'OMGYM1:';
   function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
@@ -1209,7 +1302,7 @@ var OM = (function () {
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS, TOPUP: TOPUP,
     BUDGETS: BUDGETS, LIKEABLE: LIKEABLE, budgetTier: budgetTier, cuisineOf: cuisineOf, ingName: ingName, weekCostByTier: weekCostByTier, mealCtx: mealCtx,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, exportCode: exportCode, parseDataCode: parseDataCode, dataSummary: dataSummary, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, BUILD: BUILD, buildChoices: buildChoices, cleanDef: cleanDef, builtMeal: builtMeal, exportCode: exportCode, parseDataCode: parseDataCode, dataSummary: dataSummary, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();

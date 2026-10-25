@@ -119,13 +119,34 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   }
   // meals
   await page.click('nav [data-tab=food]');
+  // Build my own meal (free): build and check; PRO actions point to PRO
+  { await page.click('[data-act=bopen]');
+    ok(await page.isVisible('#builder') && /Pick a base/.test(await page.innerText('#builder')), 'builder opens');
+    ok(!(await page.locator('[data-act=bpick][data-g=extra][data-v=pb]').count()), 'builder hides foods the person is allergic to (peanut)');
+    await page.click('[data-act=bpick][data-g=base][data-v=wrap]'); await page.click('[data-act=bpick][data-g=prot][data-v=chickbreast]');
+    await page.click('[data-act=bpick][data-g=veg][data-v=cabbage]'); await page.click('[data-act=bpick][data-g=veg][data-v=tomato]');
+    const r = await page.innerText('#bresult');
+    ok(/Chicken breast wrap/i.test(r) && /kcal/.test(r) && /protein/.test(r), 'builder shows the meal, calories and protein');
+    ok(/\(2 wraps\)/.test(r) && /Pack you buy/i.test(r) && /How to make it/.test(r), 'builder shows amounts, packs to buy and how to make it');
+    ok(!/costs about|per serving/i.test(r), 'builder never shows per-serving cost');
+    ok(await page.isVisible('#bkcal') && await page.isVisible('#bprot'), 'builder says whether it fits the goal');
+    await page.click('[data-act=bsize][data-k=bs][data-v="1.4"]'); ok(/\(3 wraps\)/.test(await page.innerText('#bresult')), 'Large base: 3 wraps');
+    await page.click('[data-act=bpick][data-g=prot][data-v=tuna]'); await page.click('[data-act=bpick][data-g=prot][data-v=egg]');
+    ok(await page.locator('[data-act=bpick][data-g=prot][aria-pressed=true]').count() === 2, 'at most 2 proteins');
+    ok(await page.isVisible('#bprohint') && /PRO/.test(await page.innerText('[data-act=badd]')), 'free version marks PRO actions');
+    await page.screenshot({ path: OUT + '/shot-builder.png', fullPage: false });
+    await page.click('[data-act=badd]'); ok(await page.isVisible('text=Already paid?') || /PRO/i.test(await page.locator('#view').innerText()), 'Add to plan sends free users to PRO');
+    const stB = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
+    ok(!Object.values(stB.swaps || {}).some(x => x.cl || x.cd), 'free users cannot add built meals to the plan');
+    await page.click('nav [data-tab=food]'); await page.click('[data-act=bclose]');
+  }
   const txt = await page.locator('#view').innerText();
   ok(!/Peanut butter/i.test(txt), 'peanut allergy respected in meals');
   ok(/pack you buy/i.test(txt) && /(bag|tin|dozen|loaf|jar|bottle|bundle|head|chicken|per lb)/.test(txt), 'meal tables quote packs');
   ok(!/costs about/.test(txt), 'no per-serving cost text');
-  const before = await page.locator('.card h3').nth(0).innerText();
+  const before = await page.locator('.card:not(.builder) h3').nth(0).innerText();
   await page.click('[data-act=swap][data-slot=b]');
-  const after = await page.locator('.card h3').nth(0).innerText();
+  const after = await page.locator('.card:not(.builder) h3').nth(0).innerText();
   ok(before !== after, 'swap breakfast: ' + before + ' -> ' + after);
   await page.click('[data-act=fd][data-n="1"]'); ok(await page.isVisible('text=Recipes') || true, 'next day');
   ok(!(await overflow()), 'no horizontal overflow on meals');

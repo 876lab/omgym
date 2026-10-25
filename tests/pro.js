@@ -80,6 +80,23 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
   await page.reload(); await page.waitForTimeout(300);
   await page.click('#probtn');
   ok(/PRO is active/i.test(await page.locator('#view').innerText()), 'PRO stays unlocked after reload (signature re-checked)');
+  // PRO: Build my own meal fits the goal, goes into the plan and shopping list, and saves
+  { await page.click('nav [data-tab=food]'); await page.click('[data-act=bopen]');
+    await page.click('[data-act=bpick][data-g=base][data-v=wrap]'); await page.click('[data-act=bpick][data-g=prot][data-v=chickbreast]'); await page.click('[data-act=bpick][data-g=veg][data-v=cabbage]');
+    await page.click('[data-act=bfit]');
+    ok(/Fitted to my goal/.test(await page.innerText('[data-act=bfit]')) && /✓/.test(await page.innerText('#bkcal')), 'PRO: Fit to my goal resizes the meal to fit');
+    ok(!(await page.isVisible('#bprohint')), 'PRO: no upsell text');
+    await page.click('[data-act=bsave]'); let st = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
+    ok(st.myMeals && st.myMeals.length === 1 && st.myMeals[0].base === 'wrap', 'PRO: meal saved to My meals');
+    await page.click('[data-act=badd]'); st = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
+    const dkey = Object.keys(st.swaps).find(d => st.swaps[d].cl);
+    ok(dkey && st.swaps[dkey].cl.base === 'wrap', 'PRO: meal added to lunch');
+    ok(await page.locator('.mymeal').count() === 1 && /Chicken breast wrap/i.test(await page.innerText('.mymeal h3')), 'PRO: My meal shows in the day\'s plan');
+    await page.screenshot({ path: OUT + '/shot-mymeal.png', fullPage: false });
+    await page.click('nav [data-tab=shop]'); ok(/tortilla|wrap/i.test(await page.locator('#view').innerText()), 'PRO: wraps on the shopping list');
+    await page.click('nav [data-tab=food]'); ok(await page.locator('[data-act=bload]').count() === 1, 'PRO: saved meal chip');
+    await page.click('[data-act=custrm]'); ok(await page.locator('.mymeal').count() === 0, 'PRO: remove goes back to the planned meal');
+  }
   // tampered link
   await page.goto(url + '?' + link.split('?')[1].replace(/u=\d+/, 'u=20301123'));
   await page.waitForTimeout(400);

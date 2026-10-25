@@ -268,6 +268,38 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
     for (const bad of ['', 'hello', 'OMGYM1:abc', 'OMGYM1:' + Buffer.from('{"v":2}').toString('base64'), 'OMGYM1:' + Buffer.from(JSON.stringify({ v: 1, profile: { name: 'x' } })).toString('base64'), code.slice(0, code.length - 12)])
       { const b = OM.parseDataCode(bad); ok(!b.ok && typeof b.msg === 'string' && b.msg.length > 5, 'bad data code rejected with a message: ' + bad.slice(0, 20)); }
   }
+  // Build my own meal
+  { const T = OM.calcTargets(base), pt = OM.priceTable(base, {});
+    near(OM.ING.tortilla.k, 297, 0, 'tortilla kcal = USDA FDC 167535'); near(OM.ING.tortilla.p, 8, 0, 'tortilla protein = USDA');
+    const m = OM.builtMeal({ base: 'wrap', prot: ['chickbreast'], veg: ['cabbage', 'tomato'] }, base, T, pt, 'l');
+    ok(m.ok && m.items.find(i => i.id === 'tortilla').g === 98 && m.items.find(i => i.id === 'chickbreast').g === 120, 'regular wrap: 2 wraps and 120 g chicken breast');
+    near(m.tot.k, (297 * 0.98 + 120 * 1.2 + 25 * 0.6 + 18 * 0.6), 1, 'built meal calories add up from USDA values');
+    ok(m.name === 'Chicken breast wrap' && /Warm the wraps/.test(m.how) && /chicken breast/i.test(m.how), 'name and how-to');
+    ok(!OM.builtMeal({ prot: ['tuna'] }, base, T, pt, 'l').ok, 'no base: asks for one');
+    const big = OM.builtMeal({ base: 'pasta', bs: 1.4, prot: ['beef', 'salmon'], ps: 1.4, extra: ['oil', 'pb'] }, base, T, pt, 'l');
+    ok(!big.kcal.ok && big.kcal.key === 'over' && /more than a lunch/.test(big.kcal.text), 'oversized meal flagged for the goal');
+    const small = OM.builtMeal({ base: 'sandwich', bs: 0.7, veg: ['tomato'] }, base, T, pt, 'd');
+    ok(!small.protein.ok && /Add a protein/.test(small.protein.text), 'meal with no protein flagged');
+    // fit to goal (PRO) lands within 15% of the slot's calories and 80%+ of its protein for every base and protein
+    for (const b of OM.BUILD.bases) for (const pid of Object.keys(OM.BUILD.proteins)) for (const prof of [base, { ...base, sex: 'female', weightKg: 62, heightCm: 160, goalKg: 58 }, { ...base, goalKg: 88 }]) {
+      const T2 = OM.calcTargets(prof), f = OM.builtMeal({ base: b.id, prot: [pid], veg: ['cabbage'], fit: true }, prof, T2, pt, 'd');
+      ok(f.tot.k <= f.kT * 1.15 && (f.tot.k >= f.kT * 0.85 || (f.kcal.key === 'under' && /add a side/.test(f.kcal.text))), `fit to goal: ${b.id} + ${pid} within 15% or honestly flagged (${Math.round(f.tot.k)} vs ${Math.round(f.kT)})`);
+      if (prof === base) ok(Math.abs(f.tot.k / f.kT - 1) <= 0.15, `fit to goal on a fat-loss plan: ${b.id} + ${pid} within 15% (${Math.round(f.tot.k)} vs ${Math.round(f.kT)})`);
+      ok(f.items.every(i => i.g > 0 && isFinite(i.g)), 'fit to goal: valid amounts');
+    }
+    // diet and allergies decide the choices
+    const vg = OM.buildChoices({ diet: 'vegan', allergies: ['gluten'] });
+    ok(!vg.proteins.some(id => ['chickbreast', 'tuna', 'egg', 'cottage', 'beef'].includes(id)) && vg.proteins.includes('soya') && !vg.bases.some(b => ['wrap', 'sandwich', 'pasta'].includes(b.id)), 'vegan + gluten-free builder choices');
+    ok(OM.cleanDef({ base: 'wrap', prot: ['tuna', 'egg', 'beef'] }, base).prot.length === 2, 'at most 2 proteins');
+    ok(OM.cleanDef({ base: 'wrap', prot: ['chickbreast'] }, { ...base, diet: 'vegan' }).base === null || OM.cleanDef({ base: 'wrap', prot: ['chickbreast'] }, { ...base, diet: 'vegan' }).prot.length === 0, 'a saved meal never breaks a later diet change');
+    // in the plan: a built lunch replaces lunch, adds to the shopping list, never the snack
+    const sw = { '2026-10-26': { cl: { base: 'wrap', prot: ['chickbreast'], veg: ['cabbage'], fit: true }, cs: { base: 'bowl', prot: ['tuna'] } } };
+    const Tp = OM.calcTargets(base, 0, { phase: 'cut', rate: 0.0075 });
+    const d = OM.planDay('2026-10-26', base, Tp, pt, sw);
+    ok(d.meals[1].custom && d.meals[1].name === 'Chicken breast wrap' && !d.meals[3].custom, 'built lunch shows in the plan; snack untouched');
+    ok(OM.shoppingList('2026-10-26', 1, base, Tp, pt, sw).rows.some(r => r.id === 'tortilla'), 'built meal goes on the shopping list');
+    ok(d.meals[1].items.every(i => i.role !== 'topup'), 'PRO top-up never edits a built meal');
+  }
   // standard plans never get a top-up
   { const pt = OM.priceTable(base, {}), T = OM.calcTargets(base); for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), base, T, pt, {}).meals.forEach(m => (m.items || []).forEach(it => ok(it.role !== 'topup', 'no top-up without PRO'))); }
 }

@@ -7,7 +7,7 @@
   function refreshToday() { var t = OM.ymd(new Date()); if (t !== TODAY) { if (foodDate === TODAY) foodDate = t; if (workDate === TODAY) workDate = t; TODAY = t; render(); } }
 
   /* ---------- state ---------- */
-  function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: {}, orderName: '', sellerView: false, nudgeHide: {} }; }
+  function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: {}, orderName: '', sellerView: false, nudgeHide: {}, myMeals: [] }; }
   var S = freshState();
   var EXAMPLE = {
     name: 'Example', units: 'metric', sex: 'female', age: 32, heightCm: 165, weightKg: 82, goalKg: 70, neckCm: 34, waistCm: 92, hipCm: 110,
@@ -84,6 +84,7 @@
     if (I.scoop) s += ' (' + Math.round(g / I.scoop * 2) / 2 + ' scoop' + (Math.round(g / I.scoop * 2) / 2 === 1 ? '' : 's') + ')';
     else if (I.slice) s += ' (' + Math.round(g / I.slice * 2) / 2 + ' slices)';
     else if (I.tbsp) s += ' (' + Math.round(g / I.tbsp * 2) / 2 + ' tbsp)';
+    else if (I.wrap) { var wn2 = Math.round(g / I.wrap * 2) / 2; s += ' (' + wn2 + (wn2 === 1 ? ' wrap' : ' wraps') + ')'; }
     else if (I.tin) { var t = Math.max(0.5, Math.round(g / I.tin * 2) / 2); s += ' drained (about ' + t + (t === 1 ? ' tin' : ' tins') + ')'; }
     else if (I.dry) s += ' dry' + (imperial() ? ' (' + (g / 28.35).toFixed(1) + ' oz)' : '');
     else if (I.cup) { var c = g / I.cup; s += ' (' + (c < 0.3 ? Math.round(c * 16) + ' tbsp' : (Math.round(c * 4) / 4) + ' cup') + ')'; }
@@ -102,7 +103,12 @@
       '<p class="small muted" style="margin:0">' + esc(OM.BUDGETS[b].note) + ' Dishes: ' + esc({ jm: 'Jamaican', us: 'American', mix: 'Jamaican and American' }[OM.cuisineOf(p)]) + (p.likes && p.likes.length ? ' · you buy ' + esc(p.likes.map(function (id) { return LIKE_LABEL[id] || id; }).join(', ')) : '') + '. <button class="linkbtn small" data-act="setupfood">Change foods</button></p></section>';
   }
   function packText(it, pt) { return money(it.pr, pt) + (it.weighed ? ' per lb' : ' · ' + it.u); }
-  function weekShop() { return OM.shoppingList(TODAY, 7, P(), targets(), prices(), S.swaps); }
+  // meals people built themselves count only while PRO is active (they come back if PRO is renewed)
+  function mySwaps() {
+    if (proActive()) return S.swaps;
+    var o = {}; Object.keys(S.swaps || {}).forEach(function (d) { var x = {}; Object.keys(S.swaps[d] || {}).forEach(function (k) { if (k !== 'cl' && k !== 'cd') x[k] = S.swaps[d][k]; }); o[d] = x; }); return o;
+  }
+  function weekShop() { return OM.shoppingList(TODAY, 7, P(), targets(), prices(), mySwaps()); }
   function day(d) { if (!S.days[d]) S.days[d] = { sets: {}, done: false, habits: {} }; return S.days[d]; }
   function toast(t) { var el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, 2600); }
   function needSetup() { if (isExample()) { toast('Set up your own plan first'); openSetup(); return true; } return false; }
@@ -125,7 +131,7 @@
   function renderToday() {
     var p = P(), T = targets(), pt = prices(), D = workDay(), isToday = D === TODAY, future = D > TODAY;
     var w = OM.buildWorkout(D, p, startDate(), T.caution, S.profile ? proPlan() : null);
-    var plan = OM.planDay(D, p, T, pt, S.swaps);
+    var plan = OM.planDay(D, p, T, pt, mySwaps());
     var shop = weekShop();
     var dd = S.days[D] || { sets: {}, habits: {} };
     var h = exampleBanner() + flagsHtml(T);
@@ -202,19 +208,54 @@
     }
     return h;
   }
+  /* ---------- Build my own meal ---------- */
+  var MB = { open: false, base: null, prot: [], veg: [], extra: [], bs: 1, ps: 1, slot: 'l', fit: false };
+  var BL = { chickbreast: 'Chicken breast', chicken: 'Chicken (bone-in)', tuna: 'Tuna', egg: 'Eggs', beef: 'Lean beef', turkey: 'Turkey', salmon: 'Salmon', sardines: 'Sardines', mackerel: 'Mackerel', cottage: 'Cottage cheese', soya: 'Soya chunks', chickpeas: 'Chickpeas', redpeas: 'Red peas', cabbage: 'Cabbage', tomato: 'Tomato', onion: 'Onion', callaloo: 'Callaloo', carrot: 'Carrot', broccoli: 'Broccoli', mixveg: 'Mixed veg', scallion: 'Escallion', oil: 'Oil or dressing', greekyog: 'Yogurt sauce', pb: 'Peanut sauce' };
+  function bLabel(id, pt) { var sh = pt.items[id] && pt.items[id].short; return sh && /^(TVP|spinach)$/i.test(sh) ? (sh === 'TVP' ? 'TVP (soya)' : 'Spinach') : (BL[id] || OM.ingName(pt, id)); }
+  function bChips(group, ids, sel, pt, label) { return ids.map(function (id) { var on = sel.indexOf(id) >= 0; return '<button class="chip" data-act="bpick" data-g="' + group + '" data-v="' + id + '" aria-pressed="' + on + '">' + esc(label ? label(id) : bLabel(id, pt)) + '</button>'; }).join(''); }
+  function bSize(k) { return '<div class="seg small" role="group" aria-label="Portion">' + [[0.7, 'Small'], [1, 'Regular'], [1.4, 'Large']].map(function (o) { return '<button data-act="bsize" data-k="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (MB[k] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+  function builderCard(p, T, pt) {
+    var pro = proActive();
+    if (!MB.open) {
+      var mine = (S.myMeals || []);
+      return '<section class="card builder" id="builder"><div class="cardhead"><div><h3>Build my own meal</h3><p class="small muted">Feel like a wrap or a bowl? Pick what goes in it and see the calories, whether it fits your goal, what to buy and how to make it.</p></div><button class="btn small" data-act="bopen">Build</button></div>' +
+        (pro && mine.length ? '<div class="habits">' + mine.map(function (d, i) { return '<button class="chip" data-act="bload" data-i="' + i + '">' + esc(d.name || 'My meal ' + (i + 1)) + '</button>'; }).join('') + '</div>' : '') + '</section>';
+    }
+    var ch = OM.buildChoices(p), h = '<section class="card builder" id="builder"><div class="cardhead"><h3>Build my own meal</h3><button class="linkbtn" data-act="bclose">Close</button></div>';
+    h += '<p class="bstep"><span class="num">1</span> Base</p><div class="habits">' + ch.bases.map(function (b) { return '<button class="chip" data-act="bpick" data-g="base" data-v="' + b.id + '" aria-pressed="' + (MB.base === b.id) + '">' + esc(b.id === 'sandwich' && p.region === 'US' ? 'White-bread sandwich' : b.label) + '</button>'; }).join('') + '</div>' + (MB.base && !MB.fit ? bSize('bs') : '');
+    h += '<p class="bstep"><span class="num">2</span> Protein <span class="small muted">(up to 2)</span></p><div class="habits">' + bChips('prot', ch.proteins, MB.prot, pt) + '</div>' + (MB.prot.length && !MB.fit ? bSize('ps') : '');
+    h += '<p class="bstep"><span class="num">3</span> Vegetables</p><div class="habits">' + bChips('veg', ch.veg, MB.veg, pt) + '</div>';
+    h += '<p class="bstep"><span class="num">4</span> Extras</p><div class="habits">' + bChips('extra', ch.extras, MB.extra, pt) + '</div>';
+    h += '<p class="bstep"><span class="num">5</span> For</p><div class="seg small" role="group" aria-label="Meal">' + [['l', 'Lunch'], ['d', 'Dinner']].map(function (o) { return '<button data-act="bslot" data-v="' + o[0] + '" aria-pressed="' + (MB.slot === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    if (!MB.base) return h + '<p class="small muted">Pick a base to see the numbers.</p></section>';
+    var m = OM.builtMeal(MB, p, T, pt, MB.slot);
+    h += '<div class="bresult" id="bresult"><h3>' + esc(m.name) + '</h3><div class="bnums"><div><span class="v num">' + Math.round(m.tot.k) + '</span><span class="u">kcal</span></div><div><span class="v num">' + Math.round(m.tot.p) + ' g</span><span class="u">protein</span></div><div><span class="v num">' + Math.round(m.tot.c) + ' g</span><span class="u">carbs</span></div><div><span class="v num">' + Math.round(m.tot.f) + ' g</span><span class="u">fat</span></div></div>';
+    h += '<div class="flag ' + (m.kcal.ok ? 'good' : 'warn') + '" id="bkcal">' + (m.kcal.ok ? '✓ ' : '') + esc(m.kcal.text) + '</div><div class="flag ' + (m.protein.ok ? 'good' : 'warn') + '" id="bprot">' + (m.protein.ok ? '✓ ' : '') + esc(m.protein.text) + '</div>';
+    h += '<div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Amount</th><th>Pack you buy · where</th></tr></thead><tbody>';
+    m.items.forEach(function (it) { var pr = pt.items[it.id]; h += '<tr><td>' + esc(OM.ingName(pt, it.id)) + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="small">' + money(pr.pr, pt) + ' · ' + esc(pr.u) + '<br><span class="muted">' + esc(pr.store) + '</span></td></tr>'; });
+    h += '</tbody></table></div><p class="how"><strong>How to make it:</strong> ' + esc(m.how) + '</p>';
+    var lock = pro ? '' : ' <span class="pill pro">PRO</span>';
+    h += '<div class="datarow">' +
+      '<button class="btn ' + (MB.fit ? '' : 'ghost ') + 'small" data-act="bfit" aria-pressed="' + MB.fit + '">' + (MB.fit ? '✓ Fitted to my goal' : 'Fit to my goal') + lock + '</button>' +
+      '<button class="btn small" data-act="badd">Add to ' + (foodDate === TODAY ? 'today\'s' : esc(niceDate(foodDate, { weekday: 'long' })) + '\'s') + ' ' + (MB.slot === 'l' ? 'lunch' : 'dinner') + lock + '</button>' +
+      '<button class="btn ghost small" data-act="bsave">Save' + lock + '</button></div>';
+    if (!pro) h += '<p class="small muted" id="bprohint">Free: build any meal and check it. PRO resizes it to fit your goal, puts it in your meal plan and shopping list, and saves your favourites.</p>';
+    return h + '</div></section>';
+  }
   function renderFood() {
     var p = P(), T = targets(), pt = prices();
-    var plan = OM.planDay(foodDate, p, T, pt, S.swaps);
+    var plan = OM.planDay(foodDate, p, T, pt, mySwaps());
     var h = exampleBanner();
     h += '<section class="datenav"><button class="iconbtn" data-act="fd" data-n="-1" aria-label="Previous day">‹</button><div style="text-align:center"><span class="label">' + (foodDate === TODAY ? 'Today' : esc(niceDate(foodDate, { weekday: 'long' }))) + '</span><h2>' + esc(niceDate(foodDate, { day: 'numeric', month: 'short' })) + '</h2></div><button class="iconbtn" data-act="fd" data-n="1" aria-label="Next day">›</button></section>';
     h += quickBar(p);
+    h += builderCard(p, T, pt);
     h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Everything on this page comes from the week\'s shopping list: <strong class="num">' + money(weekShop().total, pt) + '</strong> in packs at ' + esc(pt.meta.label) + ' prices. <button class="linkbtn" data-act="tab" data-tab="shop">See the list</button></p>';
     if (plan.tot.p < T.protein * 0.92) h += nudge(p.diet === 'vegan' || (p.allergies || []).indexOf('dairy') >= 0 ? 'orgain-plant' : 'on-whey-5', 'This day is ' + Math.round(T.protein - plan.tot.p) + ' g short of your protein target. One scoop closes most of the gap.');
     if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) close the gap. Soya chunks are about half protein by dry weight, so a small handful adds a lot.</div>';
     h += '</section>';
     plan.meals.forEach(function (m) {
       if (m.empty) { h += '<section class="card"><h3>' + m.slot.name + '</h3><p class="muted">No meal fits your diet settings for this slot yet.</p></section>'; return; }
-      h += '<section class="card"><div class="cardhead"><div><span class="label">' + m.slot.name + '</span><h3 style="margin-top:2px">' + esc(m.name) + '</h3></div><button class="btn ghost small" data-act="swap" data-slot="' + m.slot.key + '"' + (m.options < 2 ? ' disabled' : '') + '>Swap</button></div>';
+      h += '<section class="card' + (m.custom ? ' mymeal' : '') + '"><div class="cardhead"><div><span class="label">' + m.slot.name + (m.custom ? ' · <span class="pill pro">My meal</span>' : '') + '</span><h3 style="margin-top:2px">' + esc(m.name) + '</h3></div>' + (m.custom ? '<button class="btn ghost small" data-act="custrm" data-slot="' + m.slot.key + '">Remove</button>' : '<button class="btn ghost small" data-act="swap" data-slot="' + m.slot.key + '"' + (m.options < 2 ? ' disabled' : '') + '>Swap</button>') + '</div>';
       h += '<p class="small num"><strong>' + Math.round(m.tot.k) + ' kcal</strong> · ' + Math.round(m.tot.p) + ' g protein · ' + Math.round(m.tot.c) + ' g carbs · ' + Math.round(m.tot.f) + ' g fat</p>';
       h += '<div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Amount</th><th>Pack you buy</th></tr></thead><tbody>';
       m.items.forEach(function (it) { h += '<tr' + (it.role === 'topup' ? ' class="topup"' : '') + '><td>' + esc(OM.ingName(pt, it.id)) + (it.role === 'topup' ? ' <span class="pill pro">PRO top-up</span>' : '') + '</td><td class="num">' + esc(amount(it.id, it.g)) + '</td><td class="small num">' + esc(packText(pt.items[it.id], pt)) + '</td></tr>'; });
@@ -227,13 +268,13 @@
   function renderShop() {
     var p = P(), T = targets(), pt = prices();
     var start = shopStart();
-    var sl = OM.shoppingList(start, 7, p, T, pt, S.swaps);
+    var sl = OM.shoppingList(start, 7, p, T, pt, mySwaps());
     var packs = sl.rows.reduce(function (a, r) { return a + (r.price.weighed ? 0 : r.qty); }, 0);
     var ticks = S.shopTicks[start] || {};
     var h = exampleBanner();
     h += '<section class="dayhead"><span class="label">' + esc(niceDate(start, { day: 'numeric', month: 'short' })) + ' – ' + esc(niceDate(OM.addDays(start, 6), { day: 'numeric', month: 'short' })) + '</span><h1>Shopping list</h1></section>';
     h += quickBar(p);
-    var wk = OM.weekCostByTier(start, p, T, pt, S.swaps), bt = OM.budgetTier(p), eaten = sl.eatenCost;
+    var wk = OM.weekCostByTier(start, p, T, pt, mySwaps()), bt = OM.budgetTier(p), eaten = sl.eatenCost;
     h += '<section class="card"><h3>Your food budget</h3><div class="tiers">' + [1, 2, 3].map(function (t) { return '<button class="tier' + (t === bt ? ' on' : '') + '" data-act="quick" data-k="budget" data-v="' + t + '" aria-pressed="' + (t === bt) + '"><span class="label">' + OM.BUDGETS[t].label + '</span><span class="v num">' + money(Math.round(wk[t]), pt) + '</span><span class="small muted">a week</span></button>'; }).join('') + '</div>';
     if (wk[1] > wk[2] * 1.01 || wk[2] > wk[3] * 1.01) h += '<p class="small">For you, a higher level works out cheaper this week: it leans on protein-rich foods like tuna and chicken breast, which cost less per gram of protein than eggs or mackerel.</p>';
     h += '<p class="small muted">Cost of the food you actually eat in 7 days at each level, with your foods and prices. The list below rounds up to whole packs, and packs like oil or oats last longer than a week.</p>';
@@ -924,6 +965,29 @@
         if (dataUndo.profile) { adopt(dataUndo); save(); } else { S = freshState(); try { localStorage.removeItem(LSKEY); } catch (e) { } if (store.kind === 'db') store.ref.delete().catch(function () { }); }
         dataUndo = null; try { localStorage.removeItem(UNDOKEY); } catch (e) { } render(); toast('Back to how it was');
         break;
+      case 'bopen': MB.open = true; render(); break;
+      case 'bclose': MB.open = false; render(); break;
+      case 'bpick':
+        var g = t.dataset.g, v = t.dataset.v;
+        if (g === 'base') MB.base = MB.base === v ? null : v;
+        else { var arr = MB[g], ix = arr.indexOf(v); if (ix >= 0) arr.splice(ix, 1); else { if (g === 'prot' && arr.length >= 2) arr.shift(); arr.push(v); } }
+        render(); break;
+      case 'bsize': MB[t.dataset.k] = +t.dataset.v; render(); break;
+      case 'bslot': MB.slot = t.dataset.v; render(); break;
+      case 'bfit': if (!proActive()) { toast('Fit to my goal comes with PRO'); go('pro'); break; } MB.fit = !MB.fit; render(); break;
+      case 'badd':
+        if (needSetup()) break;
+        if (!proActive()) { toast('Adding your own meals to the plan comes with PRO'); go('pro'); break; }
+        var bdef = OM.cleanDef(MB, P()); if (!bdef.base) { toast('Pick a base first'); break; }
+        var swb = S.swaps[foodDate] = S.swaps[foodDate] || {}; swb['c' + MB.slot] = bdef; save(); MB.open = false; render(); setTimeout(function () { var mm = $('.mymeal'); if (mm && mm.scrollIntoView) mm.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); toast('Added to ' + (MB.slot === 'l' ? 'lunch' : 'dinner') + '. The shopping list is updated.'); break;
+      case 'bsave':
+        if (needSetup()) break;
+        if (!proActive()) { toast('Saving meals comes with PRO'); go('pro'); break; }
+        var sdef = OM.cleanDef(MB, P()); if (!sdef.base) { toast('Pick a base first'); break; }
+        sdef.name = OM.builtMeal(sdef, P(), targets(), prices(), MB.slot).name;
+        S.myMeals = (S.myMeals || []).filter(function (x) { return x.name !== sdef.name; }); S.myMeals.unshift(sdef); S.myMeals = S.myMeals.slice(0, 10); save(); render(); toast('Saved to My meals'); break;
+      case 'bload': var ld0 = (S.myMeals || [])[+t.dataset.i]; if (ld0) { MB = { open: true, base: ld0.base, prot: ld0.prot.slice(), veg: ld0.veg.slice(), extra: ld0.extra.slice(), bs: ld0.bs, ps: ld0.ps, slot: MB.slot, fit: !!ld0.fit }; render(); } break;
+      case 'custrm': var swr = S.swaps[foodDate]; if (swr) delete swr['c' + t.dataset.slot]; save(); render(); toast('Back to the planned meal'); break;
       case 'reset1': confirmReset = true; render(); break;
       case 'reset0': confirmReset = false; render(); break;
       case 'reset2':

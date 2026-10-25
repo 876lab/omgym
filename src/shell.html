@@ -245,6 +245,19 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 @media (max-width: 420px) { .invgrid { grid-template-columns: minmax(0, 1fr); } }
 @media print { nav.tabs, header.top, .noprint, .toast, .restbar, #pro-start > *:not(.invoice), .flag { display: none !important; } body, html { background: #fff; color: #000; } main > *:not(.invoice):not(#pro-start) { display: none !important; } .invoice { box-shadow: none; } }
 .confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.builder .habits { margin-bottom: 4px; }
+.bstep { font-weight: 800; margin: 14px 0 6px; display: flex; align-items: center; gap: 8px; }
+.bstep .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--iron); color: var(--on-iron); font-size: 0.8rem; }
+.seg.small { display: inline-flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.seg.small button { appearance: none; font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.seg.small button[aria-pressed="true"] { background: var(--iron); border-color: var(--iron); color: var(--on-iron); font-weight: 700; }
+.bresult { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.bnums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.bnums div { background: var(--surface); border-radius: 10px; padding: 8px 4px; text-align: center; display: grid; }
+.bnums .v { font-size: 1.25rem; font-weight: 800; }
+.bnums .u { font-size: 0.72rem; color: var(--muted); }
+.flag.good { background: var(--sunk); border-color: var(--iron); }
+.mymeal { border: 2px solid var(--iron); }
 .datarow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
 .databox { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
 .codebox { font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem; word-break: break-all; }
