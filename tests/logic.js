@@ -264,6 +264,7 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
     ok(r.ok && JSON.stringify(r.data) === JSON.stringify(st), 'data code round trip (spaces and line breaks ignored, accents kept)');
     ok(r.summary.name === 'Gilly Ü' && r.summary.weighIns === 2 && r.summary.workouts === 1, 'data code summary');
     ok(OM.parseDataCode('Here you go: ' + code).ok, 'code found inside a pasted message');
+    ok(OM.parseDataCode('omgym1:' + code.slice(7)).ok && OM.parseDataCode('Omgym1: ' + code.slice(7)).ok, 'lower-cased prefix from iPhone paste still accepted');
     for (const bad of ['', 'hello', 'OMGYM1:abc', 'OMGYM1:' + Buffer.from('{"v":2}').toString('base64'), 'OMGYM1:' + Buffer.from(JSON.stringify({ v: 1, profile: { name: 'x' } })).toString('base64'), code.slice(0, code.length - 12)])
       { const b = OM.parseDataCode(bad); ok(!b.ok && typeof b.msg === 'string' && b.msg.length > 5, 'bad data code rejected with a message: ' + bad.slice(0, 20)); }
   }

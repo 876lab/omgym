@@ -3,6 +3,7 @@
 ## 2026-10-25: Move my data (owner request)
 - Plan tab, Your data card: "Copy my data" (shows the code and copies it to the clipboard; press-and-hold fallback on iPhone) and "Paste my data" (checks the code, shows the name, weigh-ins and workouts it contains, then "Use this data"). One undo after replacing (old state kept in memory and in `omgym-state-undo`). New users see an "Already use OMGym?" card with Paste my data.
 - Code format: `OMGYM1:` + base64 of the saved state JSON (`OM.exportCode`, `OM.parseDataCode`, `OM.dataSummary`). Validated before writing (version 1, profile with age, height, weight; weigh-ins an array); spaces and surrounding text ignored. Nothing is uploaded; saved-data format unchanged. PRO unlocks are not in the code (re-paste the unlock link on the new device).
+- Fix (same day): iPhone lower-cased the prefix on paste ("omgym1:"), so the code was rejected. The prefix check now ignores case, stray characters in the code are dropped, and the paste box has autocorrect, autocapitalise and spellcheck off. Tested.
 - Tests: logic round trip (accents, line breaks, code inside a message), 6 bad codes rejected with plain messages; browser: copy, bad code, Start over, paste back, data restored, undo, paste again, light and dark screenshots.
 
 ## 2026-10-25: Brown-stew chicken (owner feedback)

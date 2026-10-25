@@ -180,10 +180,10 @@
     var h = '<p class="small muted">To move your plan to another version of OMGym (Home Screen app, Safari or claude.ai), tap Copy my data here, then Paste my data there. Nothing is uploaded; only you can see it.</p>';
     if (dataUndo) h += '<div class="flag info" id="dataundo">Your data was replaced. <button class="linkbtn" data-act="dataundo">Undo</button></div>';
     if (dataMode === 'copy') {
-      h += '<div class="databox" id="datacopybox"><label class="f" for="datacode">Your data code</label><textarea id="datacode" class="codebox" readonly rows="4">' + esc(OM.exportCode(S)) + '</textarea><p class="small muted">If it didn\'t copy by itself, press and hold the code, Select All, then Copy. Then open the other version, go to Plan, tap Paste my data.</p><button class="linkbtn" data-act="dataclose">Done</button></div>';
+      h += '<div class="databox" id="datacopybox"><label class="f" for="datacode">Your data code</label><textarea id="datacode" class="codebox" readonly rows="4" autocapitalize="off" autocorrect="off" spellcheck="false">' + esc(OM.exportCode(S)) + '</textarea><p class="small muted">If it didn\'t copy by itself, press and hold the code, Select All, then Copy. Then open the other version, go to Plan, tap Paste my data.</p><button class="linkbtn" data-act="dataclose">Done</button></div>';
     }
     if (dataMode === 'paste') {
-      h += '<div class="databox" id="datapastebox"><label class="f" for="datain">Paste your data code</label><textarea id="datain" class="codebox" rows="4" placeholder="OMGYM1:..."></textarea>';
+      h += '<div class="databox" id="datapastebox"><label class="f" for="datain">Paste your data code</label><textarea id="datain" class="codebox" rows="4" placeholder="OMGYM1:..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>';
       if (dataCheck && !dataCheck.ok) h += '<p class="err" role="alert">' + esc(dataCheck.msg) + '</p>';
       if (dataCheck && dataCheck.ok) {
         var sm = dataCheck.summary;

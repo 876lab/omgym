@@ -228,7 +228,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
     await page.click('[data-act=reset1]'); await page.click('[data-act=reset2]');
     await page.click('nav [data-tab=me]');
     ok(await page.isVisible('#datanew') && !(await page.isVisible('[data-act=datacopy]')), 'a new user sees Paste my data, with nothing to copy');
-    await page.click('[data-act=datapaste]'); await page.fill('#datain', code); await page.click('[data-act=datacheck]');
+    await page.click('[data-act=datapaste]'); await page.fill('#datain', 'omgym1:' + code.slice(7)); await page.click('[data-act=datacheck]');
     const conf = await page.locator('#dataconfirm').innerText();
     ok(/Cargill/.test(conf) && /weigh-in/.test(conf), 'paste shows what the code contains: ' + conf.slice(0, 80));
     await page.screenshot({ path: OUT + '/shot-data.png', fullPage: false });
