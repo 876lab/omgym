@@ -253,6 +253,10 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
       ok(soyTop > 0, 'PRO vegan cut gets a soya chunk top-up'); }
     ok(OM.calcTargets({ ...base, diet: 'vegan' }).protein === OM.calcTargets(base).protein, 'diet does not change the protein target (only the foods)');
   }
+  // dish names match the starch on the plate (owner spotted "with sweet potato" over yellow yam, 2026-10-25)
+  { const pj = { ...base, region: 'JM' }, T = OM.calcTargets(pj), pt = OM.priceTable(pj, {}); let seen = 0;
+    for (let i = 0; i < 60; i++) for (const m of OM.planDay(OM.addDays('2026-10-26', i), pj, T, pt, {}).meals) if (m.tpl && m.tpl.id === 'm_steamchicken') { seen++; ok(m.name.toLowerCase().includes(OM.ING[m.carbId].short), 'brown-stew chicken name matches its starch: ' + m.name); ok(!/steamed chicken/i.test(m.name), 'no "steamed chicken"'); }
+    ok(seen > 0, 'brown-stew chicken appears on Jamaican plans'); }
   // standard plans never get a top-up
   { const pt = OM.priceTable(base, {}), T = OM.calcTargets(base); for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), base, T, pt, {}).meals.forEach(m => (m.items || []).forEach(it => ok(it.role !== 'topup', 'no top-up without PRO'))); }
 }

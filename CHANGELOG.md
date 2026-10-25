@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-25: Brown-stew chicken (owner feedback)
+- `m_steamchicken` is now "Brown-stew chicken with {c} & steamed cabbage" (Jamaican dish style, `cu: 'jm'`), with escallion added and a properly seasoned method (overnight seasoning, browning, stewed gravy). The owner noted "steamed chicken" isn't a Jamaican dish. The id is kept so saved data is unaffected.
+- Fixed: the name was hard-coded "with sweet potato" even when the plan picked yellow yam; it now follows the starch. New logic test checks the name matches.
+
 ## 2026-10-25 (night run): More protein for vegetarians and vegans; price check
 - New ingredients (USDA FoodData Central): soya chunks, weighed dry (`soya`, values of defatted soy flour, FDC 174273: 327 kcal, 51.5 g protein per 100 g; tagged `soy`) and tinned chickpeas, per drained gram (`chickpeas`, FDC 173801: 138 kcal, 7.04 g protein; 400 g tin drains to about 240 g, `y` 0.6). Amounts show "dry" for soya and "drained (about N tins)" for chickpeas.
 - New plant dishes: brown-stew soya chunks with rice & peas (JM), curry chickpeas & soya chunks, soya chunk & vegetable hash (breakfast), chickpea mash on bread or sweet potato (snack). Soya added as an option to stewed peas & callaloo, the pumpkin stew, the burrito bowl and bean pasta (TVP bolognese). Plant dishes stay limited to plant diets, so omnivore plans are unchanged (tested).
