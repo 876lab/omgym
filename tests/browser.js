@@ -66,6 +66,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('[data-act=next]');
   await page.click('[data-k=allergies][data-v=peanut]');
   ok(await page.isVisible('[data-k=allergies][data-v=shellfish]'), 'shellfish allergy option');
+  ok(await page.isVisible('[data-k=allergies][data-v=soy]'), 'soy allergy option');
   await page.click('[data-k=allergies][data-v=shellfish]');
   await page.screenshot({ path: OUT + '/shot-setup.png' });
   await page.click('[data-act=next]');
@@ -233,6 +234,19 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('nav [data-tab=food]');
   const vt = await page.locator('#view').innerText();
   ok(!/\b(chicken|egg|eggs|tuna|sardine|mackerel|milk)\b/i.test(vt.replace(/Extra red peas, eggs or a glass of milk/,'')), 'vegan meals have no animal foods');
+  // plant protein: soya (TVP) or chickpeas show up within a week of vegan meals, with dry / drained amounts
+  { let seen = '', shot = false;
+    for (let i = 0; i < 7; i++) {
+      const t = await page.locator('#view').innerText();
+      if (/soya|TVP|chickpea/i.test(t)) { seen += t; if (!shot) { await page.screenshot({ path: OUT + '/shot-vegan-meals.png', fullPage: true }); shot = true; } }
+      ok(!/\b(chicken|egg|eggs|tuna|sardine|mackerel|milk)\b/i.test(t.replace(/Extra red peas, eggs or a glass of milk/,'')), 'vegan day ' + i + ' has no animal foods');
+      await page.click('[data-act=fd][data-n="1"]');
+    }
+    ok(/soya|TVP/i.test(seen) && /chickpea/i.test(seen), 'vegan week uses soya chunks (TVP) and chickpeas');
+    ok(/\d+ g dry/.test(seen), 'soya amount shown as dry weight');
+    ok(!/chickpea/i.test(seen) || /drained \(about [\d.]+ tins?\)/.test(seen), 'chickpea amount shown drained, in tins');
+    for (let i = 0; i < 7; i++) await page.click('[data-act=fd][data-n="-1"]');
+  }
   // dark mode
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.click('nav [data-tab=today]');

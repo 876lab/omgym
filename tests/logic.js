@@ -80,7 +80,7 @@ ok(a1 !== a2, 'exercise selection rotates each 6-week cycle');
 
 // 5. Meals: diets x allergies x regions
 const diets = ['none', 'pescatarian', 'vegetarian', 'vegan'];
-const allergySets = [[], ['egg'], ['fish'], ['shellfish'], ['peanut'], ['dairy'], ['gluten'], ['egg', 'gluten'], ['fish', 'shellfish']];
+const allergySets = [[], ['egg'], ['fish'], ['shellfish'], ['peanut'], ['dairy'], ['gluten'], ['egg', 'gluten'], ['fish', 'shellfish'], ['soy']];
 let kErrMain = [], kErrVegan = []; let mealDays = 0, kErr = [], pRatio = [], costs = { JM: [], US: [] };
 for (const region of ['JM', 'US', 'OTHER']) for (const diet of diets) for (const al of allergySets) for (const budget of [1, 3]) {
   for (const prof of [base, { ...base, sex: 'female', weightKg: 65, heightCm: 160, goalKg: 60 }, { ...base, weightKg: 110, goalKg: 90 }, { ...base, goalKg: 88 }]) {
@@ -217,6 +217,41 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
     ok(tops > 0, `PRO cut gets a protein top-up (${reg} level ${b})`);
     ok(pr / 14 >= 0.88, `PRO cut reaches 88%+ of its protein target (${reg} level ${b}: ${(pr / 14 * 100).toFixed(0)}%)`);
     ok(Math.abs(kk / 14 - 1) < 0.05, `PRO top-up keeps calories within 5% (${reg} level ${b})`);
+  }
+  // Vegetarian and vegan protein (2026-10-25): soya chunks and chickpeas
+  {
+    const S = OM.ING.soya, C = OM.ING.chickpeas;
+    near(S.k, 327, 0, 'soya chunks kcal = USDA defatted soy flour'); near(S.p, 51.5, 0, 'soya chunks protein = USDA'); near(C.k, 138, 0, 'chickpeas kcal = USDA canned drained'); near(C.p, 7.04, 0, 'chickpeas protein = USDA');
+    for (const id of ['soya', 'chickpeas']) { const I = OM.ING[id]; ok(Math.abs(I.p * 4 + I.c * 4 + I.f * 9 - I.k) / I.k < 0.15, 'macros roughly add up for ' + id); ok(OM.LIKEABLE.includes(id), id + ' can be ticked under Foods I buy'); }
+    ok((S.tags || []).includes('soy'), 'soya tagged soy (allergy)');
+    for (const reg of ['JM', 'US']) for (const id of ['soya', 'chickpeas']) { const it = OM.PRICES[reg].items[id]; ok(it && it.g > 0 && it.pr > 0 && it.store && it.date && it.conf, `pack price for ${id} (${reg})`); ok((it.tier || 1) === 1, `${id} is a Budget food (${reg})`); }
+    ok(OM.PRICES.JM.items.soya.conf === 'estimate' && OM.PRICES.JM.items.chickpeas.conf === 'estimate', 'Jamaican soya and chickpea prices labelled as estimates');
+    const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+    const profs = [base, { ...base, sex: 'female', weightKg: 65, heightCm: 160, goalKg: 60 }, { ...base, goalKg: 88 }];
+    for (const reg of ['JM', 'US']) for (const diet of ['vegetarian', 'vegan']) for (const budget of [1, 3]) {
+      const pr = [], kr = []; let soya = 0, chick = 0;
+      for (const pf of profs) { const p = { ...pf, region: reg, diet, budget }, T = OM.calcTargets(p), pt = OM.priceTable(p, {});
+        for (let i = 0; i < 28; i++) { const d = OM.planDay(OM.addDays('2026-10-26', i), p, T, pt, {}); pr.push(d.tot.p / T.protein); kr.push(Math.abs(d.tot.k - T.kcal) / T.kcal); d.meals.forEach(m => (m.items || []).forEach(it => { if (it.id === 'soya') soya++; if (it.id === 'chickpeas') chick++; })); } }
+      const want = diet === 'vegan' ? 0.65 : 0.6;
+      ok(med(pr) >= want, `${diet} ${reg} level ${budget}: median protein ${(med(pr) * 100).toFixed(0)}% of target (was about 50% before soya and chickpeas; want ${want * 100}%+)`);
+      ok(med(kr) < 0.06, `${diet} ${reg} level ${budget}: calories stay on target (median error ${(med(kr) * 100).toFixed(1)}%)`);
+      ok(soya > 0 && chick > 0, `${diet} ${reg} level ${budget} plans use soya chunks and chickpeas`);
+      if (budget === 1) console.log(`Plant protein, ${reg} ${diet}: median ${(med(pr) * 100).toFixed(0)}% of target`);
+    }
+    // soy allergy: never soya; omnivore plans unchanged (plant dishes stay for plant diets)
+    for (const reg of ['JM', 'US']) {
+      const sa = allIds({ ...base, region: reg, diet: 'vegan', allergies: ['soy'], likes: ['soya'] });
+      ok(!sa.ids.has('soya'), `soy allergy keeps soya chunks out even when ticked (${reg})`);
+      const om = allIds({ ...base, region: reg });
+      ok(!om.ids.has('soya') && !om.ids.has('chickpeas'), `omnivore plans unchanged: no soya or chickpeas (${reg})`);
+      const lk = allIds({ ...base, region: reg, diet: 'vegetarian', likes: ['chickpeas'] });
+      ok(lk.ids.has('chickpeas'), `chickpeas ticked under Foods I buy appear (${reg})`);
+    }
+    // PRO vegan cut: soya chunk top-up
+    { const p = { ...base, region: 'JM', diet: 'vegan', experience: 'advanced' }, pt = OM.priceTable(p, {}), Tp = OM.calcTargets(p, 0, { phase: 'cut', rate: 0.0075 }); let soyTop = 0;
+      for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), p, Tp, pt, {}).meals.forEach(m => (m.items || []).forEach(it => { if (it.role === 'topup' && it.id === 'soya') soyTop++; }));
+      ok(soyTop > 0, 'PRO vegan cut gets a soya chunk top-up'); }
+    ok(OM.calcTargets({ ...base, diet: 'vegan' }).protein === OM.calcTargets(base).protein, 'diet does not change the protein target (only the foods)');
   }
   // standard plans never get a top-up
   { const pt = OM.priceTable(base, {}), T = OM.calcTargets(base); for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), base, T, pt, {}).meals.forEach(m => (m.items || []).forEach(it => ok(it.role !== 'topup', 'no top-up without PRO'))); }

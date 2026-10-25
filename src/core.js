@@ -431,7 +431,11 @@ var OM = (function () {
     wwbread: { name: 'Whole-wheat bread, sliced', short: 'whole-wheat toast', k: 252, p: 12.4, c: 43, f: 3.5, y: 1, grp: 'Starches', slice: 32, tags: ['gluten'] },
     berries: { name: 'Mixed berries (frozen)', short: 'berries', k: 48, p: 0.7, c: 11.5, f: 0.3, y: 1, grp: 'Vegetables & fruit', cup: 140 },
     broccoli: { name: 'Broccoli (frozen)', short: 'broccoli', k: 28, p: 3, c: 5, f: 0.3, y: 1, grp: 'Vegetables & fruit' },
-    mixveg: { name: 'Mixed vegetables (frozen)', short: 'mixed vegetables', k: 64, p: 3.3, c: 13, f: 0.5, y: 1, grp: 'Vegetables & fruit' }
+    mixveg: { name: 'Mixed vegetables (frozen)', short: 'mixed vegetables', k: 64, p: 3.3, c: 13, f: 0.5, y: 1, grp: 'Vegetables & fruit' },
+    // added 2026-10-25 for vegetarian and vegan protein. Soya chunks: USDA FoodData Central "Soy flour, defatted" (FDC 174273; soya chunks/TVP are extruded defatted soy flour), weighed dry.
+    // Chickpeas: USDA "Chickpeas, canned, drained, rinsed" (FDC 173801), per drained gram; a 400 g tin drains to about 240 g (y 0.6).
+    soya: { name: 'Soya chunks (dry)', short: 'soya chunks', k: 327, p: 51.5, c: 33.9, f: 1.2, y: 1, grp: 'Proteins', dry: true, tags: ['soy'] },
+    chickpeas: { name: 'Chickpeas (tin)', short: 'chickpeas', k: 138, p: 7.04, c: 22.9, f: 2.47, y: 0.6, grp: 'Proteins', tin: 240 }
   };
   // Food budget levels. Each region marks pricier foods with tier 2 (Standard) or 3 (Premium); everything else is tier 1.
   // spread: how far above the cheapest protein (per gram of protein) the planner may rotate.
@@ -441,7 +445,7 @@ var OM = (function () {
     3: { key: 3, label: 'Premium', spread: 3, note: 'Everything: Greek yogurt, cottage cheese, berries, whey, salmon and more.' }
   };
   // Foods people can tick under "Foods I buy" (the plan uses them whatever the budget level)
-  var LIKEABLE = ['greekyog', 'cottage', 'berries', 'whey', 'chickbreast', 'beef', 'turkey', 'salmon', 'wwbread', 'pasta', 'broccoli', 'mixveg', 'oats', 'egg', 'tuna'];
+  var LIKEABLE = ['greekyog', 'cottage', 'berries', 'whey', 'chickbreast', 'beef', 'turkey', 'salmon', 'wwbread', 'pasta', 'broccoli', 'mixveg', 'oats', 'egg', 'tuna', 'soya', 'chickpeas'];
 
   // Prices are quoted per pack, the way a supermarket sells it.
   // u = pack, g = grams in the pack, pr = pack price, weighed = sold by the pound at the counter,
@@ -489,7 +493,9 @@ var OM = (function () {
         wwbread: { u: '1.5 lb whole-wheat loaf', g: 680, pr: 650, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
         berries: { u: '3 lb frozen bag (PriceSmart size)', g: 1361, pr: 3600, tier: 3, store: 'Estimate', src: 'US price (US$11.28 for 48 oz) × import costs. Local fruit (guava, papaya, June plum) is the cheaper swap', date: 'Oct 2026', conf: 'estimate' },
         broccoli: { u: '1 lb frozen bag', g: 454, pr: 650, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
-        mixveg: { u: '1 lb frozen bag', g: 454, pr: 550, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' }
+        mixveg: { u: '1 lb frozen bag', g: 454, pr: 550, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
+        soya: { u: '8 oz bag (227 g)', g: 227, pr: 450, store: 'Estimate', src: 'No Jamaican shelf price found online; US Caribbean grocer price for an 8 oz bag (US$2.75, Jamaican Country Style) converted. Look in the dried-peas aisle or a health-food shop and check the price', date: 'Oct 2026', conf: 'estimate' },
+        chickpeas: { u: '400 g tin (Grace)', g: 400, pr: 330, store: 'Estimate', src: 'Loshusan stocks Grace 400 g but its price is not readable online; estimated from tinned broad beans (CAC J$267–314). Check your store', date: 'Oct 2026', conf: 'estimate' }
       }
     },
     US: {
@@ -534,7 +540,9 @@ var OM = (function () {
         wwbread: { u: '20 oz loaf (Great Value 100% whole wheat)', g: 567, pr: 2.02, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' },
         berries: { u: '48 oz bag, frozen triple berry (Great Value)', g: 1361, pr: 11.28, tier: 2, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' },
         broccoli: { u: '12 oz bag, frozen florets (Great Value)', g: 340, pr: 1.16, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' },
-        mixveg: { u: '12 oz bag, frozen (Great Value)', g: 340, pr: 0.98, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' }
+        mixveg: { u: '12 oz bag, frozen (Great Value)', g: 340, pr: 0.98, store: 'Walmart', src: 'Walmart.com', date: '23 Oct 2026', conf: 'store' },
+        soya: { name: 'Textured vegetable protein (TVP, dry)', short: 'TVP', u: '12 oz bag (Bob\'s Red Mill TVP)', g: 340, pr: 10.00, store: 'Walmart', src: 'Walmart.com', date: '25 Oct 2026', conf: 'store' },
+        chickpeas: { u: '15.5 oz can (Great Value)', g: 439, pr: 0.92, store: 'Walmart', src: 'Walmart.com', date: '25 Oct 2026', conf: 'store' }
       }
     }
   };
@@ -547,15 +555,15 @@ var OM = (function () {
     { id: 'b_mackerel', cu: 'jm', slot: 'b', name: 'Mackerel & tomato stew with boiled green banana', pr: ['mackerel', 'sardines'], cb: ['gbanana', 'yam', 'ipotato'], fx: [['onion', 30], ['tomato', 60], ['scallion', 10], ['oil', 5]], how: 'Peel and boil green banana 15–20 min. Sauté onion, escallion and tomato, add the fish with its sauce, add thyme and black pepper, simmer 5 min.' },
     { id: 'b_cornmeal', cu: 'jm', slot: 'b', name: 'Cornmeal porridge with boiled eggs', pr: ['egg'], cb: ['cornmeal'], fx: [['milk', 200, 1]], how: 'Whisk cornmeal into cold water, then bring to a boil while stirring. Add the milk, nutmeg and vanilla, simmer 10 min. Use less sweetener than usual.' },
     { id: 'b_sardine', cu: 'jm', slot: 'b', name: 'Sardines & tomato on hardo bread', pr: ['sardines', 'tuna', 'egg'], cb: ['bread', 'sweetpot'], fx: [['tomato', 80], ['onion', 20]], how: 'Mash the fish with diced tomato, onion, lime and pepper. Pile onto toasted bread.' },
-    { id: 'm_broadbean', cu: 'jm', slot: 'ld', plant: true, name: 'Broad bean & pumpkin stew with rice', names: { redpeas: 'Red peas & pumpkin stew with rice' }, pr: ['broadbeans', 'redpeas'], cb: ['rice', 'yam', 'ipotato'], fx: [['pumpkin', 120], ['tomato', 50], ['onion', 30], ['scallion', 10], ['oil', 6]], how: 'Sauté onion, escallion, garlic and thyme in the oil, add tomato and diced pumpkin with a cup of water, simmer 12 min. Add the drained beans for 5 min. Serve over rice or boiled provisions.' },
+    { id: 'm_broadbean', cu: 'jm', slot: 'ld', plant: true, name: 'Broad bean & pumpkin stew with rice', names: { redpeas: 'Red peas & pumpkin stew with rice', soya: '{p} & pumpkin stew with rice' }, hows: { soya: 'Soak the soya chunks in hot water 10 min and squeeze dry. Sauté onion, escallion, garlic and thyme in the oil, add the chunks, tomato and diced pumpkin with a cup of water, simmer 12 min. Serve over rice or boiled provisions.' }, pr: ['broadbeans', 'redpeas', 'soya'], cb: ['rice', 'yam', 'ipotato'], fx: [['pumpkin', 120], ['tomato', 50], ['onion', 30], ['scallion', 10], ['oil', 6]], how: 'Sauté onion, escallion, garlic and thyme in the oil, add tomato and diced pumpkin with a cup of water, simmer 12 min. Add the drained beans for 5 min. Serve over rice or boiled provisions.' },
     { id: 'b_pboats', slot: 'b', plant: true, name: 'Peanut butter oats with banana (plant-based)', pr: ['pb'], cb: ['oats', 'cornmeal'], fx: [['rbanana', 80]], how: 'Cook the oats (or cornmeal) in water with cinnamon and a pinch of salt. Stir in peanut butter and top with sliced banana.' },
-    { id: 'b_peascallaloo', cu: 'jm', slot: 'b', plant: true, name: 'Stewed peas & callaloo with boiled green banana', pr: ['redpeas'], cb: ['gbanana', 'sweetpot', 'bread'], fx: [['callaloo', 100], ['onion', 25], ['oil', 5]], how: 'Use red peas cooked ahead in a batch. Warm them with sautéed onion and callaloo, thyme and black pepper. Boil the green banana 15–20 min.' },
+    { id: 'b_peascallaloo', cu: 'jm', slot: 'b', plant: true, name: 'Stewed peas & callaloo with boiled green banana', names: { soya: '{p} & callaloo with boiled green banana' }, hows: { soya: 'Soak the soya chunks in hot water 10 min, squeeze dry and season with thyme, garlic and black pepper. Sauté onion, add the chunks and callaloo with a splash of water, cover 6–8 min. Boil the green banana 15–20 min.' }, pr: ['redpeas', 'soya'], cb: ['gbanana', 'sweetpot', 'bread'], fx: [['callaloo', 100], ['onion', 25], ['oil', 5]], how: 'Use red peas cooked ahead in a batch. Warm them with sautéed onion and callaloo, thyme and black pepper. Boil the green banana 15–20 min.' },
     { id: 'm_stewchicken', cu: 'jm', slot: 'ld', name: 'Stew chicken, rice & peas, steamed cabbage', pr: ['chicken'], cb: ['rice'], fx: [['redpeas', 25], ['cabbage', 120], ['carrot', 40], ['onion', 30], ['scallion', 10], ['tomato', 40], ['oil', 8]], how: 'Season chicken with onion, escallion, thyme, garlic and browning; brown in the oil and stew 30 min. Boil the peas until soft, then cook the rice in the peas water. Steam cabbage and carrot 5 min.' },
     { id: 'm_curry', cu: 'jm', slot: 'ld', name: 'Curry chicken with boiled food', pr: ['chicken'], cb: ['yam', 'gbanana', 'ipotato', 'sweetpot'], fx: [['carrot', 40], ['onion', 30], ['scallion', 10], ['oil', 8]], how: 'Season chicken with curry powder, onion and escallion. Burn the curry in the oil 1 min, add chicken, then water to half-cover; simmer 35 min. Boil the provisions 20 min.' },
     { id: 'm_brownfish', cu: 'jm', slot: 'ld', name: 'Brown-stew mackerel, rice & callaloo', pr: ['mackerel', 'sardines', 'tuna'], cb: ['rice', 'ipotato'], fx: [['callaloo', 120], ['onion', 30], ['tomato', 50], ['oil', 5]], how: 'Cook the rice. Sauté onion and tomato, add the fish and a splash of water, simmer 5 min. Steam callaloo separately.' },
     { id: 'm_peasstew', cu: 'jm', slot: 'ld', name: 'Stew peas with {p}, spinners & pumpkin', names: { redpeas: 'Stew peas with spinners & pumpkin' }, pr: ['chicken', 'redpeas'], cb: ['flour', 'rice'], fx: [['redpeas', 40], ['pumpkin', 120], ['carrot', 40], ['onion', 30], ['scallion', 10], ['oil', 5]], hows: { redpeas: 'Soak peas overnight, boil 60 min until soft. Add pumpkin, carrot, onion, escallion and thyme. Knead flour and water into small spinners and drop them in for the last 15 min.' }, how: 'Soak peas overnight, boil 60 min until soft. Add the seasoned chicken for the last 30 min with pumpkin, carrot, onion, escallion and thyme. Knead flour and water into small spinners and drop them in for the last 15 min.' },
     { id: 'm_pumpkinrice', cu: 'jm', slot: 'ld', name: 'Chicken & pumpkin rice with callaloo', pr: ['chicken'], cb: ['rice'], fx: [['pumpkin', 120], ['callaloo', 60], ['onion', 30], ['oil', 8]], how: 'Brown seasoned chicken pieces in the oil. Add rice, diced pumpkin, onion and water (2 cups per cup of rice), cover and cook 25 min. Stir in callaloo for the last 5 min.' },
-    { id: 'm_friedrice', slot: 'ld', name: 'Fried rice with {p} & vegetables', pr: ['chicken', 'egg'], cb: ['rice'], fx: [['cabbage', 80], ['carrot', 50], ['scallion', 15], ['oil', 10]], hows: { egg: 'Use rice cooked earlier and cooled. Scramble the eggs and set aside. Stir-fry carrot, cabbage and escallion, add rice and eggs, season with soy sauce and pepper.' }, how: 'Use rice cooked earlier and cooled. Cook the diced chicken and set aside. Stir-fry carrot, cabbage and escallion, add rice and eggs, season with soy sauce and pepper.' },
+    { id: 'm_friedrice', slot: 'ld', name: 'Fried rice with {p} & vegetables', pr: ['chicken', 'egg'], cb: ['rice'], fx: [['cabbage', 80], ['carrot', 50], ['scallion', 15], ['oil', 10]], hows: { egg: 'Use rice cooked earlier and cooled. Scramble the eggs and set aside. Stir-fry carrot, cabbage and escallion, add rice and eggs, season with soy sauce (or salt if you avoid soy) and pepper.' }, how: 'Use rice cooked earlier and cooled. Cook the diced chicken and set aside. Stir-fry carrot, cabbage and escallion, add rice and eggs, season with soy sauce (or salt if you avoid soy) and pepper.' },
     { id: 'm_tunasalad', slot: 'ld', name: 'Tuna & potato salad with cabbage slaw', pr: ['tuna', 'sardines', 'egg'], cb: ['ipotato', 'sweetpot'], fx: [['cabbage', 100], ['carrot', 50], ['onion', 20], ['oil', 10]], how: 'Boil diced potato 12 min and cool. Mix with the fish, onion, lime juice, oil, salt and pepper. Shred cabbage and carrot for the slaw.' },
     { id: 'm_steamchicken', slot: 'ld', name: 'Steamed chicken & cabbage with sweet potato', pr: ['chicken'], cb: ['sweetpot', 'yam'], fx: [['cabbage', 150], ['carrot', 50], ['onion', 30], ['tomato', 40], ['oil', 6]], how: 'Season chicken and cook covered with onion, tomato and a little water 30 min. Add cabbage and carrot for the last 8 min. Boil or roast the sweet potato.' },
     { id: 'm_peasrice', cu: 'jm', slot: 'ld', plant: true, name: 'Red peas & rice with steamed callaloo', pr: ['redpeas'], cb: ['rice'], fx: [['callaloo', 120], ['onion', 30], ['oil', 6]], how: 'Boil the soaked peas until soft, cook rice in the peas water with escallion and thyme. Steam callaloo with onion.' },
@@ -576,15 +584,21 @@ var OM = (function () {
     { id: 'b_eggtoast', slot: 'b', cu: 'us', name: 'Scrambled eggs on whole-wheat toast with fruit', pr: ['egg'], cb: ['wwbread'], fx: [['berries', 80, 1, 'rbanana']], how: 'Scramble the eggs in a non-stick pan over low heat. Toast the bread. Fruit on the side.' },
     { id: 'b_pbtoast', slot: 'b', cu: 'us', plant: true, name: 'Peanut butter toast with banana (plant-based)', pr: ['pb'], cb: ['wwbread'], fx: [['rbanana', 100]], how: 'Toast the bread, spread the peanut butter and top with sliced banana.' },
     { id: 'm_chili', slot: 'ld', cu: 'us', name: '{p} & bean chili with rice', names: { turkey: 'Turkey & bean chili with rice', beef: 'Beef & bean chili with rice', chickbreast: 'Chicken & bean chili with rice' }, pr: ['turkey', 'beef', 'chickbreast'], cb: ['rice'], fx: [['redpeas', 40], ['tomato', 100], ['onion', 40], ['oil', 5]], how: 'Brown the meat with onion and garlic, add chili powder and cumin, the cooked beans and chopped tomato; simmer 20 min. Serve over rice.' },
-    { id: 'm_stirfry', slot: 'ld', cu: 'us', name: '{p} & vegetable stir-fry with rice', names: { chickbreast: 'Chicken & vegetable stir-fry with rice', egg: 'Egg & vegetable stir-fry with rice' }, pr: ['chickbreast', 'chicken', 'egg'], cb: ['rice'], fx: [['mixveg', 150, 1, 'cabbage'], ['oil', 8]], how: 'Slice the meat thin and stir-fry 5–6 min; add the vegetables for 4 min and season with soy sauce, garlic and ginger. Serve over rice.' },
+    { id: 'm_stirfry', slot: 'ld', cu: 'us', name: '{p} & vegetable stir-fry with rice', names: { chickbreast: 'Chicken & vegetable stir-fry with rice', egg: 'Egg & vegetable stir-fry with rice' }, pr: ['chickbreast', 'chicken', 'egg'], cb: ['rice'], fx: [['mixveg', 150, 1, 'cabbage'], ['oil', 8]], how: 'Slice the meat thin and stir-fry 5–6 min; add the vegetables for 4 min and season with soy sauce (or salt if you avoid soy), garlic and ginger. Serve over rice.' },
     { id: 'm_sheetpan', slot: 'ld', cu: 'us', name: 'Sheet-pan chicken, {c} & {f}', pr: ['chicken', 'chickbreast'], cb: ['ipotato', 'sweetpot'], fx: [['broccoli', 120, 1, 'carrot'], ['oil', 8]], how: 'Toss the chicken, diced potato and vegetables in the oil with paprika, garlic and salt. Roast at 220°C for 30–35 min, adding the broccoli for the last 12.' },
     { id: 'm_tunapasta', slot: 'ld', cu: 'us', name: 'Tuna pasta salad', pr: ['tuna'], cb: ['pasta'], fx: [['mixveg', 80, 1, 'carrot'], ['onion', 20], ['oil', 8]], how: 'Boil the pasta and vegetables, cool, then toss with the tuna, onion, oil, lemon, salt and pepper.' },
-    { id: 'm_beanbowl', slot: 'ld', cu: 'us', plant: true, name: 'Bean & rice burrito bowl', pr: ['redpeas'], cb: ['rice'], fx: [['tomato', 60], ['onion', 30], ['mixveg', 80, 1, 'carrot'], ['oil', 5]], how: 'Warm the cooked beans with cumin, garlic and chili powder. Serve over rice with chopped tomato, onion, the vegetables and lime.' },
-    { id: 'm_beanpasta', slot: 'ld', cu: 'us', plant: true, name: 'Bean & tomato pasta', pr: ['redpeas', 'broadbeans'], cb: ['pasta'], fx: [['tomato', 100], ['onion', 30], ['oil', 6]], how: 'Simmer the beans with onion, garlic, chopped tomato and oregano 10 min. Toss with the boiled pasta.' },
-    { id: 's_pbtoast', slot: 's', cu: 'us', name: 'Peanut butter on whole-wheat toast', pr: ['pb'], cb: ['wwbread'], fx: [], how: 'Thin spread of peanut butter on toast.' }
+    { id: 'm_beanbowl', slot: 'ld', cu: 'us', plant: true, name: 'Bean & rice burrito bowl', names: { soya: '{p} & rice burrito bowl' }, hows: { soya: 'Soak the soya (TVP) in hot water 10 min and squeeze dry, then fry it with cumin, garlic and chili powder. Serve over rice with chopped tomato, onion, the vegetables and lime.' }, pr: ['redpeas', 'soya'], cb: ['rice'], fx: [['tomato', 60], ['onion', 30], ['mixveg', 80, 1, 'carrot'], ['oil', 5]], how: 'Warm the cooked beans with cumin, garlic and chili powder. Serve over rice with chopped tomato, onion, the vegetables and lime.' },
+    { id: 'm_beanpasta', slot: 'ld', cu: 'us', plant: true, name: 'Bean & tomato pasta', names: { soya: '{p} bolognese pasta' }, hows: { soya: 'Soak the soya (TVP) in hot water 10 min and squeeze dry. Fry with onion and garlic, add chopped tomato and oregano and simmer 10 min. Toss with the boiled pasta.' }, pr: ['redpeas', 'broadbeans', 'soya'], cb: ['pasta'], fx: [['tomato', 100], ['onion', 30], ['oil', 6]], how: 'Simmer the beans with onion, garlic, chopped tomato and oregano 10 min. Toss with the boiled pasta.' },
+    { id: 's_pbtoast', slot: 's', cu: 'us', name: 'Peanut butter on whole-wheat toast', pr: ['pb'], cb: ['wwbread'], fx: [], how: 'Thin spread of peanut butter on toast.' },
+    // Plant protein (added 2026-10-25): soya chunks are about half protein by dry weight; soy protein builds muscle as well as whey with training (Messina 2018 meta-analysis)
+    { id: 'm_soyastew', cu: 'jm', slot: 'ld', plant: true, name: 'Brown-stew soya chunks, rice & peas, steamed cabbage', pr: ['soya'], cb: ['rice'], fx: [['redpeas', 25], ['cabbage', 120], ['carrot', 40], ['onion', 30], ['scallion', 10], ['tomato', 40], ['oil', 8]], how: 'Soak the soya chunks in hot water 10 min and squeeze dry. Season with onion, escallion, thyme, garlic and a little browning; fry in the oil 3 min, add tomato and a cup of water and stew 10 min. Boil the peas until soft and cook the rice in the peas water. Steam cabbage and carrot 5 min.' },
+    { id: 'm_currychickpea', slot: 'ld', plant: true, name: 'Curry chickpeas & soya chunks with {c}', pr: ['chickpeas'], cb: ['rice', 'ipotato', 'sweetpot'], fx: [['soya', 30, 1], ['pumpkin', 80], ['onion', 30], ['scallion', 10], ['oil', 8]], how: 'Soak the soya chunks in hot water 10 min and squeeze dry. Burn curry powder in the oil 1 min, add onion, escallion and diced pumpkin, then the drained chickpeas, the chunks and a cup of water; simmer 15 min. Serve with rice or boiled potato.' },
+    { id: 'b_soyahash', slot: 'b', plant: true, name: 'Soya chunk & vegetable hash with {c}', pr: ['soya'], cb: ['ipotato', 'sweetpot', 'wwbread', 'bread'], fx: [['cabbage', 80], ['onion', 30], ['tomato', 50], ['oil', 6]], how: 'Soak the soya chunks in hot water 10 min (or overnight in the fridge) and squeeze dry. Fry with onion, shredded cabbage, tomato, thyme and black pepper 6–8 min. Serve with boiled or pan-fried potato, sweet potato or toast.' },
+    { id: 's_chickpeamash', slot: 's', plant: true, name: 'Chickpea mash on {c}', pr: ['chickpeas'], cb: ['bread', 'wwbread', 'sweetpot'], fx: [['tomato', 40], ['oil', 5]], how: 'Mash the drained chickpeas with the oil, lime, garlic, salt and black pepper (or scotch bonnet). Spread on the bread or serve with sweet potato and sliced tomato. Keeps 3 days in the fridge.' }
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-25', t: 'More protein for vegetarians and vegans', b: ['New plant proteins: soya chunks (about half protein, dry) and tinned chickpeas, with new dishes like brown-stew soya chunks, curry chickpeas and a soya chunk hash for breakfast.', 'Vegetarian and vegan plans now reach about 63–77% of the protein target, up from about 50%. Your target has not changed, only the foods.', 'Soy is now in the allergy list, and soya chunks and chickpeas can be ticked under Foods I buy.', 'Price check: no newer supermarket or market prices this week; exchange rate unchanged (Bank of Jamaica, 22 Oct).'] },
     { d: '2026-10-24', t: 'Store paused', b: ['The OMGym Store is paused while we find a cheaper way to bring products into Jamaica. Nothing can be ordered for now.', 'Anything already in your bag is saved for when the Store reopens.', 'Meal plans that use whey now show a local shop price instead of the Store price.'] },
     { d: '2026-10-24', t: 'What\'s new button and price check', b: ['New sparkle button at the top: an orange dot shows when OMGym has something new. Tap it to see every update, newest first. The dot clears once you have looked.', 'Market prices from Coronation Market (23 Oct): tomatoes J$400/lb, Irish potato J$250/lb, onions J$250/lb and escallion J$300/lb are a little cheaper; sweet potato and carrot unchanged.', 'Store: Jamaica\'s environmental levy on imports went up from 0.5% to 0.85% on 1 October, so 8 Store items went up by J$50 (whey, ISO100, C4, jump rope, shaker, straps, wraps). Exchange rate unchanged at J$162 per US$.'] },
     { d: '2026-10-23', t: 'Food budgets and US meals', b: ['Choose a food budget: Budget, Standard or Premium. The Shopping list shows what a week of food costs at each level, and you can set a weekly limit.', 'Tick the foods you buy (Greek yogurt, cottage cheese, berries, whey, chicken breast, salmon and more) and the plan builds meals around them.', 'Switch between Jamaica, USA and elsewhere at the top of Meals and the Shopping list. The USA now gets American dishes with Walmart prices.', 'PRO: a daily protein top-up (tuna, whey, Greek yogurt or chicken breast) so cut and bulk plans reach the higher protein target.'] },
@@ -655,7 +669,7 @@ var OM = (function () {
     var ex = excludedTags(p), tier = budgetTier(p), likes = (p.likes || []).filter(function (id) { return ING[id]; });
     var blocked = {};
     Object.keys(ING).forEach(function (id) { var t = pt && pt.items[id] ? pt.items[id].tier || 1 : 1; if (t > tier && likes.indexOf(id) < 0) blocked[id] = 1; });
-    return { ex: ex, tier: tier, likes: likes, blocked: blocked, cu: cuisineOf(p), spread: BUDGETS[tier].spread };
+    return { ex: ex, tier: tier, likes: likes, blocked: blocked, cu: cuisineOf(p), spread: BUDGETS[tier].spread, plantDiet: p.diet === 'vegetarian' || p.diet === 'vegan' };
   }
   function okIng(id, c) { return allowedIng(id, c.ex) && !c.blocked[id]; }
   function costPerGram(pt, id) { var it = pt.items[id]; return it.pr / it.g / ING[id].y; } // per edible gram
@@ -678,8 +692,8 @@ var OM = (function () {
     var K = kT - kF, Q = pT - pF;
     var det = a * d - b * c;
     var xp, xc;
-    var pMax = protId === 'pb' ? 40 : protId === 'redpeas' ? 150 : protId === 'egg' ? 200 : protId === 'milk' ? 350 : protId === 'whey' ? 47 : protId === 'greekyog' ? 400 : protId === 'cottage' ? 340 : 260;
-    var pMin = protId === 'egg' ? 50 : protId === 'pb' ? 10 : protId === 'whey' ? 25 : 30;
+    var pMax = protId === 'pb' ? 40 : protId === 'redpeas' ? 150 : protId === 'egg' ? 200 : protId === 'milk' ? 350 : protId === 'whey' ? 47 : protId === 'greekyog' ? 400 : protId === 'cottage' ? 340 : protId === 'soya' ? 80 : protId === 'chickpeas' ? 360 : 260;
+    var pMin = protId === 'egg' ? 50 : protId === 'pb' ? 10 : protId === 'whey' ? 25 : protId === 'soya' ? 20 : 30;
     var weak = (c / a) < 2 * (d / b); // protein item barely more protein-dense than the starch
     if (weak) { xp = 0.4 * K / a; }
     else if (Math.abs(det) > 1e-6) { xp = (K * d - b * Q) / det; } else { xp = pMax; }
@@ -766,9 +780,11 @@ var OM = (function () {
       else {
         // rotate among options within the budget level's spread of the cheapest cost per gram of protein
         var cheapest = costPerGram(pt, prots[0]) / ING[prots[0]].p;
-        var near = prots.filter(function (id) { return costPerGram(pt, id) / ING[id].p <= cheapest * c.spread; });
-        // Standard, Premium and PRO plans keep to the protein-dense choices in each dish (tuna over eggs, chicken over peas)
-        if (c.tier > 1 || T.pro) {
+        // plant diets may pay up to 4x the cheapest protein per gram for a denser one (US TVP vs dried beans)
+        var near = prots.filter(function (id) { return costPerGram(pt, id) / ING[id].p <= cheapest * (c.plantDiet ? Math.max(c.spread, 4) : c.spread); });
+        // Standard, Premium and PRO plans keep to the protein-dense choices in each dish (tuna over eggs, chicken over peas).
+        // Vegetarian and vegan plans do too at every level (soya chunks over peas), because plant diets otherwise fall far short of protein.
+        if (c.tier > 1 || T.pro || c.plantDiet) {
           var dens = function (id) { return ING[id].p / ING[id].k; };
           var best = Math.max.apply(null, near.map(dens));
           var dense = near.filter(function (id) { return dens(id) >= (c.tier > 2 || T.pro ? 0.8 : 0.65) * best; });
@@ -804,7 +820,7 @@ var OM = (function () {
   }
   // PRO: the higher protein target (2.0–2.3 g/kg) is hard to reach with ordinary dishes inside a calorie deficit.
   // Add one protein top-up to the snack and trim starch in the other meals by the same calories.
-  var TOPUP = { whey: { g: 31, step: 15.5, what: '1 scoop whey in water' }, tuna: { g: 142, step: 71, what: '1 tin of tuna' }, greekyog: { g: 250, step: 25, what: 'a bowl of Greek yogurt' }, cottage: { g: 225, step: 25, what: 'a cup of cottage cheese' }, sardines: { g: 106, step: 106, what: '1 tin of sardines' }, chickbreast: { g: 120, step: 20, what: 'extra chicken breast' }, redpeas: { g: 60, step: 20, what: 'extra red peas' } };
+  var TOPUP = { soya: { g: 50, step: 25, what: 'soya chunks (soaked) in a stew or soup' }, whey: { g: 31, step: 15.5, what: '1 scoop whey in water' }, tuna: { g: 142, step: 71, what: '1 tin of tuna' }, greekyog: { g: 250, step: 25, what: 'a bowl of Greek yogurt' }, cottage: { g: 225, step: 25, what: 'a cup of cottage cheese' }, sardines: { g: 106, step: 106, what: '1 tin of sardines' }, chickbreast: { g: 120, step: 20, what: 'extra chicken breast' }, redpeas: { g: 60, step: 20, what: 'extra red peas' } };
   function proTopUp(meals, T, pt, c, dn) {
     var have = meals.reduce(function (a, m) { return a + (m.tot ? m.tot.p : 0); }, 0);
     var gap = T.protein - have;
@@ -812,8 +828,8 @@ var OM = (function () {
     var host = meals.filter(function (m) { return m.tot && m.slot.key === 's'; })[0] || meals.filter(function (m) { return m.tot; }).slice(-1)[0];
     if (!host) return;
     var opts = Object.keys(TOPUP).filter(function (id) { return okIng(id, c) && pt.items[id]; });
-    var animal = opts.filter(function (id) { return id !== 'redpeas'; });
-    if (animal.length) opts = animal; // peas only when nothing else fits (vegan)
+    var animal = opts.filter(function (id) { return id !== 'redpeas' && id !== 'soya'; });
+    if (animal.length) opts = animal; // plant top-ups (soya chunks, then peas) only when nothing else fits (vegan, or vegetarian on a Budget level)
     if (!opts.length) return;
     var cpp = function (id) { return costPerGram(pt, id) / ING[id].p; };
     opts.sort(function (a, b) { return cpp(a) - cpp(b); });
@@ -888,7 +904,7 @@ var OM = (function () {
   // Pricing per item: Amazon price + US sales tax, converted to J$; freight per lb; Jamaica Customs charges on CIF;
   // then the seller's markup on the landed cost, rounded up.
   var STORE = {
-    fx: 162, fxDate: '2026-10-22', fxNote: 'J$158.73 per US$ (Bank of Jamaica website, 22 Oct 2026, latest posted on 24 Oct: midpoint of J$157.87 buying and J$159.59 selling) plus about 2% card fee',
+    fx: 162, fxDate: '2026-10-22', fxNote: 'J$158.73 per US$ (Bank of Jamaica, 22 Oct 2026, still the latest published rate found on 25 Oct (Forex report, Jamaica Homes News, 23 Oct): midpoint of J$157.87 buying and J$159.59 selling) plus about 2% card fee',
     freightPerLb: 600, freightNote: 'Freight forwarder rate, J$600 per lb (owner)',
     usSalesTax: 0.07, usTaxNote: 'Miami-Dade sales tax 7% on Amazon orders to a Florida forwarder; refundable through tax-exempt@amazon.com with the airway bill',
     duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.0085, stampDuty: 100, stampOver: 5500,
@@ -1020,7 +1036,7 @@ var OM = (function () {
   // The app checks the signature with this public key, so links cannot be made up or edited.
   var PRO = {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
-    boj: { rate: 159.59, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026 (latest on boj.org.jm on 24 Oct)' },
+    boj: { rate: 159.59, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026 (still the latest published on 25 Oct)' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
     paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
     lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first

@@ -84,12 +84,14 @@
     if (I.scoop) s += ' (' + Math.round(g / I.scoop * 2) / 2 + ' scoop' + (Math.round(g / I.scoop * 2) / 2 === 1 ? '' : 's') + ')';
     else if (I.slice) s += ' (' + Math.round(g / I.slice * 2) / 2 + ' slices)';
     else if (I.tbsp) s += ' (' + Math.round(g / I.tbsp * 2) / 2 + ' tbsp)';
+    else if (I.tin) { var t = Math.max(0.5, Math.round(g / I.tin * 2) / 2); s += ' drained (about ' + t + (t === 1 ? ' tin' : ' tins') + ')'; }
+    else if (I.dry) s += ' dry' + (imperial() ? ' (' + (g / 28.35).toFixed(1) + ' oz)' : '');
     else if (I.cup) { var c = g / I.cup; s += ' (' + (c < 0.3 ? Math.round(c * 16) + ' tbsp' : (Math.round(c * 4) / 4) + ' cup') + ')'; }
     else if (imperial()) s += ' (' + (g / 28.35).toFixed(1) + ' oz)';
     return s;
   }
   var DISHES = { auto: 'Follow my region', jm: 'Jamaican', us: 'American', mix: 'Both' };
-  var LIKE_LABEL = { greekyog: 'Greek yogurt', cottage: 'Cottage cheese', berries: 'Berries', whey: 'Whey protein', chickbreast: 'Chicken breast', beef: 'Lean beef', turkey: 'Ground turkey', salmon: 'Salmon', wwbread: 'Whole-wheat bread', pasta: 'Pasta', broccoli: 'Broccoli', mixveg: 'Frozen veg', oats: 'Oats', egg: 'Eggs', tuna: 'Tuna' };
+  var LIKE_LABEL = { greekyog: 'Greek yogurt', cottage: 'Cottage cheese', berries: 'Berries', whey: 'Whey protein', chickbreast: 'Chicken breast', beef: 'Lean beef', turkey: 'Ground turkey', salmon: 'Salmon', wwbread: 'Whole-wheat bread', pasta: 'Pasta', broccoli: 'Broccoli', mixveg: 'Frozen veg', oats: 'Oats', egg: 'Eggs', tuna: 'Tuna', soya: 'Soya chunks', chickpeas: 'Chickpeas' };
   function budgetLabel(p) { return OM.BUDGETS[OM.budgetTier(p)].label; }
   // one-tap region and budget switch on the Meals and List tabs
   function quickBar(p) {
@@ -180,7 +182,7 @@
     h += quickBar(p);
     h += '<section class="card"><div class="macros">' + macroBar('Calories', plan.tot.k, T.kcal, 'kcal') + macroBar('Protein', plan.tot.p, T.protein, 'g') + macroBar('Carbs', plan.tot.c, T.carbs, 'g') + macroBar('Fat', plan.tot.f, T.fat, 'g') + '</div><p class="small">Everything on this page comes from the week\'s shopping list: <strong class="num">' + money(weekShop().total, pt) + '</strong> in packs at ' + esc(pt.meta.label) + ' prices. <button class="linkbtn" data-act="tab" data-tab="shop">See the list</button></p>';
     if (plan.tot.p < T.protein * 0.92) h += nudge(p.diet === 'vegan' || (p.allergies || []).indexOf('dairy') >= 0 ? 'orgain-plant' : 'on-whey-5', 'This day is ' + Math.round(T.protein - plan.tot.p) + ' g short of your protein target. One scoop closes most of the gap.');
-    if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) closes the gap; soya chunks are a cheap plant option.</div>';
+    if (plan.tot.p < T.protein * 0.8) h += '<div class="flag info">This day is short on protein for your diet settings. Extra red peas, eggs or a glass of milk (if they suit you) close the gap. Soya chunks are about half protein by dry weight, so a small handful adds a lot.</div>';
     h += '</section>';
     plan.meals.forEach(function (m) {
       if (m.empty) { h += '<section class="card"><h3>' + m.slot.name + '</h3><p class="muted">No meal fits your diet settings for this slot yet.</p></section>'; return; }
@@ -693,7 +695,7 @@
       h += '<div class="formrow"><span class="f">Foods I buy (optional)</span>' + multi('likes', OM.LIKEABLE.map(function (id) { return [id, LIKE_LABEL[id] || id]; }), d.likes) + '<span class="f-hint">The plan builds meals around these whatever your budget, about two days in three. Diet and allergy settings still come first.</span></div>';
       h += '<div class="formgrid">' + numIn('foodCap', 'Weekly food budget (' + esc(dpt.meta.symbol) + ', optional)', d.foodCap || '', 'We flag weeks that go over', '1') + '</div>';
       h += '<div class="formrow"><span class="f">How do you eat?</span>' + seg('diet', [['none', 'Everything'], ['pescatarian', 'Fish, no meat'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']], d.diet) + '</div>';
-      h += '<div class="formrow"><span class="f">Allergies or foods to avoid</span>' + multi('allergies', [['egg', 'Eggs'], ['fish', 'Fish'], ['shellfish', 'Shellfish'], ['peanut', 'Peanuts'], ['dairy', 'Dairy'], ['gluten', 'Gluten']], d.allergies) + '</div>';
+      h += '<div class="formrow"><span class="f">Allergies or foods to avoid</span>' + multi('allergies', [['egg', 'Eggs'], ['fish', 'Fish'], ['shellfish', 'Shellfish'], ['peanut', 'Peanuts'], ['dairy', 'Dairy'], ['gluten', 'Gluten'], ['soy', 'Soy']], d.allergies) + '</div>';
     }
     if (stepErr) h += '<p class="err" role="alert">' + esc(stepErr) + '</p>';
     h += '<div class="sheetfoot"><button class="btn ghost" data-act="back"' + (step === 0 ? ' disabled' : '') + '>Back</button><button class="btn" data-act="next">' + (step === 4 ? 'Build my plan' : 'Next') + '</button></div></div>';
