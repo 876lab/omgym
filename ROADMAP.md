@@ -20,6 +20,7 @@
 5. Run `bash tests/run.sh`; publish only on ALL CHECKS PASSED. Rebuild with `scripts/build.py` before committing (CI fails if `index.html` is stale).
 6. Add a plain-language entry at the top of `CHANGES` in `src/core.js` and a dated entry in `CHANGELOG.md`.
 7. One focused improvement per night. Never change repository settings or hosting, add paid services, keys or secrets.
+8. End every update summary and notification for the owner with the app's URL on its own line: https://876lab.github.io/omgym/ (owner request, 2026-10-25). The owner tests in a Safari private tab, so his real data stays in the Home Screen app.
 
 ## Store (added 2026-10-23)
 - **Paused by the owner on 2026-10-24** (`STORE.paused = true`) until import costs come down. Do not reopen, change prices or add products without the owner. Research: claude.ai doc "Bringing OMGym Store prices down: Jamaica import and shipping rules" (US$100 FOB de minimis covers commercial shipments per JCA; MOHW permit needed for supplements whatever the value; sea freight ~US$4.70/cu ft; 5 lb whey only competitive at about US$46 a tub bought).
@@ -41,6 +42,7 @@
 - PRO top-up (`proTopUp`) only runs when PRO is active. Never let likes override diet or allergies.
 
 ## Backlog
+- [ ] **Owner request, do first (2026-10-25): Move my data.** A "Back up / move my data" card on the Plan tab with two buttons: "Copy my data" (puts the saved state, `omgym-state-v1`, on the clipboard as one text code, and offers a .json file download where the browser allows) and "Paste my data" (checks the code, shows what it contains: name, weigh-ins, logged workouts, then asks before replacing anything). Purpose: the owner moves his data from the Home Screen app or Safari into the claude.ai version, which saves to his own Claude account. Never upload data anywhere, no accounts or servers; data stays on the device unless the person copies it. Keep the saved-data format; validate before writing and keep a copy of the old state to undo once. Each person's data stays on their own phone: friends never see the owner's data. Tests: round trip (copy then paste gives the same state), bad code rejected with a plain message, undo works, both themes.
 - [ ] Owner: send shelf prices (receipt or photo) for Greek yogurt, cottage cheese, frozen berries, chicken breast, turkey, salmon, pasta and frozen vegetables at PriceSmart, Hi-Lo or Loshusan, and say which stores stock them. Then replace the estimates in `PRICES.JM` and add a "where to buy" line.
 - [x] (2026-10-25) Vegetarian and vegan protein: soya chunks, chickpeas and 4 new plant dishes; plant diets now reach 63–77% (median) of the protein target, up from ~50%. Greek-yogurt dishes already exist for vegetarians on Premium or with Greek yogurt ticked.
 - [ ] Plant protein, next step: JM vegetarian plans still lean on eggs (63%). Add a plant protein powder (pea or soy) as a tier-3 food once there is a local price, soy milk (tier 2), and a soya option for egg dishes on vegetarian plans only. Owner: send shelf prices for soya chunks and Grace chickpeas.
@@ -67,7 +69,7 @@
 - [ ] What's new: optionally show a one-line toast "OMGym was updated: tap the sparkle to see what's new" on the first load after a new entry (one per update, dismissible).
 - [ ] Store reopening plan (owner decides): register the business name and get a TRN/TCC; apply for the MOHW import permit (up to 10 products); ask a Miami wholesaler or ON's Caribbean distributor for resale prices; then reopen with gear and creatine shipped under US$100 per airway bill (no duty or GCT) and whey only if bought at about US$46 a tub or less.
 - [ ] Store formula: add the J$2,500 Customs Administrative Fee on dutiable packages and a "per package under US$100" (de minimis) mode before reopening; confirm duty rates for creatine (HS 2925?) and gear (9506.91, 4203) on the trade portal.
-- [ ] Sync between the Home Screen app and the claude.ai version (needs the owner's decision on accounts).
+- [ ] Live sync between the Home Screen app and the claude.ai version: owner decided (2026-10-25) a one-off move is enough for now (see "Move my data"); automatic sync would need a server and accounts, which the rules don't allow.
 
 ## Notes from runs
 - 2026-10-23: Store added. Amazon, PriceSmart and the Jamaica trade portal's 9506 (exercise equipment) and 4203 (gloves) pages could not be read, so gym gear uses the standard 20% duty (conservative). Protein powder 2106.90 rates confirmed on the Jamaica Trade Information Portal.
