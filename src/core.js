@@ -598,6 +598,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-25', t: 'Move my data', b: ['New on the Plan tab: Copy my data and Paste my data. Use them to move your plan, weigh-ins and workouts between the Home Screen app, Safari and the claude.ai version.', 'Nothing is uploaded: the code only goes where you paste it. Pasting shows what is in the code first, and you can undo once.'] },
     { d: '2026-10-25', t: 'Brown-stew chicken', b: ['The "steamed chicken" dinner is now brown-stew chicken with steamed cabbage and boiled yam or sweet potato, properly seasoned the Jamaican way. Thanks for the tip!', 'Fixed: the dish name now matches the food on the plate (it said sweet potato when the plan gave yellow yam).'] },
     { d: '2026-10-25', t: 'More protein for vegetarians and vegans', b: ['New plant proteins: soya chunks (about half protein, dry) and tinned chickpeas, with new dishes like brown-stew soya chunks, curry chickpeas and a soya chunk hash for breakfast.', 'Vegetarian and vegan plans now reach about 63–77% of the protein target, up from about 50%. Your target has not changed, only the foods.', 'Soy is now in the allergy list, and soya chunks and chickpeas can be ticked under Foods I buy.', 'Price check: no newer supermarket or market prices this week; exchange rate unchanged (Bank of Jamaica, 22 Oct).'] },
     { d: '2026-10-24', t: 'Store paused', b: ['The OMGym Store is paused while we find a cheaper way to bring products into Jamaica. Nothing can be ordered for now.', 'Anything already in your bag is saved for when the Store reopens.', 'Meal plans that use whey now show a local shop price instead of the Store price.'] },
@@ -1177,13 +1178,37 @@ var OM = (function () {
     return null;
   }
 
+  /* ---------- move my data: one text code, never uploaded anywhere ---------- */
+  var DATA_PREFIX = 'OMGYM1:';
+  function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function b64dec(str) { return decodeURIComponent(escape(atob(str))); }
+  function exportCode(state) { return DATA_PREFIX + b64enc(JSON.stringify(state)); }
+  function dataSummary(d) {
+    var days = d.days || {};
+    return { name: (d.profile && d.profile.name) || 'No name', weighIns: (d.weights || []).length, workouts: Object.keys(days).filter(function (k) { return days[k] && days[k].done; }).length, since: d.startDate || null };
+  }
+  // Check a pasted code. Returns { ok, data, summary } or { ok: false, msg } in plain language.
+  function parseDataCode(text) {
+    var t = String(text || '').replace(/\s+/g, '');
+    if (!t) return { ok: false, msg: 'Paste the code first.' };
+    var at = t.indexOf(DATA_PREFIX);
+    if (at < 0) return { ok: false, msg: 'That isn\'t an OMGym data code. It starts with OMGYM1:' };
+    var d;
+    try { d = JSON.parse(b64dec(t.slice(at + DATA_PREFIX.length))); } catch (e) { return { ok: false, msg: 'The code is incomplete or damaged. Copy it again and paste the whole thing.' }; }
+    var pf = d && d.profile;
+    if (!d || typeof d !== 'object' || d.v !== 1 || !pf || typeof pf !== 'object') return { ok: false, msg: 'That code has no OMGym plan in it.' };
+    if (!(pf.weightKg > 0) || !(pf.heightCm > 0) || !(pf.age > 0)) return { ok: false, msg: 'That code is missing the profile details (age, height, weight).' };
+    if (d.weights != null && !Array.isArray(d.weights)) return { ok: false, msg: 'That code\'s weigh-ins are damaged.' };
+    return { ok: true, data: d, summary: dataSummary(d) };
+  }
+
   return {
     ymd: ymd, parseYmd: parseYmd, dayNum: dayNum, addDays: addDays, weekday: weekday,
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS, TOPUP: TOPUP,
     BUDGETS: BUDGETS, LIKEABLE: LIKEABLE, budgetTier: budgetTier, cuisineOf: cuisineOf, ingName: ingName, weekCostByTier: weekCostByTier, mealCtx: mealCtx,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, exportCode: exportCode, parseDataCode: parseDataCode, dataSummary: dataSummary, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();

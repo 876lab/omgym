@@ -257,6 +257,9 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 @media (max-width: 420px) { .invgrid { grid-template-columns: minmax(0, 1fr); } }
 @media print { nav.tabs, header.top, .noprint, .toast, .restbar, #pro-start > *:not(.invoice), .flag { display: none !important; } body, html { background: #fff; color: #000; } main > *:not(.invoice):not(#pro-start) { display: none !important; } .invoice { box-shadow: none; } }
 .confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.datarow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.databox { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.codebox { font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem; word-break: break-all; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
 @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .formgrid { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: no-preference) { .setbox, .chip, .btn { transition: background-color .15s, color .15s, border-color .15s; } }
@@ -887,6 +890,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-25', t: 'Move my data', b: ['New on the Plan tab: Copy my data and Paste my data. Use them to move your plan, weigh-ins and workouts between the Home Screen app, Safari and the claude.ai version.', 'Nothing is uploaded: the code only goes where you paste it. Pasting shows what is in the code first, and you can undo once.'] },
     { d: '2026-10-25', t: 'Brown-stew chicken', b: ['The "steamed chicken" dinner is now brown-stew chicken with steamed cabbage and boiled yam or sweet potato, properly seasoned the Jamaican way. Thanks for the tip!', 'Fixed: the dish name now matches the food on the plate (it said sweet potato when the plan gave yellow yam).'] },
     { d: '2026-10-25', t: 'More protein for vegetarians and vegans', b: ['New plant proteins: soya chunks (about half protein, dry) and tinned chickpeas, with new dishes like brown-stew soya chunks, curry chickpeas and a soya chunk hash for breakfast.', 'Vegetarian and vegan plans now reach about 63–77% of the protein target, up from about 50%. Your target has not changed, only the foods.', 'Soy is now in the allergy list, and soya chunks and chickpeas can be ticked under Foods I buy.', 'Price check: no newer supermarket or market prices this week; exchange rate unchanged (Bank of Jamaica, 22 Oct).'] },
     { d: '2026-10-24', t: 'Store paused', b: ['The OMGym Store is paused while we find a cheaper way to bring products into Jamaica. Nothing can be ordered for now.', 'Anything already in your bag is saved for when the Store reopens.', 'Meal plans that use whey now show a local shop price instead of the Store price.'] },
@@ -1466,13 +1470,37 @@ var OM = (function () {
     return null;
   }
 
+  /* ---------- move my data: one text code, never uploaded anywhere ---------- */
+  var DATA_PREFIX = 'OMGYM1:';
+  function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function b64dec(str) { return decodeURIComponent(escape(atob(str))); }
+  function exportCode(state) { return DATA_PREFIX + b64enc(JSON.stringify(state)); }
+  function dataSummary(d) {
+    var days = d.days || {};
+    return { name: (d.profile && d.profile.name) || 'No name', weighIns: (d.weights || []).length, workouts: Object.keys(days).filter(function (k) { return days[k] && days[k].done; }).length, since: d.startDate || null };
+  }
+  // Check a pasted code. Returns { ok, data, summary } or { ok: false, msg } in plain language.
+  function parseDataCode(text) {
+    var t = String(text || '').replace(/\s+/g, '');
+    if (!t) return { ok: false, msg: 'Paste the code first.' };
+    var at = t.indexOf(DATA_PREFIX);
+    if (at < 0) return { ok: false, msg: 'That isn\'t an OMGym data code. It starts with OMGYM1:' };
+    var d;
+    try { d = JSON.parse(b64dec(t.slice(at + DATA_PREFIX.length))); } catch (e) { return { ok: false, msg: 'The code is incomplete or damaged. Copy it again and paste the whole thing.' }; }
+    var pf = d && d.profile;
+    if (!d || typeof d !== 'object' || d.v !== 1 || !pf || typeof pf !== 'object') return { ok: false, msg: 'That code has no OMGym plan in it.' };
+    if (!(pf.weightKg > 0) || !(pf.heightCm > 0) || !(pf.age > 0)) return { ok: false, msg: 'That code is missing the profile details (age, height, weight).' };
+    if (d.weights != null && !Array.isArray(d.weights)) return { ok: false, msg: 'That code\'s weigh-ins are damaged.' };
+    return { ok: true, data: d, summary: dataSummary(d) };
+  }
+
   return {
     ymd: ymd, parseYmd: parseYmd, dayNum: dayNum, addDays: addDays, weekday: weekday,
     navyBodyFat: navyBodyFat, calcTargets: calcTargets, buildWorkout: buildWorkout, sessionFor: sessionFor,
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS, TOPUP: TOPUP,
     BUDGETS: BUDGETS, LIKEABLE: LIKEABLE, budgetTier: budgetTier, cuisineOf: cuisineOf, ingName: ingName, weekCostByTier: weekCostByTier, mealCtx: mealCtx,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, exportCode: exportCode, parseDataCode: parseDataCode, dataSummary: dataSummary, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();
@@ -1589,7 +1617,8 @@ if (typeof module !== 'undefined') module.exports = OM;
   function needSetup() { if (isExample()) { toast('Set up your own plan first'); openSetup(); return true; } return false; }
 
   /* ---------- views ---------- */
-  var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null;
+  var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null, dataMode = null, dataCheck = null, dataUndo = null;
+  var UNDOKEY = 'omgym-state-undo';
   var VALID_TABS = ['today', 'food', 'shop', 'store', 'progress', 'me', 'pro'];
   var storeCat = 'all', orderCopied = false;
 
@@ -1654,6 +1683,24 @@ if (typeof module !== 'undefined') module.exports = OM;
   function macroBar(label, v, target, unit) {
     var pc = Math.min(130, v / target * 100);
     return '<div class="macro"><div class="blockhead"><span class="small"><strong>' + label + '</strong></span><span class="small num muted">' + Math.round(v) + ' / ' + target + ' ' + unit + '</span></div><div class="bar' + (pc > 110 ? ' over' : '') + '"><i style="width:' + Math.min(100, pc) + '%"></i></div></div>';
+  }
+  // Move my data between the Home Screen app, Safari and the claude.ai version: a text code the person copies themselves.
+  function dataCard() {
+    var h = '<p class="small muted">To move your plan to another version of OMGym (Home Screen app, Safari or claude.ai), tap Copy my data here, then Paste my data there. Nothing is uploaded; only you can see it.</p>';
+    if (dataUndo) h += '<div class="flag info" id="dataundo">Your data was replaced. <button class="linkbtn" data-act="dataundo">Undo</button></div>';
+    if (dataMode === 'copy') {
+      h += '<div class="databox" id="datacopybox"><label class="f" for="datacode">Your data code</label><textarea id="datacode" class="codebox" readonly rows="4">' + esc(OM.exportCode(S)) + '</textarea><p class="small muted">If it didn\'t copy by itself, press and hold the code, Select All, then Copy. Then open the other version, go to Plan, tap Paste my data.</p><button class="linkbtn" data-act="dataclose">Done</button></div>';
+    }
+    if (dataMode === 'paste') {
+      h += '<div class="databox" id="datapastebox"><label class="f" for="datain">Paste your data code</label><textarea id="datain" class="codebox" rows="4" placeholder="OMGYM1:..."></textarea>';
+      if (dataCheck && !dataCheck.ok) h += '<p class="err" role="alert">' + esc(dataCheck.msg) + '</p>';
+      if (dataCheck && dataCheck.ok) {
+        var sm = dataCheck.summary;
+        h += '<div class="confirm" id="dataconfirm"><span>Found: <strong>' + esc(sm.name) + '</strong>, ' + sm.weighIns + ' weigh-in' + (sm.weighIns === 1 ? '' : 's') + ', ' + sm.workouts + ' workout' + (sm.workouts === 1 ? '' : 's') + ' logged. ' + (S.profile ? 'This replaces the plan on this device (you can undo once).' : '') + '</span><button class="btn small" data-act="dataapply">Use this data</button><button class="linkbtn" data-act="dataclose">Cancel</button></div>';
+      } else h += '<div class="datarow"><button class="btn small" data-act="datacheck">Check code</button><button class="linkbtn" data-act="dataclose">Cancel</button></div>';
+      h += '</div>';
+    }
+    return h;
   }
   function renderFood() {
     var p = P(), T = targets(), pt = prices();
@@ -2094,8 +2141,11 @@ if (typeof module !== 'undefined') module.exports = OM;
       '<p class="small muted">OMGym gives general fitness guidance, not medical advice.</p></section>';
     if (!isExample()) {
       h += '<section class="card"><h3>Your data</h3><p class="small muted">' + (store.kind === 'db' ? 'Saved privately to your Claude account, so it follows you to any device where you open this page.' : 'Saved in this browser.') + '</p>';
-      h += confirmReset ? '<div class="confirm"><span>Delete your profile, weigh-ins and logs?</span><button class="btn warn small" data-act="reset2">Delete everything</button><button class="linkbtn" data-act="reset0">Keep</button></div>' : '<div><button class="btn ghost small" data-act="reset1">Start over</button></div>';
+      h += dataCard();
+      h += confirmReset ? '<div class="confirm"><span>Delete your profile, weigh-ins and logs?</span><button class="btn warn small" data-act="reset2">Delete everything</button><button class="linkbtn" data-act="reset0">Keep</button></div>' : '<div class="datarow"><button class="btn ghost small" data-act="datacopy"' + (S.profile ? '' : ' disabled') + '>Copy my data</button><button class="btn ghost small" data-act="datapaste">Paste my data</button><button class="btn ghost small" data-act="reset1">Start over</button></div>';
       h += '</section>';
+    } else {
+      h += '<section class="card" id="datanew"><h3>Already use OMGym?</h3>' + dataCard() + (dataMode ? '' : '<div class="datarow"><button class="btn ghost small" data-act="datapaste">Paste my data</button></div>') + '</section>';
     }
     return h;
   }
@@ -2353,6 +2403,24 @@ if (typeof module !== 'undefined') module.exports = OM;
       case 'delw': S.weights = S.weights.filter(function (w) { return w.d !== t.dataset.d; }); if (S.weights.length) S.profile.weightKg = S.weights[S.weights.length - 1].kg; save(); render(); break;
       case 'applyadj': if (needSetup()) break; S.kcalAdj = Math.max(-600, Math.min(600, (S.kcalAdj || 0) + Number(t.dataset.d))); S.adjDate = TODAY; save(); render(); toast('Calories updated'); break;
       case 'clearadj': S.kcalAdj = 0; S.adjDate = null; save(); render(); break;
+      case 'datacopy':
+        if (!S.profile) break; dataMode = 'copy'; dataCheck = null; render();
+        try { navigator.clipboard.writeText(OM.exportCode(S)).then(function () { toast('Data copied. Paste it in the other version.'); }, function () { var ta = $('#datacode'); if (ta) ta.select(); toast('Press and hold the code to copy'); }); } catch (e) { toast('Press and hold the code to copy'); }
+        break;
+      case 'datapaste': dataMode = 'paste'; dataCheck = null; render(); var din = $('#datain'); if (din) din.focus(); break;
+      case 'datacheck': var dv0 = ($('#datain') || {}).value; dataCheck = OM.parseDataCode(dv0); render(); if (!dataCheck.ok) { var d2 = $('#datain'); if (d2) d2.value = dv0 || ''; } break;
+      case 'dataclose': dataMode = null; dataCheck = null; render(); break;
+      case 'dataapply':
+        if (!dataCheck || !dataCheck.ok) break;
+        dataUndo = S.profile ? JSON.parse(JSON.stringify(S)) : freshState();
+        try { localStorage.setItem(UNDOKEY, JSON.stringify(dataUndo)); } catch (e) { }
+        adopt(dataCheck.data); dataMode = null; dataCheck = null; save(); render(); toast('Your data is here');
+        break;
+      case 'dataundo':
+        if (!dataUndo) break;
+        if (dataUndo.profile) { adopt(dataUndo); save(); } else { S = freshState(); try { localStorage.removeItem(LSKEY); } catch (e) { } if (store.kind === 'db') store.ref.delete().catch(function () { }); }
+        dataUndo = null; try { localStorage.removeItem(UNDOKEY); } catch (e) { } render(); toast('Back to how it was');
+        break;
       case 'reset1': confirmReset = true; render(); break;
       case 'reset0': confirmReset = false; render(); break;
       case 'reset2':

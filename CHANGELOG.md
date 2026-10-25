@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-25: Move my data (owner request)
+- Plan tab, Your data card: "Copy my data" (shows the code and copies it to the clipboard; press-and-hold fallback on iPhone) and "Paste my data" (checks the code, shows the name, weigh-ins and workouts it contains, then "Use this data"). One undo after replacing (old state kept in memory and in `omgym-state-undo`). New users see an "Already use OMGym?" card with Paste my data.
+- Code format: `OMGYM1:` + base64 of the saved state JSON (`OM.exportCode`, `OM.parseDataCode`, `OM.dataSummary`). Validated before writing (version 1, profile with age, height, weight; weigh-ins an array); spaces and surrounding text ignored. Nothing is uploaded; saved-data format unchanged. PRO unlocks are not in the code (re-paste the unlock link on the new device).
+- Tests: logic round trip (accents, line breaks, code inside a message), 6 bad codes rejected with plain messages; browser: copy, bad code, Start over, paste back, data restored, undo, paste again, light and dark screenshots.
+
 ## 2026-10-25: Brown-stew chicken (owner feedback)
 - `m_steamchicken` is now "Brown-stew chicken with {c} & steamed cabbage" (Jamaican dish style, `cu: 'jm'`), with escallion added and a properly seasoned method (overnight seasoning, browning, stewed gravy). The owner noted "steamed chicken" isn't a Jamaican dish. The id is kept so saved data is unaffected.
 - Fixed: the name was hard-coded "with sweet potato" even when the plan picked yellow yam; it now follows the starch. New logic test checks the name matches.

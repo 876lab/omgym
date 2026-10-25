@@ -108,7 +108,8 @@
   function needSetup() { if (isExample()) { toast('Set up your own plan first'); openSetup(); return true; } return false; }
 
   /* ---------- views ---------- */
-  var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null;
+  var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null, dataMode = null, dataCheck = null, dataUndo = null;
+  var UNDOKEY = 'omgym-state-undo';
   var VALID_TABS = ['today', 'food', 'shop', 'store', 'progress', 'me', 'pro'];
   var storeCat = 'all', orderCopied = false;
 
@@ -173,6 +174,24 @@
   function macroBar(label, v, target, unit) {
     var pc = Math.min(130, v / target * 100);
     return '<div class="macro"><div class="blockhead"><span class="small"><strong>' + label + '</strong></span><span class="small num muted">' + Math.round(v) + ' / ' + target + ' ' + unit + '</span></div><div class="bar' + (pc > 110 ? ' over' : '') + '"><i style="width:' + Math.min(100, pc) + '%"></i></div></div>';
+  }
+  // Move my data between the Home Screen app, Safari and the claude.ai version: a text code the person copies themselves.
+  function dataCard() {
+    var h = '<p class="small muted">To move your plan to another version of OMGym (Home Screen app, Safari or claude.ai), tap Copy my data here, then Paste my data there. Nothing is uploaded; only you can see it.</p>';
+    if (dataUndo) h += '<div class="flag info" id="dataundo">Your data was replaced. <button class="linkbtn" data-act="dataundo">Undo</button></div>';
+    if (dataMode === 'copy') {
+      h += '<div class="databox" id="datacopybox"><label class="f" for="datacode">Your data code</label><textarea id="datacode" class="codebox" readonly rows="4">' + esc(OM.exportCode(S)) + '</textarea><p class="small muted">If it didn\'t copy by itself, press and hold the code, Select All, then Copy. Then open the other version, go to Plan, tap Paste my data.</p><button class="linkbtn" data-act="dataclose">Done</button></div>';
+    }
+    if (dataMode === 'paste') {
+      h += '<div class="databox" id="datapastebox"><label class="f" for="datain">Paste your data code</label><textarea id="datain" class="codebox" rows="4" placeholder="OMGYM1:..."></textarea>';
+      if (dataCheck && !dataCheck.ok) h += '<p class="err" role="alert">' + esc(dataCheck.msg) + '</p>';
+      if (dataCheck && dataCheck.ok) {
+        var sm = dataCheck.summary;
+        h += '<div class="confirm" id="dataconfirm"><span>Found: <strong>' + esc(sm.name) + '</strong>, ' + sm.weighIns + ' weigh-in' + (sm.weighIns === 1 ? '' : 's') + ', ' + sm.workouts + ' workout' + (sm.workouts === 1 ? '' : 's') + ' logged. ' + (S.profile ? 'This replaces the plan on this device (you can undo once).' : '') + '</span><button class="btn small" data-act="dataapply">Use this data</button><button class="linkbtn" data-act="dataclose">Cancel</button></div>';
+      } else h += '<div class="datarow"><button class="btn small" data-act="datacheck">Check code</button><button class="linkbtn" data-act="dataclose">Cancel</button></div>';
+      h += '</div>';
+    }
+    return h;
   }
   function renderFood() {
     var p = P(), T = targets(), pt = prices();
@@ -613,8 +632,11 @@
       '<p class="small muted">OMGym gives general fitness guidance, not medical advice.</p></section>';
     if (!isExample()) {
       h += '<section class="card"><h3>Your data</h3><p class="small muted">' + (store.kind === 'db' ? 'Saved privately to your Claude account, so it follows you to any device where you open this page.' : 'Saved in this browser.') + '</p>';
-      h += confirmReset ? '<div class="confirm"><span>Delete your profile, weigh-ins and logs?</span><button class="btn warn small" data-act="reset2">Delete everything</button><button class="linkbtn" data-act="reset0">Keep</button></div>' : '<div><button class="btn ghost small" data-act="reset1">Start over</button></div>';
+      h += dataCard();
+      h += confirmReset ? '<div class="confirm"><span>Delete your profile, weigh-ins and logs?</span><button class="btn warn small" data-act="reset2">Delete everything</button><button class="linkbtn" data-act="reset0">Keep</button></div>' : '<div class="datarow"><button class="btn ghost small" data-act="datacopy"' + (S.profile ? '' : ' disabled') + '>Copy my data</button><button class="btn ghost small" data-act="datapaste">Paste my data</button><button class="btn ghost small" data-act="reset1">Start over</button></div>';
       h += '</section>';
+    } else {
+      h += '<section class="card" id="datanew"><h3>Already use OMGym?</h3>' + dataCard() + (dataMode ? '' : '<div class="datarow"><button class="btn ghost small" data-act="datapaste">Paste my data</button></div>') + '</section>';
     }
     return h;
   }
@@ -872,6 +894,24 @@
       case 'delw': S.weights = S.weights.filter(function (w) { return w.d !== t.dataset.d; }); if (S.weights.length) S.profile.weightKg = S.weights[S.weights.length - 1].kg; save(); render(); break;
       case 'applyadj': if (needSetup()) break; S.kcalAdj = Math.max(-600, Math.min(600, (S.kcalAdj || 0) + Number(t.dataset.d))); S.adjDate = TODAY; save(); render(); toast('Calories updated'); break;
       case 'clearadj': S.kcalAdj = 0; S.adjDate = null; save(); render(); break;
+      case 'datacopy':
+        if (!S.profile) break; dataMode = 'copy'; dataCheck = null; render();
+        try { navigator.clipboard.writeText(OM.exportCode(S)).then(function () { toast('Data copied. Paste it in the other version.'); }, function () { var ta = $('#datacode'); if (ta) ta.select(); toast('Press and hold the code to copy'); }); } catch (e) { toast('Press and hold the code to copy'); }
+        break;
+      case 'datapaste': dataMode = 'paste'; dataCheck = null; render(); var din = $('#datain'); if (din) din.focus(); break;
+      case 'datacheck': var dv0 = ($('#datain') || {}).value; dataCheck = OM.parseDataCode(dv0); render(); if (!dataCheck.ok) { var d2 = $('#datain'); if (d2) d2.value = dv0 || ''; } break;
+      case 'dataclose': dataMode = null; dataCheck = null; render(); break;
+      case 'dataapply':
+        if (!dataCheck || !dataCheck.ok) break;
+        dataUndo = S.profile ? JSON.parse(JSON.stringify(S)) : freshState();
+        try { localStorage.setItem(UNDOKEY, JSON.stringify(dataUndo)); } catch (e) { }
+        adopt(dataCheck.data); dataMode = null; dataCheck = null; save(); render(); toast('Your data is here');
+        break;
+      case 'dataundo':
+        if (!dataUndo) break;
+        if (dataUndo.profile) { adopt(dataUndo); save(); } else { S = freshState(); try { localStorage.removeItem(LSKEY); } catch (e) { } if (store.kind === 'db') store.ref.delete().catch(function () { }); }
+        dataUndo = null; try { localStorage.removeItem(UNDOKEY); } catch (e) { } render(); toast('Back to how it was');
+        break;
       case 'reset1': confirmReset = true; render(); break;
       case 'reset0': confirmReset = false; render(); break;
       case 'reset2':

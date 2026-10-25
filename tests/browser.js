@@ -216,6 +216,33 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(await page.isVisible('text=Workout logged') || true, 'reload');
   const st2 = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
   ok(st2.profile.name === 'Cargill' && st2.weights.length >= 6, 'state persists after reload');
+  // Move my data: copy, start over, paste back, undo
+  { await page.click('nav [data-tab=me]');
+    await page.click('[data-act=datacopy]');
+    const code = await page.inputValue('#datacode');
+    ok(code.startsWith('OMGYM1:'), 'Copy my data shows the code');
+    await page.click('[data-act=dataclose]');
+    await page.click('[data-act=datapaste]'); await page.fill('#datain', 'not a code'); await page.click('[data-act=datacheck]');
+    ok(/isn't an OMGym data code/.test(await page.locator('#datapastebox').innerText()), 'bad code gets a plain message');
+    await page.click('[data-act=dataclose]');
+    await page.click('[data-act=reset1]'); await page.click('[data-act=reset2]');
+    await page.click('nav [data-tab=me]');
+    ok(await page.isVisible('#datanew') && !(await page.isVisible('[data-act=datacopy]')), 'a new user sees Paste my data, with nothing to copy');
+    await page.click('[data-act=datapaste]'); await page.fill('#datain', code); await page.click('[data-act=datacheck]');
+    const conf = await page.locator('#dataconfirm').innerText();
+    ok(/Cargill/.test(conf) && /weigh-in/.test(conf), 'paste shows what the code contains: ' + conf.slice(0, 80));
+    await page.screenshot({ path: OUT + '/shot-data.png', fullPage: false });
+    await page.click('[data-act=dataapply]');
+    let st3 = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
+    ok(st3 && st3.profile.name === 'Cargill' && st3.weights.length === st2.weights.length && JSON.stringify(st3.days) === JSON.stringify(st2.days), 'pasted data restores profile, weigh-ins and logs');
+    ok(await page.isVisible('#dataundo'), 'undo offered after replacing');
+    await page.click('[data-act=dataundo]');
+    ok(!(await page.evaluate(() => localStorage.getItem('omgym-state-v1'))), 'undo goes back to the empty state');
+    await page.click('[data-act=datapaste]'); await page.fill('#datain', code); await page.click('[data-act=datacheck]'); await page.click('[data-act=dataapply]');
+    st3 = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
+    ok(st3.profile.name === 'Cargill', 'data pasted again for the rest of the walk-through');
+    await page.emulateMedia({ colorScheme: 'dark' }); await page.click('[data-act=datacopy]'); await page.screenshot({ path: OUT + '/shot-data-dark.png', fullPage: false }); await page.click('[data-act=dataclose]'); await page.emulateMedia({ colorScheme: 'light' });
+  }
   // imperial + vegan + other region profile edit
   await page.click('nav [data-tab=me]'); await page.click('[data-act=setup]');
   await page.click('[data-k=units][data-v=imperial]');

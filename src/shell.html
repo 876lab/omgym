@@ -240,6 +240,9 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 @media (max-width: 420px) { .invgrid { grid-template-columns: minmax(0, 1fr); } }
 @media print { nav.tabs, header.top, .noprint, .toast, .restbar, #pro-start > *:not(.invoice), .flag { display: none !important; } body, html { background: #fff; color: #000; } main > *:not(.invoice):not(#pro-start) { display: none !important; } .invoice { box-shadow: none; } }
 .confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.datarow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.databox { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.codebox { font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem; word-break: break-all; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
 @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .formgrid { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: no-preference) { .setbox, .chip, .btn { transition: background-color .15s, color .15s, border-color .15s; } }

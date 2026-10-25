@@ -257,6 +257,16 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
   { const pj = { ...base, region: 'JM' }, T = OM.calcTargets(pj), pt = OM.priceTable(pj, {}); let seen = 0;
     for (let i = 0; i < 60; i++) for (const m of OM.planDay(OM.addDays('2026-10-26', i), pj, T, pt, {}).meals) if (m.tpl && m.tpl.id === 'm_steamchicken') { seen++; ok(m.name.toLowerCase().includes(OM.ING[m.carbId].short), 'brown-stew chicken name matches its starch: ' + m.name); ok(!/steamed chicken/i.test(m.name), 'no "steamed chicken"'); }
     ok(seen > 0, 'brown-stew chicken appears on Jamaican plans'); }
+  // Move my data: code round trip and plain errors
+  { const st = { v: 1, profile: { ...base, name: 'Gilly Ü' }, startDate: '2026-10-19', weights: [{ d: '2026-10-19', kg: 80 }, { d: '2026-10-22', kg: 79.6 }], days: { '2026-10-20': { done: true }, '2026-10-21': {} }, loads: {}, swaps: {}, prices: { JM: { rice: { pr: 400 } } }, shopTicks: {}, cart: {} };
+    const code = OM.exportCode(st); ok(code.startsWith('OMGYM1:'), 'data code has its prefix');
+    const r = OM.parseDataCode('  ' + code.slice(0, 40) + '\n' + code.slice(40) + ' ');
+    ok(r.ok && JSON.stringify(r.data) === JSON.stringify(st), 'data code round trip (spaces and line breaks ignored, accents kept)');
+    ok(r.summary.name === 'Gilly Ü' && r.summary.weighIns === 2 && r.summary.workouts === 1, 'data code summary');
+    ok(OM.parseDataCode('Here you go: ' + code).ok, 'code found inside a pasted message');
+    for (const bad of ['', 'hello', 'OMGYM1:abc', 'OMGYM1:' + Buffer.from('{"v":2}').toString('base64'), 'OMGYM1:' + Buffer.from(JSON.stringify({ v: 1, profile: { name: 'x' } })).toString('base64'), code.slice(0, code.length - 12)])
+      { const b = OM.parseDataCode(bad); ok(!b.ok && typeof b.msg === 'string' && b.msg.length > 5, 'bad data code rejected with a message: ' + bad.slice(0, 20)); }
+  }
   // standard plans never get a top-up
   { const pt = OM.priceTable(base, {}), T = OM.calcTargets(base); for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), base, T, pt, {}).meals.forEach(m => (m.items || []).forEach(it => ok(it.role !== 'topup', 'no top-up without PRO'))); }
 }
