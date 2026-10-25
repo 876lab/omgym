@@ -90,6 +90,33 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('[data-act=done]'); ok(await page.isVisible('text=Workout logged'), 'workout logged');
   await page.click('[data-act=habit][data-h=water]');
   ok((await page.getAttribute('[data-h=water]', 'aria-pressed')) === 'true', 'habit toggles');
+  // log a forgotten day: tap an earlier day in the week strip (or go back a week)
+  { const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1); const tm = new Date(now); tm.setDate(now.getDate() + 1);
+    const today = ymd(now), yest = ymd(y), tmr = ymd(tm);
+    const before0 = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')).loads);
+    if (!(await page.locator('.wd[data-d="' + yest + '"]').count())) await page.click('[data-act=wweek][data-n="-7"]');
+    await page.click('.wd[data-d="' + yest + '"]');
+    ok(await page.isVisible('#otherday') && /You are logging/.test(await page.innerText('#otherday')), 'earlier day opens with a "you are logging" note');
+    ok((await page.getAttribute('.wd[data-d="' + yest + '"]', 'aria-pressed')) === 'true', 'tapped day is selected');
+    await page.screenshot({ path: OUT + '/shot-backlog.png', fullPage: false });
+    const ld = page.locator('input[data-act=load]').first(); let ldEx = null;
+    if (await ld.count()) { ldEx = await ld.getAttribute('data-ex'); await ld.fill('5'); await ld.press('Tab'); }
+    if (await page.locator('[data-act=done]').count()) await page.click('[data-act=done]');
+    let st = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
+    ok(st.days[yest] && st.days[yest].done === true, 'forgotten day logged');
+    ok(st.days[today] && st.days[today].done === true, 'today stays logged');
+    ok((await page.innerText('.wd[data-d="' + yest + '"]')).includes('✓'), 'week strip ticks the forgotten day');
+    if (ldEx && before0[ldEx] && before0[ldEx].d === today) ok(st.loads[ldEx].d === today && st.loads[ldEx].v === before0[ldEx].v, 'an earlier day\'s weight does not replace today\'s "Last" weight');
+    await page.click('#otherday [data-act=wday]');
+    ok(!(await page.isVisible('#otherday')), 'Back to today');
+    if (await page.locator('.wd[data-d="' + tmr + '"]').count()) { await page.click('.wd[data-d="' + tmr + '"]'); ok(/preview/.test(await page.innerText('#otherday')) && (await page.locator('[data-act=done]').count()) === 0, 'future day is a preview, nothing to log'); await page.click('#otherday [data-act=wday]'); }
+    // a day older than 4 weeks cannot be opened
+    for (let i = 0; i < 6; i++) { const b = page.locator('[data-act=wweek][data-n="-7"]'); if (await b.isDisabled()) break; await b.click(); }
+    ok(await page.locator('[data-act=wweek][data-n="-7"]').isDisabled(), 'goes back at most 4 weeks');
+    for (let i = 0; i < 6; i++) { const b = page.locator('[data-act=wweek][data-n="7"]'); if (await b.isDisabled()) break; await b.click(); }
+    await page.click('.wd[data-d="' + today + '"]');
+  }
   // meals
   await page.click('nav [data-tab=food]');
   const txt = await page.locator('#view').innerText();

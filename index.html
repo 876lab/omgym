@@ -186,7 +186,12 @@ nav.tabs button[aria-current="page"] { color: var(--iron); }
 .wd .wn { font-size: 0.62rem; line-height: 1.1; text-align: center; color: var(--muted); overflow-wrap: anywhere; }
 .wd.train .wn { color: var(--fg); font-weight: 700; }
 .wd .wt { font-size: 0.8rem; color: var(--iron); font-weight: 800; min-height: 1em; }
-.wd.now { border-color: var(--iron); }
+.wd { appearance: none; font: inherit; color: inherit; cursor: pointer; }
+.wd:disabled { opacity: 0.45; cursor: default; }
+.wd.now { border-color: var(--line); }
+.wd.sel { border-color: var(--iron); }
+.weeknav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: -4px; }
+.iconbtn:disabled { opacity: 0.35; }
 .restbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: flex; align-items: center; gap: 12px; background: var(--iron); color: var(--on-iron); border-radius: 999px; padding: 8px 8px 8px 18px; font-family: var(--display); font-weight: 800; font-size: 1.3rem; box-shadow: 0 6px 20px rgba(0,0,0,.18); white-space: nowrap; }
 .restbar .btn.ghost { color: var(--on-iron); box-shadow: inset 0 0 0 1.5px currentColor; font-family: var(--body); }
 .restbar.go { background: var(--mango); color: #1a1205; }
@@ -890,6 +895,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-25', t: 'Log a day you forgot', b: ['Forgot to log a workout? On Today, tap that day in the week strip, then tick your sets, weights and habits and tap Log this workout.', 'Use the arrows to go back up to 4 weeks. Future days show a preview you can log on the day.'] },
     { d: '2026-10-25', t: 'Move my data', b: ['New on the Plan tab: Copy my data and Paste my data. Use them to move your plan, weigh-ins and workouts between the Home Screen app, Safari and the claude.ai version.', 'Nothing is uploaded: the code only goes where you paste it. Pasting shows what is in the code first, and you can undo once.', 'Fixed: pasting on iPhone no longer says the code is wrong.'] },
     { d: '2026-10-25', t: 'Brown-stew chicken', b: ['The "steamed chicken" dinner is now brown-stew chicken with steamed cabbage and boiled yam or sweet potato, properly seasoned the Jamaican way. Thanks for the tip!', 'Fixed: the dish name now matches the food on the plate (it said sweet potato when the plan gave yellow yam).'] },
     { d: '2026-10-25', t: 'More protein for vegetarians and vegans', b: ['New plant proteins: soya chunks (about half protein, dry) and tinned chickpeas, with new dishes like brown-stew soya chunks, curry chickpeas and a soya chunk hash for breakfast.', 'Vegetarian and vegan plans now reach about 63–77% of the protein target, up from about 50%. Your target has not changed, only the foods.', 'Soy is now in the allergy list, and soya chunks and chickpeas can be ticked under Foods I buy.', 'Price check: no newer supermarket or market prices this week; exchange rate unchanged (Bank of Jamaica, 22 Oct).'] },
@@ -1513,7 +1519,7 @@ if (typeof module !== 'undefined') module.exports = OM;
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var LSKEY = 'omgym-state-v1';
   var TODAY = OM.ymd(new Date());
-  function refreshToday() { var t = OM.ymd(new Date()); if (t !== TODAY) { if (foodDate === TODAY) foodDate = t; TODAY = t; render(); } }
+  function refreshToday() { var t = OM.ymd(new Date()); if (t !== TODAY) { if (foodDate === TODAY) foodDate = t; if (workDate === TODAY) workDate = t; TODAY = t; render(); } }
 
   /* ---------- state ---------- */
   function freshState() { return { v: 1, profile: null, startDate: null, kcalAdj: 0, adjDate: null, weights: [], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: {}, orderName: '', sellerView: false, nudgeHide: {} }; }
@@ -1617,7 +1623,7 @@ if (typeof module !== 'undefined') module.exports = OM;
   function needSetup() { if (isExample()) { toast('Set up your own plan first'); openSetup(); return true; } return false; }
 
   /* ---------- views ---------- */
-  var tab = 'today', foodDate = TODAY, confirmReset = false, editPrice = null, dataMode = null, dataCheck = null, dataUndo = null;
+  var tab = 'today', foodDate = TODAY, workDate = TODAY, confirmReset = false, editPrice = null, dataMode = null, dataCheck = null, dataUndo = null;
   var UNDOKEY = 'omgym-state-undo';
   var VALID_TABS = ['today', 'food', 'shop', 'store', 'progress', 'me', 'pro'];
   var storeCat = 'all', orderCopied = false;
@@ -1627,16 +1633,21 @@ if (typeof module !== 'undefined') module.exports = OM;
   }
   function flagsHtml(T) { return T.flags.map(function (f) { return '<div class="flag ' + f.level + '">' + esc(f.text) + '</div>'; }).join(''); }
 
+  // Today tab can show another day of the week so a forgotten workout can be logged afterwards (up to LOG_BACK days back)
+  var LOG_BACK = 28;
+  function workDay() { return workDate; }
+  function canLog(d) { return d <= TODAY && OM.dayNum(TODAY) - OM.dayNum(d) <= LOG_BACK; }
   function renderToday() {
-    var p = P(), T = targets(), pt = prices();
-    var w = OM.buildWorkout(TODAY, p, startDate(), T.caution, S.profile ? proPlan() : null);
-    var plan = OM.planDay(TODAY, p, T, pt, S.swaps);
+    var p = P(), T = targets(), pt = prices(), D = workDay(), isToday = D === TODAY, future = D > TODAY;
+    var w = OM.buildWorkout(D, p, startDate(), T.caution, S.profile ? proPlan() : null);
+    var plan = OM.planDay(D, p, T, pt, S.swaps);
     var shop = weekShop();
-    var dd = S.days[TODAY] || { sets: {}, habits: {} };
+    var dd = S.days[D] || { sets: {}, habits: {} };
     var h = exampleBanner() + flagsHtml(T);
-    h += '<section class="dayhead"><span class="label">' + esc(niceDate(TODAY)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min' + (w.pro ? ' · <span class="pill done">PRO ' + esc(OM.PRO_PHASES[proPlan().phase].label) + '</span>' : '') + '</span></section>';
-    h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">kcal today</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(shop.total, pt) + '</div><div class="u">week\'s shop</div></div></section>';
-    h += weekStrip(p);
+    if (!isToday) h += '<div class="flag info" id="otherday">' + (future ? 'This is a preview of ' + esc(niceDate(D)) + '. You can log it on the day.' : 'You are logging ' + esc(niceDate(D)) + '. Tick sets, weights and habits as you did them.') + ' <button class="linkbtn" data-act="wday" data-d="' + TODAY + '">Back to today</button></div>';
+    h += '<section class="dayhead"><span class="label">' + esc(niceDate(D)) + '</span><h1>' + esc(w.title) + '</h1><span class="muted">' + (w.rest ? 'Rest day · ' : 'Week ' + w.week + ' · ' + esc(w.phase.name) + ' phase · ') + w.minutes + ' min' + (w.pro ? ' · <span class="pill done">PRO ' + esc(OM.PRO_PHASES[proPlan().phase].label) + '</span>' : '') + '</span></section>';
+    h += '<section class="kpis"><div class="kpi"><div class="v num">' + T.kcal.toLocaleString() + '</div><div class="u">' + (isToday ? 'kcal today' : 'kcal a day') + '</div></div><div class="kpi"><div class="v num">' + T.protein + ' g</div><div class="u">protein</div></div><div class="kpi"><div class="v num">' + money(shop.total, pt) + '</div><div class="u">week\'s shop</div></div></section>';
+    h += weekStrip(p, D);
     // workout
     h += '<section class="card hero">';
     if (!w.rest) h += '<p class="small"><strong>' + esc(w.phase.name) + ':</strong> ' + esc(w.phase.note) + (w.caution ? ' Keep effort moderate until your doctor clears you.' : '') + '</p>';
@@ -1645,7 +1656,7 @@ if (typeof module !== 'undefined') module.exports = OM;
       if (b.circuit) h += '<p class="small muted">Do one set of each exercise in order, then repeat the round.</p>';
       if (b.lines) h += '<ul class="lines">' + b.lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>';
       (b.items || []).forEach(function (it) {
-        var id = it.ex.id, doneSets = (dd.sets && dd.sets[id]) || 0, lr = S.loads[id], lo = lr && typeof lr === 'object' ? (lr.d === TODAY ? lr.prev : lr) : null, last = lo ? lo.v : '';
+        var id = it.ex.id, doneSets = (dd.sets && dd.sets[id]) || 0, lr = S.loads[id], lo = lr && typeof lr === 'object' ? (lr.d === D ? lr.prev : lr) : null, last = lo ? lo.v : '';
         h += '<div class="ex"><div><div class="name">' + esc(it.ex.name) + '</div><div class="rx">' + it.sets + ' × ' + esc(it.reps) + ' · rest ' + it.rest + ' s' + (it.ex.kind === 'c' || it.ex.kind === 'a' ? ' · ' + esc(it.rir) + ' reps in reserve' : '') + '</div></div><div></div>';
         h += '<div class="sets">';
         for (var i = 1; i <= it.sets; i++) h += '<button class="setbox" data-act="set" data-ex="' + id + '" data-n="' + i + '" data-rest="' + it.rest + '" aria-pressed="' + (i <= doneSets) + '" aria-label="Set ' + i + ' of ' + esc(it.ex.name) + '">' + i + '</button>';
@@ -1654,29 +1665,33 @@ if (typeof module !== 'undefined') module.exports = OM;
       });
       h += '</div>';
     });
-    h += '<div>' + (dd.done ? '<span class="pill done">Workout logged</span> <button class="linkbtn" data-act="undone">Undo</button>' : '<button class="btn" data-act="done">' + (w.rest ? 'Log recovery day' : 'Finish workout') + '</button>') + '</div></section>';
-    if (!w.rest) {
+    h += '<div>' + (dd.done ? '<span class="pill done">Workout logged</span> <button class="linkbtn" data-act="undone">Undo</button>' : future ? '<button class="btn" disabled>Log it on the day</button>' : '<button class="btn" data-act="done">' + (w.rest ? (isToday ? 'Log recovery day' : 'Log this recovery day') : (isToday ? 'Finish workout' : 'Log this workout')) + '</button>') + '</div></section>';
+    if (isToday && !w.rest) {
       var hasCond = w.blocks.some(function (b) { return b.cond; });
       h += hasCond ? nudge('jump-rope', 'Do the cardio finisher anywhere, no machine needed.') : nudge(OM.dayNum(TODAY) % 2 ? 'gloves' : 'straps', 'Better grip on today\'s pulls and presses.');
-    } else h += nudge('bands', 'Recovery days: band warm-ups and glute work at home.');
+    } else if (isToday) h += nudge('bands', 'Recovery days: band warm-ups and glute work at home.');
     // habits
     var HB = [['protein', 'Hit protein'], ['sleep', '7+ hours sleep'], ['steps', '8,000+ steps'], ['water', '2 L water']];
     h += '<section class="card"><div class="cardhead"><h3>Daily habits</h3><span class="small muted">Tap when done</span></div><div class="habits">' + HB.map(function (x) { return '<button class="chip" data-act="habit" data-h="' + x[0] + '" aria-pressed="' + !!(dd.habits && dd.habits[x[0]]) + '">' + x[1] + '</button>'; }).join('') + '</div></section>';
     // meals summary
-    h += '<section class="card"><div class="cardhead"><h3>Today\'s food</h3><button class="linkbtn" data-act="tab" data-tab="food">Recipes & amounts</button></div><div>';
+    h += '<section class="card"><div class="cardhead"><h3>' + (isToday ? 'Today\'s food' : 'Food for ' + esc(niceDate(D, { weekday: 'long' }))) + '</h3><button class="linkbtn" data-act="tab" data-tab="food">Recipes & amounts</button></div><div>';
     plan.meals.forEach(function (m) { if (m.empty) return; h += '<div class="mealrow"><span class="label">' + m.slot.name + '</span><span>' + esc(m.name) + '</span><span class="small muted num">' + Math.round(m.tot.k) + ' kcal</span></div>'; });
     h += '</div><p class="small muted num">' + Math.round(plan.tot.k).toLocaleString() + ' kcal · ' + Math.round(plan.tot.p) + ' g protein</p></section>';
     return h;
   }
 
-  function weekStrip(p) {
+  function weekStrip(p, sel) {
+    sel = sel || TODAY;
     var dn = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    var mon = OM.addDays(TODAY, -((OM.weekday(TODAY) + 6) % 7));
-    var h = '<section class="week" aria-label="This week">';
+    var mon = OM.addDays(sel, -((OM.weekday(sel) + 6) % 7)), thisMon = OM.addDays(TODAY, -((OM.weekday(TODAY) + 6) % 7));
+    var prevOk = canLog(OM.addDays(mon, -1)), nextOk = mon < thisMon;
+    var h = '<section class="weeknav"><button class="iconbtn sm" data-act="wweek" data-n="-7" aria-label="Previous week"' + (prevOk ? '' : ' disabled') + '>‹</button><span class="small muted">' + (mon === thisMon ? 'This week' : 'Week of ' + esc(niceDate(mon, { day: 'numeric', month: 'short' }))) + ' · tap a day to log it</span><button class="iconbtn sm" data-act="wweek" data-n="7" aria-label="Next week"' + (nextOk ? '' : ' disabled') + '>›</button></section>';
+    h += '<section class="week" aria-label="Week">';
     for (var i = 0; i < 7; i++) {
       var d = OM.addDays(mon, i), s = OM.sessionFor(d, p, startDate()), done = S.days[d] && S.days[d].done;
       var nm = s ? OM.buildWorkout(d, p, startDate(), false, S.profile ? proPlan() : null).title.replace(/ body/, '').replace('Conditioning + core', 'Cardio') : 'Rest';
-      h += '<div class="wd' + (d === TODAY ? ' now' : '') + (s ? ' train' : '') + (done ? ' done' : '') + '"><span class="wl">' + dn[OM.weekday(d)] + '</span><span class="wn">' + esc(nm) + '</span><span class="wt" aria-hidden="true">' + (done ? '✓' : '') + '</span></div>';
+      var tooOld = d < TODAY && !canLog(d);
+      h += '<button class="wd' + (d === TODAY ? ' now' : '') + (d === sel ? ' sel' : '') + (s ? ' train' : '') + (done ? ' done' : '') + '" data-act="wday" data-d="' + d + '"' + (tooOld ? ' disabled' : '') + ' aria-pressed="' + (d === sel) + '" aria-label="' + esc(niceDate(d)) + ': ' + esc(nm) + (done ? ', logged' : '') + '"><span class="wl">' + dn[OM.weekday(d)] + '</span><span class="wn">' + esc(nm) + '</span><span class="wt" aria-hidden="true">' + (done ? '✓' : '') + '</span></button>';
     }
     return h + '</section>';
   }
@@ -2341,10 +2356,11 @@ if (typeof module !== 'undefined') module.exports = OM;
       case 'next': readSheet(); stepErr = validate(); if (stepErr) { renderSheet(); break; } if (step === 4) finishSetup(); else { step++; renderSheet(); $('#sheet').scrollTop = 0; } break;
       case 'back': readSheet(); stepErr = ''; step = Math.max(0, step - 1); renderSheet(); break;
       case 'set': if (needSetup()) break;
-        var dd = day(TODAY), n = +t.dataset.n, ex = t.dataset.ex;
+        if (!canLog(workDay())) { toast('You can log this on the day'); break; }
+        var dd = day(workDay()), n = +t.dataset.n, ex = t.dataset.ex;
         var ticking = (dd.sets[ex] || 0) < n;
         dd.sets[ex] = ticking ? n : n - 1; save(); render();
-        if (ticking) startRest(+t.dataset.rest || 60); break;
+        if (ticking && workDay() === TODAY) startRest(+t.dataset.rest || 60); break;
       case 'skiprest': stopRest(); break;
       case 'cartadd': if (OM.STORE.paused) { toast('The Store is paused for now.'); break; } S.cart = S.cart || {}; var ak = t.dataset.key || OM.cartKey(t.dataset.id); S.cart[ak] = Math.min(50, (S.cart[ak] || 0) + 1); orderCopied = false; save(); render(); if (tab !== 'store') toast('Added to your bag. Open Store to order.'); break;
       case 'cartdec': var dk = t.dataset.key || t.dataset.id; S.cart[dk] = Math.max(0, (S.cart[dk] || 0) - 1); if (!S.cart[dk]) delete S.cart[dk]; orderCopied = false; save(); render(); break;
@@ -2380,9 +2396,11 @@ if (typeof module !== 'undefined') module.exports = OM;
         var done = function () { orderCopied = true; toast('Order copied'); var b = t; b.textContent = 'Copied'; };
         try { navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); toast('Press and hold to copy'); }); } catch (e) { ta.select(); toast('Press and hold to copy'); }
         break;
-      case 'done': if (needSetup()) break; day(TODAY).done = true; trim(); save(); render(); toast('Workout logged. Nice work.'); break;
-      case 'undone': day(TODAY).done = false; save(); render(); break;
-      case 'habit': if (needSetup()) break; var hd = day(TODAY); hd.habits[t.dataset.h] = !hd.habits[t.dataset.h]; save(); render(); break;
+      case 'done': if (needSetup()) break; if (!canLog(workDay())) { toast('You can log this on the day'); break; } day(workDay()).done = true; trim(); save(); render(); toast(workDay() === TODAY ? 'Workout logged. Nice work.' : 'Logged for ' + niceDate(workDay(), { weekday: 'long', day: 'numeric', month: 'short' })); break;
+      case 'undone': day(workDay()).done = false; save(); render(); break;
+      case 'habit': if (needSetup()) break; if (!canLog(workDay())) { toast('You can log this on the day'); break; } var hd = day(workDay()); hd.habits[t.dataset.h] = !hd.habits[t.dataset.h]; save(); render(); break;
+      case 'wday': var wd0 = t.dataset.d; if (wd0 < TODAY && !canLog(wd0)) break; workDate = wd0; render(); break;
+      case 'wweek': var wn = OM.addDays(workDate, +t.dataset.n); if (wn > TODAY) wn = TODAY; if (wn < TODAY && !canLog(wn)) wn = OM.addDays(TODAY, -LOG_BACK); workDate = wn; render(); break;
       case 'fd': foodDate = OM.addDays(foodDate, +t.dataset.n); render(); break;
       case 'swap': if (needSetup()) break; var sw = S.swaps[foodDate] = S.swaps[foodDate] || {}; sw[t.dataset.slot] = (sw[t.dataset.slot] || 0) + 1; save(); render(); break;
       case 'tick': if (needSetup()) { t.checked = false; break; } var tk = S.shopTicks[shopStart()] = S.shopTicks[shopStart()] || {}; tk[t.dataset.id] = t.checked; save(); render(); break;
@@ -2445,13 +2463,18 @@ if (typeof module !== 'undefined') module.exports = OM;
     if (t.dataset && t.dataset.act === 'ordtick' && ORDER) { var all = orderTicks(), mine = all[ORDER.id] = all[ORDER.id] || {}; mine[t.dataset.key] = t.checked; try { localStorage.setItem('omgym-orders', JSON.stringify(all)); } catch (e) { } render(); return; }
     if (t.dataset && t.dataset.act === 'load') {
       if (needSetup()) { t.value = ''; return; }
-      var dd = day(TODAY); dd.loads = dd.loads || {};
+      var LD = workDay(); if (!canLog(LD)) { t.value = ''; toast('You can log this on the day'); return; }
+      var dd = day(LD); dd.loads = dd.loads || {};
       var v = t.value.trim();
       dd.loads[t.dataset.ex] = v;
       if (v) {
         var cur = S.loads[t.dataset.ex], val = v + (/[a-z]/i.test(v) ? '' : ' ' + wUnit());
-        var prev = cur && typeof cur === 'object' ? (cur.d === TODAY ? cur.prev : { v: cur.v, d: cur.d }) : null;
-        S.loads[t.dataset.ex] = { v: val, d: TODAY, prev: prev || null };
+        var curD = cur && typeof cur === 'object' ? cur.d : null;
+        // a weight logged for an earlier day never replaces a newer "Last" weight
+        if (!curD || LD >= curD) {
+          var prev = cur && typeof cur === 'object' ? (curD === LD ? cur.prev : { v: cur.v, d: cur.d }) : null;
+          S.loads[t.dataset.ex] = { v: val, d: LD, prev: prev || null };
+        }
       }
       save();
     }

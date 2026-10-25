@@ -169,7 +169,12 @@ nav.tabs button[aria-current="page"] { color: var(--iron); }
 .wd .wn { font-size: 0.62rem; line-height: 1.1; text-align: center; color: var(--muted); overflow-wrap: anywhere; }
 .wd.train .wn { color: var(--fg); font-weight: 700; }
 .wd .wt { font-size: 0.8rem; color: var(--iron); font-weight: 800; min-height: 1em; }
-.wd.now { border-color: var(--iron); }
+.wd { appearance: none; font: inherit; color: inherit; cursor: pointer; }
+.wd:disabled { opacity: 0.45; cursor: default; }
+.wd.now { border-color: var(--line); }
+.wd.sel { border-color: var(--iron); }
+.weeknav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: -4px; }
+.iconbtn:disabled { opacity: 0.35; }
 .restbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: flex; align-items: center; gap: 12px; background: var(--iron); color: var(--on-iron); border-radius: 999px; padding: 8px 8px 8px 18px; font-family: var(--display); font-weight: 800; font-size: 1.3rem; box-shadow: 0 6px 20px rgba(0,0,0,.18); white-space: nowrap; }
 .restbar .btn.ghost { color: var(--on-iron); box-shadow: inset 0 0 0 1.5px currentColor; font-family: var(--body); }
 .restbar.go { background: var(--mango); color: #1a1205; }

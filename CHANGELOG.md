@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-25: Log a day you forgot (owner request)
+- Today tab: week-strip days are buttons. Tapping one shows that day's workout, sets, weights, habits and food, with a note ("You are logging Saturday 24 October" + Back to today). Past days up to 28 days back (`LOG_BACK`) can be logged ("Log this workout" / "Log this recovery day"); future days are a preview (logging disabled). Arrows step back and forward a week (back limited to 4 weeks, not past this week).
+- Logging is keyed by the chosen date in `S.days` (no change to the saved-data format). A weight entered for an earlier day never replaces a newer "Last" weight in `S.loads`. The rest timer only runs for today. Store nudges show on today only.
+- Tests: 9 browser checks (open yesterday, log it, today stays logged, strip ticks it, newer weight kept, Back to today, future preview, 4-week limit).
+
 ## 2026-10-25: Move my data (owner request)
 - Plan tab, Your data card: "Copy my data" (shows the code and copies it to the clipboard; press-and-hold fallback on iPhone) and "Paste my data" (checks the code, shows the name, weigh-ins and workouts it contains, then "Use this data"). One undo after replacing (old state kept in memory and in `omgym-state-undo`). New users see an "Already use OMGym?" card with Paste my data.
 - Code format: `OMGYM1:` + base64 of the saved state JSON (`OM.exportCode`, `OM.parseDataCode`, `OM.dataSummary`). Validated before writing (version 1, profile with age, height, weight; weigh-ins an array); spaces and surrounding text ignored. Nothing is uploaded; saved-data format unchanged. PRO unlocks are not in the code (re-paste the unlock link on the new device).
