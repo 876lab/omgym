@@ -361,6 +361,11 @@
     var c = $('#news [data-act=closenews]'); if (c) c.focus();
   }
   function closeNews() { $('#news').hidden = true; document.body.style.overflow = ''; var b = document.getElementById('newsbtn'); if (b) b.focus(); }
+  /* ---------- Text size (Normal / Large), saved per device ---------- */
+  var TEXTKEY = 'omgym-text', textMem = '';
+  function textSize() { var v; try { v = localStorage.getItem(TEXTKEY); } catch (e) { v = textMem; } return v === 'large' ? 'large' : 'normal'; }
+  function applyText() { if (textSize() === 'large') document.documentElement.setAttribute('data-text', 'large'); else document.documentElement.removeAttribute('data-text'); }
+  function setText(v) { v = v === 'large' ? 'large' : 'normal'; try { localStorage.setItem(TEXTKEY, v); } catch (e) { } textMem = v; applyText(); }
   /* ---------- How to use OMGym: a short guided tour, one step per screen ---------- */
   var GUIDEKEY = 'omgym-guide-seen', guideStep = 0, guideMem = '';
   function guideSeen() { try { return localStorage.getItem(GUIDEKEY) === '1'; } catch (e) { return guideMem === '1'; } }
@@ -378,7 +383,7 @@
       { ic: 'food', t: 'Meals: what to eat', b: ['Breakfast, lunch, dinner and a snack, sized to your calories and protein, with amounts and how to cook them.', 'Not feeling a meal? Tap Swap. Use ‹ › to see other days.', 'At the top: switch Budget, Standard or Premium, and Jamaica or USA prices.', 'Build my own meal: pick a wrap, bowl or plate and what goes in it, and see if it fits your goal.'], go: 'food' },
       { ic: 'shop', t: 'List: your shopping', b: ['Everything for the next 7 days, in the packs the store sells (a 2 kg bag of rice, a whole chicken).', 'Tick items as you shop.', 'Price different at your store? Tap Edit price and type what you paid. Your plan uses your prices from then on.'], go: 'shop' },
       { ic: 'progress', t: 'Progress: weigh in', b: ['Weigh yourself once or twice a week, first thing in the morning, and add it here.', 'OMGym shows your trend, not the day-to-day ups and downs.', 'After a few weeks it suggests small calorie changes if you are moving faster or slower than planned.'], go: 'progress' },
-      { ic: 'me', t: 'Plan: your settings', b: ['Your calorie and protein targets and where the numbers come from.', 'Tap Edit my details to change your weight, goal, training days, foods or allergies.', 'Your data: Copy my data to move to another phone; Start over to reset.'], go: 'me' },
+      { ic: 'me', t: 'Plan: your settings', b: ['Your calorie and protein targets and where the numbers come from.', 'Tap Edit my details to change your weight, goal, training days, foods or allergies.', 'Text size: pick Large for bigger, bolder words.', 'Your data: Copy my data to move to another phone; Start over to reset.'], go: 'me' },
       { ic: 'pro', t: 'PRO and the Store', b: ['PRO (US$10 a month) is for lifters with 3+ years of training: cut, lean bulk or maintain phases, harder training, weekly check-ins, and meals you build fitted to your goal.', 'Tap PRO at the top to see it and pay by bank transfer or PayPal.', store], go: 'pro' },
       { ic: 'tips', t: 'Tips', b: ['On iPhone: open OMGym in Safari, tap Share, then Add to Home Screen. It opens like an app.', 'The sparkle button at the top shows what\'s new. The ? button opens this guide any time.', 'Questions or ideas? Message OMGym on WhatsApp.'], go: null }
     ];
@@ -704,6 +709,7 @@
     var dn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     h += '<section class="card"><h3>Training setup</h3><p>' + (p.days || []).slice().sort().map(function (d) { return dn[d]; }).join(', ') + ' · ' + ({ weights: 'Weights', mix: 'Weights + cardio', cardio: 'Cardio circuits' }[p.style]) + ' · ' + ({ gym: 'Full gym', dumbbells: 'Dumbbells at home', bodyweight: 'Bodyweight only' }[p.equipment]) + ' · ' + esc(p.experience) + (p.injuries && p.injuries.length ? ' · protecting ' + esc(p.injuries.join(', ')) : '') + '</p><p class="small muted">Each 6-week cycle runs 2 weeks of building, 3 weeks of pushing, then a lighter deload week. Exercises change each cycle. Every session is 45 minutes: 6 warm-up, the main work, 5 cool-down.</p></section>';
     h += '<section class="card"><h3>Food setup</h3><p>' + esc(pt.meta.label) + ' prices (' + esc(pt.meta.symbol) + ') · ' + esc(budgetLabel(p)) + ' budget · ' + esc({ jm: 'Jamaican', us: 'American', mix: 'Jamaican and American' }[OM.cuisineOf(p)]) + ' dishes · ' + ({ none: 'Eats everything', pescatarian: 'Pescatarian', vegetarian: 'Vegetarian', vegan: 'Vegan' }[p.diet]) + (p.allergies && p.allergies.length ? ' · avoids ' + esc(p.allergies.join(', ')) : '') + (p.likes && p.likes.length ? ' · buys ' + esc(p.likes.map(function (id) { return LIKE_LABEL[id] || id; }).join(', ')) : '') + (p.foodCap > 0 ? ' · ' + money(p.foodCap, pt) + ' a week' : '') + '</p><div><button class="btn ghost small" data-act="setupfood">Change food settings</button></div></section>';
+    h += '<section class="card" id="textsize"><div class="cardhead"><h3>Text size</h3><span class="small muted">This phone only</span></div><div class="seg small" role="group" aria-label="Text size">' + [['normal', 'Normal'], ['large', 'Large']].map(function (o) { return '<button data-act="textsize" data-v="' + o[0] + '" aria-pressed="' + (textSize() === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><p class="small muted">Large makes the words about 15% bigger and the headings, numbers and buttons bolder. Your phone\'s own text-size setting usually doesn\'t reach web apps, so use this instead.</p></section>';
     h += '<section class="card"><h3>What\'s new</h3>' + OM.CHANGES.slice(0, 5).map(function (c) { return '<div><span class="label">' + esc(niceDate(c.d, { day: 'numeric', month: 'short' })) + '</span> <strong>' + esc(c.t) + '</strong><ul class="lines small">' + c.b.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'; }).join('') + '</section>';
     h += '<section class="card"><h3>Where the numbers come from</h3><ul class="sources">' +
       '<li><a href="https://pubmed.ncbi.nlm.nih.gov/15883556/" target="_blank" rel="noopener">Frankenfield et al., 2005</a>: Mifflin-St Jeor was the most reliable resting-calorie equation.</li>' +
@@ -954,6 +960,7 @@
       case 'gostore': storeCat = 'all'; go('store'); var el = document.getElementById('var-' + t.dataset.id); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } break;
       case 'closeorder': closeOrder(); go('store'); break;
       case 'storecat': storeCat = t.dataset.c; render(); break;
+      case 'textsize': setText(t.dataset.v); render(); var tb = document.querySelector('[data-act=textsize][data-v=' + textSize() + ']'); if (tb) tb.focus(); toast(textSize() === 'large' ? 'Large text is on' : 'Normal text'); break;
       case 'sellerview': setSeller(!sellerOn()); save(); render(); break;
       case 'nudgehide': S.nudgeHide = S.nudgeHide || {}; S.nudgeHide[t.dataset.key] = true; save(); render(); break;
       case 'copyorder':
@@ -1075,6 +1082,7 @@
 
   var h0 = (location.hash || '').slice(1);
   if (VALID_TABS.indexOf(h0) >= 0) tab = h0;
+  applyText();
   initStore();
   var proFromUrl = OM.parseProLink(location.search);
   verifyStored().then(function () {

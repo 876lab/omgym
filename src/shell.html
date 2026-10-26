@@ -2,7 +2,8 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Public+Sans:wght@400;500;600;700;800&display=swap">
+<script>try { if (localStorage.getItem('omgym-text') === 'large') document.documentElement.setAttribute('data-text', 'large'); } catch (e) { }</script>
 <style>
 /* Layout: phone-first single column (max 680px) with a fixed bottom tab bar, like a gym log app. */
 :root {
@@ -24,7 +25,7 @@
 
 * { box-sizing: border-box; }
 html, body { background: var(--bg); color: var(--fg); }
-body { font-family: var(--body); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--body); font-size: 0.9375rem; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; color: inherit; }
 a { color: var(--iron); }
 h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: 0.01em; line-height: 1.05; margin: 0; text-wrap: balance; text-transform: uppercase; }
@@ -273,6 +274,16 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 .databox { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
 .codebox { font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem; word-break: break-all; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
+/* Text size: Large (Plan tab, saved per device). The root grows 15%, so every rem-based size follows. */
+html[data-text="large"] { font-size: 115%; }
+html[data-text="large"] body { font-weight: 500; }
+html[data-text="large"] h1, html[data-text="large"] h2, html[data-text="large"] h3, html[data-text="large"] .brand, html[data-text="large"] .kpi .v, html[data-text="large"] .stat .v, html[data-text="large"] .tier .v, html[data-text="large"] .prod-price, html[data-text="large"] .nudge-price { font-weight: 900; }
+html[data-text="large"] .btn, html[data-text="large"] .chip, html[data-text="large"] .seg.small button, html[data-text="large"] .linkbtn, html[data-text="large"] strong, html[data-text="large"] b, html[data-text="large"] th, html[data-text="large"] .label, html[data-text="large"] .bnums .v, html[data-text="large"] .num { font-weight: 800; }
+html[data-text="large"] .muted, html[data-text="large"] .f-hint { font-weight: 500; }
+html[data-text="large"] nav.tabs button { font-size: 0.6rem; letter-spacing: 0.02em; }
+html[data-text="large"] .mealrow { grid-template-columns: 98px minmax(0, 1fr) auto; gap: 8px; }
+html[data-text="large"] .mealrow .label { letter-spacing: 0.03em; }
+html[data-text="large"] .kpi .v { font-size: clamp(0.9rem, 4.4vw, 1.6rem); }
 @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .formgrid { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: no-preference) { .setbox, .chip, .btn { transition: background-color .15s, color .15s, border-color .15s; } }
 </style>

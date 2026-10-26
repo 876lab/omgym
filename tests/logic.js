@@ -477,6 +477,9 @@ const proSig = (async () => {
   ok(!(await OM.proVerify({ ...g, sig: 'abcd' }, pub)), 'short signature rejected');
   ok(OM.parseProLink('?o=x') === null, 'not a PRO link');
 })();
+// Exchange rates: PRO uses the BOJ selling rate (no card fee); the Store uses the BOJ midpoint plus about 2%
+ok(OM.PRO.boj.rate > 140 && OM.PRO.boj.rate < 180 && /^\d{4}-\d{2}-\d{2}$/.test(OM.PRO.boj.date), 'PRO.boj is a plausible dated BOJ rate');
+ok(OM.STORE.fx >= OM.PRO.boj.rate && OM.STORE.fx <= OM.PRO.boj.rate * 1.04, 'Store FX is the BOJ rate plus a small card fee');
 console.log(`Workouts generated: ${wcount}, session length ${minM}-${maxM} min`);
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 proSig.then(() => { console.log(`PRO signature checks done. PASS ${pass}  FAIL ${fail}`); if (fail) { console.log([...new Set(fails)].slice(0, 30).join('\n')); process.exit(1); } });

@@ -279,6 +279,46 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(await page.isVisible('text=Workout logged') || true, 'reload');
   const st2 = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')));
   ok(st2.profile.name === 'Cargill' && st2.weights.length >= 6, 'state persists after reload');
+  // Text size: Normal / Large on the Plan tab, saved per device, never inside the saved plan
+  { await page.click('nav [data-tab=me]');
+    const fs0 = await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
+    ok(await page.isVisible('#textsize') && (await page.getAttribute('#textsize [data-v=normal]', 'aria-pressed')) === 'true', 'Text size card on Plan, Normal by default');
+    ok(Math.abs(fs0 - 15) < 0.1, 'normal body text stays 15px: ' + fs0);
+    const before = await page.evaluate(() => localStorage.getItem('omgym-state-v1'));
+    await page.click('#textsize [data-v=large]');
+    const big = await page.evaluate(() => ({ attr: document.documentElement.getAttribute('data-text'), fs: parseFloat(getComputedStyle(document.body).fontSize), h1: getComputedStyle(document.querySelector('#view h1')).fontWeight, btn: getComputedStyle(document.querySelector('#view .btn')).fontWeight, saved: localStorage.getItem('omgym-text') }));
+    ok(big.attr === 'large' && big.saved === 'large', 'Large saved on this device');
+    ok(big.fs > 17 && big.fs < 17.6, 'Large body text about 15% bigger: ' + big.fs);
+    ok(Number(big.h1) >= 900 && Number(big.btn) >= 800, 'Large makes headings and buttons bolder: ' + big.h1 + '/' + big.btn);
+    ok((await page.getAttribute('#textsize [data-v=large]', 'aria-pressed')) === 'true', 'Large shows as picked');
+    ok((await page.evaluate(() => localStorage.getItem('omgym-state-v1'))) === before, 'text size does not touch the saved plan');
+    const spill = () => page.evaluate(() => {
+      const W = window.innerWidth, bad = [];
+      const clipped = el => { for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const o = getComputedStyle(a).overflowX; if (o === 'auto' || o === 'scroll' || o === 'hidden') return true; } return false; };
+      document.querySelectorAll('header *, nav.tabs *, #view *').forEach(el => {
+        const r = el.getBoundingClientRect(); if (!r.width || getComputedStyle(el).visibility === 'hidden') return;
+        if ((r.right > W + 1 || r.left < -1) && !clipped(el)) bad.push((el.className || el.tagName) + ' ' + Math.round(r.right));
+        if (el.children.length === 0 && el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0 && getComputedStyle(el).overflowX === 'visible' && el.tagName !== 'svg' && !clipped(el)) bad.push('text ' + (el.className || el.tagName) + ': ' + el.textContent.slice(0, 30));
+      });
+      return (document.documentElement.scrollWidth > W + 1 ? ['page'] : []).concat(bad).slice(0, 5);
+    });
+    for (const scheme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: scheme });
+      for (const t of ['today', 'food', 'shop', 'store', 'progress', 'me']) {
+        await page.click(`nav [data-tab=${t}]`);
+        const b = await spill(); ok(b.length === 0, `Large text fits 390px (${scheme}, ${t}): ` + b.join(' | '));
+        if (scheme === 'light' || t === 'me' || t === 'today') await page.screenshot({ path: OUT + `/shot-large-${t}-${scheme}.png`, fullPage: t !== 'food' });
+      }
+      await page.click('#probtn'); { const b = await spill(); ok(b.length === 0, `Large text fits 390px (${scheme}, pro): ` + b.join(' | ')); }
+      await page.click('#newsbtn'); ok(!(await overflow()), `Large text: What's new fits (${scheme})`); await page.keyboard.press('Escape');
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.reload();
+    ok((await page.evaluate(() => document.documentElement.getAttribute('data-text'))) === 'large', 'Large stays on after reload');
+    await page.click('nav [data-tab=me]'); await page.click('#textsize [data-v=normal]');
+    const back = await page.evaluate(() => ({ attr: document.documentElement.getAttribute('data-text'), fs: parseFloat(getComputedStyle(document.body).fontSize), saved: localStorage.getItem('omgym-text') }));
+    ok(back.attr === null && Math.abs(back.fs - 15) < 0.1 && back.saved === 'normal', 'Normal puts text back');
+  }
   // Move my data: copy, start over, paste back, undo
   { await page.click('nav [data-tab=me]');
     await page.click('[data-act=datacopy]');

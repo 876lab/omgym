@@ -642,6 +642,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-26', t: 'Bigger, bolder text', b: ['New on Plan: Text size. Pick Large to make the words about 15% bigger and the headings, numbers and buttons bolder.', 'It is saved on this phone only, so each phone can have its own size. Your plan and logs are not touched.', 'Prices: the Bank of Jamaica rate for PRO invoices is now J$159.65 per US$ (23 Oct).'] },
     { d: '2026-10-26', t: 'More Jamaican dishes', b: ['New: stew beef with rice & peas, baked chicken with baked or mashed potato and garden salad, corned beef & cabbage with white rice, corned beef with hard dough bread, liver & onions, and stewed kidney.', 'Brown stew mackerel is now brown stew fish (snapper), cooked the proper way. Stir-fry chicken now shows on Jamaican plans too, and brown stew chicken can come with mashed potato.', 'For plant-based plans: curry tofu and tofu stir-fry. Quinoa and sourdough show up on Premium.'] },
     { d: '2026-10-25', t: 'How to use OMGym', b: ['New ? button at the top: a short step-by-step tour of every tab, with a Show me button that takes you there.', 'First time on OMGym? A New here? card on Today offers the tour.', 'Spelling: hardo is now hard dough.'] },
     { d: '2026-10-25', t: 'Build my own meal', b: ['New on Meals: Build my own meal. Pick a wrap, rice bowl, sandwich, pasta or plate, choose up to 2 proteins, vegetables and extras, and see the calories, protein, whether it fits your goal, the packs to buy, where, and how to make it.', 'PRO: Fit to my goal resizes the meal for you, Add to lunch or dinner puts it in your plan and shopping list, and Save keeps up to 10 favourites.'] },
@@ -961,7 +962,7 @@ var OM = (function () {
   // Pricing per item: Amazon price + US sales tax, converted to J$; freight per lb; Jamaica Customs charges on CIF;
   // then the seller's markup on the landed cost, rounded up.
   var STORE = {
-    fx: 162, fxDate: '2026-10-22', fxNote: 'J$158.73 per US$ (Bank of Jamaica, 22 Oct 2026, still the latest published rate found on 25 Oct (Forex report, Jamaica Homes News, 23 Oct): midpoint of J$157.87 buying and J$159.59 selling) plus about 2% card fee',
+    fx: 162, fxDate: '2026-10-23', fxNote: 'J$158.92 per US$ (Bank of Jamaica, 23 Oct 2026, the latest published rate on 26 Oct: midpoint of J$158.19 buying and J$159.65 selling) plus about 2% card fee',
     freightPerLb: 600, freightNote: 'Freight forwarder rate, J$600 per lb (owner)',
     usSalesTax: 0.07, usTaxNote: 'Miami-Dade sales tax 7% on Amazon orders to a Florida forwarder; refundable through tax-exempt@amazon.com with the airway bill',
     duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.0085, stampDuty: 100, stampOver: 5500,
@@ -1093,7 +1094,7 @@ var OM = (function () {
   // The app checks the signature with this public key, so links cannot be made up or edited.
   var PRO = {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
-    boj: { rate: 159.59, date: '2026-10-22', note: 'Bank of Jamaica selling rate, 22 Oct 2026 (still the latest published on 25 Oct)' },
+    boj: { rate: 159.65, date: '2026-10-23', note: 'Bank of Jamaica selling rate, 23 Oct 2026 (the latest published on 26 Oct)' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
     paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
     lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first
