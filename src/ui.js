@@ -92,7 +92,7 @@
     return s;
   }
   var DISHES = { auto: 'Follow my region', jm: 'Jamaican', us: 'American', mix: 'Both' };
-  var LIKE_LABEL = { greekyog: 'Greek yogurt', cottage: 'Cottage cheese', berries: 'Berries', whey: 'Whey protein', chickbreast: 'Chicken breast', beef: 'Lean beef', turkey: 'Ground turkey', salmon: 'Salmon', wwbread: 'Whole-wheat bread', pasta: 'Pasta', broccoli: 'Broccoli', mixveg: 'Frozen veg', oats: 'Oats', egg: 'Eggs', tuna: 'Tuna', soya: 'Soya chunks', chickpeas: 'Chickpeas' };
+  var LIKE_LABEL = { greekyog: 'Greek yogurt', cottage: 'Cottage cheese', berries: 'Berries', whey: 'Whey protein', chickbreast: 'Chicken breast', beef: 'Lean beef', turkey: 'Ground turkey', salmon: 'Salmon', wwbread: 'Whole-wheat bread', pasta: 'Pasta', broccoli: 'Broccoli', mixveg: 'Frozen veg', oats: 'Oats', egg: 'Eggs', tuna: 'Tuna', soya: 'Soya chunks', chickpeas: 'Chickpeas', tofu: 'Tofu', quinoa: 'Quinoa', sourdough: 'Sourdough bread', stewbeef: 'Stew beef', fish: 'Fresh fish' };
   function budgetLabel(p) { return OM.BUDGETS[OM.budgetTier(p)].label; }
   // one-tap region and budget switch on the Meals and List tabs
   function quickBar(p) {
@@ -210,7 +210,7 @@
   }
   /* ---------- Build my own meal ---------- */
   var MB = { open: false, base: null, prot: [], veg: [], extra: [], bs: 1, ps: 1, slot: 'l', fit: false };
-  var BL = { chickbreast: 'Chicken breast', chicken: 'Chicken (bone-in)', tuna: 'Tuna', egg: 'Eggs', beef: 'Lean beef', turkey: 'Turkey', salmon: 'Salmon', sardines: 'Sardines', mackerel: 'Mackerel', cottage: 'Cottage cheese', soya: 'Soya chunks', chickpeas: 'Chickpeas', redpeas: 'Red peas', cabbage: 'Cabbage', tomato: 'Tomato', onion: 'Onion', callaloo: 'Callaloo', carrot: 'Carrot', broccoli: 'Broccoli', mixveg: 'Mixed veg', scallion: 'Escallion', oil: 'Oil or dressing', greekyog: 'Yogurt sauce', pb: 'Peanut sauce' };
+  var BL = { chickbreast: 'Chicken breast', chicken: 'Chicken (bone-in)', tuna: 'Tuna', egg: 'Eggs', beef: 'Lean beef', turkey: 'Turkey', salmon: 'Salmon', sardines: 'Sardines', mackerel: 'Mackerel', cottage: 'Cottage cheese', soya: 'Soya chunks', chickpeas: 'Chickpeas', redpeas: 'Red peas', tofu: 'Tofu', cornbeef: 'Corned beef', stewbeef: 'Stew beef', liver: 'Beef liver', fish: 'Fish (snapper)', lettuce: 'Lettuce', cucumber: 'Cucumber', cabbage: 'Cabbage', tomato: 'Tomato', onion: 'Onion', callaloo: 'Callaloo', carrot: 'Carrot', broccoli: 'Broccoli', mixveg: 'Mixed veg', scallion: 'Escallion', oil: 'Oil or dressing', greekyog: 'Yogurt sauce', pb: 'Peanut sauce' };
   function bLabel(id, pt) { var sh = pt.items[id] && pt.items[id].short; return sh && /^(TVP|spinach)$/i.test(sh) ? (sh === 'TVP' ? 'TVP (soya)' : 'Spinach') : (BL[id] || OM.ingName(pt, id)); }
   function bChips(group, ids, sel, pt, label) { return ids.map(function (id) { var on = sel.indexOf(id) >= 0; return '<button class="chip" data-act="bpick" data-g="' + group + '" data-v="' + id + '" aria-pressed="' + on + '">' + esc(label ? label(id) : bLabel(id, pt)) + '</button>'; }).join(''); }
   function bSize(k) { return '<div class="seg small" role="group" aria-label="Portion">' + [[0.7, 'Small'], [1, 'Regular'], [1.4, 'Large']].map(function (o) { return '<button data-act="bsize" data-k="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (MB[k] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }

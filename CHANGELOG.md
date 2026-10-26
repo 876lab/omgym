@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-26: More Jamaican dishes (owner's list)
+- "Brown-stew mackerel" (owner: not a Jamaican dish) is now **brown stew fish** (snapper fryers or slices) with white rice and callaloo, using the traditional method (lime, fry, then stew with browning). Id `m_brownfish` kept.
+- New dishes: stew beef with rice & peas; baked chicken with baked or mashed potato and garden salad (lettuce swaps to cabbage on Budget); corned beef & cabbage with white rice; corned beef with hard dough bread; liver & onions with boiled food; stewed kidney with boiled food; curry tofu; tofu stir-fry (plant). Stir-fry chicken now also on Jamaican plans; brown stew chicken can come with mashed potato; quinoa added to the chicken-breast and salmon bowls; sourdough to two sandwiches. Builder: quinoa bowl, sourdough sandwich, tofu, corned beef, stew beef, liver, fish, lettuce, cucumber.
+- New ingredients (USDA FoodData Central SR Legacy): tofu firm 172475, quinoa 168874, corned beef canned 170602, beef liver 169451, beef kidney 169449, beef chuck for stew 171206, snapper 173698 (yield 0.5 whole fish), French/sourdough bread 172675, green-leaf lettuce 169249, cucumber 168409.
+- Prices (Jamaica): stew beef J$1,900/kg and snapper fryers J$1,020/lb from the agriculture ministry survey via CAC (week ending 21 Feb 2026; Hi-Lo, Loshusan, PriceSmart among the stores); lettuce J$1,500/lb (Observer Market Bag 23 Oct 2026); beef liver J$250/lb (JDJR Farms list, undated). Estimates (no readable source): tofu, quinoa, corned beef, kidney, sourdough, cucumber. US prices for these are estimates.
+- Methods now mention optional foods only when they are on the plate (`howIf`): oats porridge and the yogurt bowl no longer mention peanut butter or milk for someone avoiding them. The vegan curry no longer mentions coconut milk.
+- Tests: USDA values, every new Jamaican dish appears on Standard plans, vegan plans get tofu, soy allergy keeps tofu out, methods never mention peanut for peanut allergy (42 days × regions × budgets), no "brown-stew mackerel".
+
 ## 2026-10-25: How to use OMGym (owner request) and "hard dough" spelling
 - "?" button in the header opens an 8-step guide (Welcome, Today, Meals, List, Progress, Plan, PRO and the Store, Tips) with dots, Back/Next and a "Show me" button that opens that tab (or setup on the first step). Escape or × closes it. First-time viewers see a "New here? Take the 1-minute tour" card on Today; it goes away once the guide is opened or "Not now" is tapped (`omgym-guide-seen`, per browser). The Store step follows `STORE.paused`.
 - Spelling (owner): "hardo" → "hard dough" in the ingredient name, pack and four dish names. Ingredient id `bread` unchanged, so saved data is unaffected.

@@ -300,6 +300,22 @@ ok(OM.CHANGES.length >= 1 && OM.CHANGES[0].d >= OM.CHANGES[OM.CHANGES.length - 1
     ok(OM.shoppingList('2026-10-26', 1, base, Tp, pt, sw).rows.some(r => r.id === 'tortilla'), 'built meal goes on the shopping list');
     ok(d.meals[1].items.every(i => i.role !== 'topup'), 'PRO top-up never edits a built meal');
   }
+  // methods never mention a food the person avoids (peanut, dairy), and new Jamaican dishes behave
+  { const NAMES = { peanut: /peanut/i, dairy: /\bmilk\b|yogurt|cheese/i };
+    for (const al of ['peanut', 'dairy']) for (const reg of ['JM', 'US']) for (const budget of [1, 3]) { const p = { ...base, region: reg, budget, allergies: [al] }, T = OM.calcTargets(p), pt = OM.priceTable(p, {});
+      for (let i = 0; i < 42; i++) OM.planDay(OM.addDays('2026-10-20', i), p, T, pt, {}).meals.forEach(m => { if (m.how && al === 'peanut') ok(!NAMES.peanut.test(m.how), `method avoids peanut (${m.name}): ${m.how.slice(0, 60)}`); }); }
+    for (const id of ['tofu', 'quinoa', 'cornbeef', 'liver', 'kidney', 'stewbeef', 'fish', 'sourdough']) { const I = OM.ING[id]; ok(I && Math.abs(I.p * 4 + I.c * 4 + I.f * 9 - I.k) / I.k < 0.2, 'USDA macros roughly add up for ' + id); }
+    near(OM.ING.liver.k, 135, 0, 'beef liver = USDA FDC 169451'); near(OM.ING.cornbeef.p, 27.1, 0, 'corned beef = USDA FDC 170602'); near(OM.ING.tofu.p, 17.3, 0, 'tofu = USDA FDC 172475');
+    ok(!OM.MEALS.some(m => /brown-stew mackerel/i.test(m.name)), 'no "brown-stew mackerel"');
+    const ids = new Set(); const pj = { ...base, region: 'JM', budget: 2 }, Tj = OM.calcTargets(pj), ptj = OM.priceTable(pj, {});
+    for (let i = 0; i < 90; i++) for (let sw = 0; sw < 3; sw++) OM.planDay(OM.addDays('2026-10-26', i), pj, Tj, ptj, { [OM.addDays('2026-10-26', i)]: { b: sw, l: sw, d: sw } }).meals.forEach(m => m.tpl && ids.add(m.tpl.id));
+    for (const id of ['m_stewbeef', 'm_bakedchicken', 'm_cornbeef', 'b_cornbeef', 'b_liver', 'b_kidney', 'm_brownfish', 'm_stirfry']) ok(ids.has(id), 'Jamaican Standard plans include ' + id);
+    const vg = new Set(); const pv = { ...base, region: 'JM', diet: 'vegan' }, Tv = OM.calcTargets(pv), ptv = OM.priceTable(pv, {});
+    for (let i = 0; i < 60; i++) OM.planDay(OM.addDays('2026-10-26', i), pv, Tv, ptv, {}).meals.forEach(m => m.tpl && vg.add(m.tpl.id));
+    ok(vg.has('m_tofucurry') || vg.has('m_tofustir'), 'vegan plans include tofu dishes');
+    const sa = new Set(); const ps = { ...base, region: 'JM', diet: 'vegan', allergies: ['soy'] }; for (let i = 0; i < 30; i++) OM.planDay(OM.addDays('2026-10-26', i), ps, OM.calcTargets(ps), OM.priceTable(ps, {}), {}).meals.forEach(m => (m.items || []).forEach(it => sa.add(it.id)));
+    ok(!sa.has('tofu') && !sa.has('soya'), 'soy allergy keeps tofu out');
+  }
   // standard plans never get a top-up
   { const pt = OM.priceTable(base, {}), T = OM.calcTargets(base); for (let i = 0; i < 14; i++) OM.planDay(OM.addDays('2026-10-26', i), base, T, pt, {}).meals.forEach(m => (m.items || []).forEach(it => ok(it.role !== 'topup', 'no top-up without PRO'))); }
 }

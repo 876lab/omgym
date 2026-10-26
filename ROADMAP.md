@@ -42,6 +42,7 @@
 - PRO top-up (`proTopUp`) only runs when PRO is active. Never let likes override diet or allergies.
 
 ## Backlog
+- [ ] Owner: shelf prices for tofu, quinoa (Grace 500 g), corned beef (340 g tin), cow kidney, sourdough and cucumber, which are estimates since 2026-10-26; and a current price for beef liver at a supermarket.
 - [x] (2026-10-25) User feedback: Build my own meal (free taste; Fit to my goal, Add to plan and Save in PRO, owner's decision).
 - [ ] **Owner request, do first (2026-10-25, user feedback): bigger, bolder text.** A Text size setting (Normal / Large) on the Plan tab, saved per device; Large raises body text about 15% and makes headings, numbers and buttons bolder. Check every tab at 390 px in both themes; nothing may overflow.
 - [ ] **Owner request (2026-10-25, user feedback): clear goal picker.** In setup, ask "What's your goal? Lose fat / Build muscle / Stay the same" before goal weight, and show it at the top of Plan. Keep the safety floors and existing maths; the goal weight still decides direction and is checked against the choice (e.g. Build muscle with a lower goal weight gets a plain warning). Saved data: add `goalPick`, missing = worked out from goal weight.
