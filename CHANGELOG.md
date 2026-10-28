@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28: Owner's shelf prices from Shoppers Fair (Mandeville)
+- From the owner's shelf photos (Shoppers Fair, Manchester Shopping Centre, Mandeville, 28 Oct 2026). Prices marked "+ GCT" include 15% GCT; others are shelf prices as shown.
+- `bread`: 2 lb Holsum hard dough sliced 907 g J$580 (was National 2 lb J$560, CAC Jul 2026). `wwbread`: National natural bran sliced 907 g J$590 (was 1.5 lb estimate J$650). `mackerel`: Grace 155 g J$126 (was J$135). `sardines`: Grace 106 g J$211 (was J$225). `tuna`: Grace shredded light 142 g J$193.58 + GCT = J$223 (was Brunswick J$200; Brunswick now J$277.24 + GCT). `cornbeef`: Eve 198 g J$399.11 + GCT = J$459 (was 340 g estimate J$950). All now `conf: 'store'`.
+- Kept, with notes: peanut butter stays the 40 oz jar (owner's choice; Jif 16 oz J$770 + GCT, Skippy 426 g J$987 + GCT cost more per gram); oats stay Foska 800 g at Loshusan (Foska 400 g J$321 + GCT and Quaker 510 g J$581 + GCT cost more per gram); rice stays the ordinary-rice estimate (Kendel jasmine 2 kg J$1,207 noted). Goya quinoa blend is a rice mix, so the plain-quinoa estimate stays.
+- "Shoppers Fair" added to the Jamaica store list for Edit price.
+
 ## 2026-10-26 (night run): Text size Normal / Large (owner request); price check
 - Plan tab, new "Text size" card: Normal or Large. Large raises the root size 15% (body text 15px → 17.25px, close to iPhone's default 17 pt body text in Apple's Human Interface Guidelines), makes headings and big numbers weight 900 and buttons, labels and bold text weight 800, and slightly tightens the bottom tab labels and the meal-row label column so nothing spills at 390 px. Saved per device in browser storage (`omgym-text`), applied by a tiny script before the page draws so there is no flash; never stored in the saved plan (`omgym-state-v1` unchanged). Body size is now 0.9375rem (still 15px at Normal). Fonts now load Public Sans 800 and Big Shoulders 900. The guide's Plan step mentions it.
 - Price check: Bank of Jamaica 23 Oct 2026 US$ rates J$158.1879 buying / J$159.6487 selling (boj.org.jm home page, read 26 Oct). `PRO.boj` → J$159.65 (23 Oct). `STORE.fx` stays J$162 (midpoint J$158.92 + 2% = J$162.10); note and date updated. No newer Observer Market Bag (newest 23 Oct, already used), no newer CAC survey, no customs/GCT/fee changes found. Grocery prices unchanged.

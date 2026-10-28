@@ -466,13 +466,13 @@ var OM = (function () {
   var PRICES = {
     JM: {
       currency: 'JMD', symbol: 'J$', decimals: 0, label: 'Jamaica',
-      stores: ['PriceSmart', 'Hi-Lo', 'Loshusan', 'Another store'],
+      stores: ['PriceSmart', 'Hi-Lo', 'Loshusan', 'Shoppers Fair', 'Another store'],
       items: {
-        rice: { u: '2 kg bag', g: 2000, pr: 480, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey: bulk white rice J$157–200/kg at 9 supermarkets incl. Hi-Lo Constant Spring; bagged price estimated from it', date: 'Jul 2026', conf: 'estimate' },
-        oats: { u: '800 g bag (Foska)', g: 800, pr: 662, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
+        rice: { u: '2 kg bag', g: 2000, pr: 480, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey: bulk white rice J$157–200/kg at 9 supermarkets incl. Hi-Lo Constant Spring; bagged price estimated from it. Jasmine rice costs more: Kendel 2 kg J$1,207 at Shoppers Fair (28 Oct 2026)', date: 'Jul 2026', conf: 'estimate' },
+        oats: { u: '800 g bag (Foska)', g: 800, pr: 662, store: 'Loshusan', src: 'Loshusan Supermarket online. Shoppers Fair (28 Oct 2026): Foska 400 g J$321 + GCT, Quaker 1-minute 510 g J$581 + GCT, so the 800 g bag is the better buy', date: 'Oct 2026', conf: 'store' },
         cornmeal: { u: '400 g bag (Foska)', g: 400, pr: 169, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
         flour: { u: '1 kg bag (JF Mills)', g: 1000, pr: 369, store: 'Loshusan', src: 'Loshusan online J$368.58; CAC survey J$322–350', date: 'Oct 2026', conf: 'store' },
-        bread: { u: '2 lb loaf (National hard dough)', g: 907, pr: 560, store: 'Hi-Lo and 8 other supermarkets', src: 'CAC survey: same price at all 9 outlets incl. Hi-Lo', date: 'Jul 2026', conf: 'survey' },
+        bread: { u: '2 lb loaf (Holsum hard dough, sliced)', g: 907, pr: 580, store: 'Shoppers Fair (Mandeville)', src: 'Owner\'s shelf photo, Shoppers Fair: Holsum hard dough sliced 907 g J$580 (National natural bran 907 g J$590). CAC survey Jul 2026: National 2 lb J$560 at 9 outlets incl. Hi-Lo', date: '28 Oct 2026', conf: 'store' },
         sweetpot: { u: 'per lb, weighed', g: 454, pr: 450, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: '23 Oct 2026', conf: 'market' },
         yam: { u: 'per lb, weighed', g: 454, pr: 500, weighed: true, store: 'Market', src: 'Observer Market Bag, Coronation Market', date: 'Aug 2026', conf: 'market' },
         gbanana: { u: 'per lb, weighed', g: 454, pr: 150, weighed: true, store: 'Market', src: 'Spanish Town Market J$400 a hand (about 1.4 kg), converted', date: 'Jul 2026', conf: 'market' },
@@ -481,10 +481,10 @@ var OM = (function () {
         broadbeans: { u: '400 g tin (Lasco)', g: 400, pr: 290, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$267–314', date: 'Jul 2026', conf: 'survey' },
         chicken: { u: 'whole frozen chicken (about 1.8 kg)', g: 1800, pr: 1710, store: 'Hi-Lo, Loshusan, PriceSmart and others', src: 'CAC survey J$849–1,033/kg (Jul 2026); agriculture ministry supermarket survey incl. Hi-Lo, Loshusan and PriceSmart J$849–950/kg', date: 'Jul 2026', conf: 'survey' },
         egg: { u: 'dozen, Grade A large', g: 600, pr: 950, store: 'Estimate', src: 'Price trackers J$617–854 earlier in 2026, plus inflation; check your supermarket', date: 'Oct 2026', conf: 'estimate' },
-        mackerel: { u: '155 g tin (Grace)', g: 155, pr: 135, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$120–144', date: 'Jul 2026', conf: 'survey' },
-        sardines: { u: '106 g tin (Grace)', g: 106, pr: 225, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$211–242', date: 'Jul 2026', conf: 'survey' },
-        tuna: { u: '142 g tin (Brunswick)', g: 142, pr: 200, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$197–205', date: 'Jul 2026', conf: 'survey' },
-        pb: { u: '40 oz jar (Members Select)', g: 1134, pr: 1273, store: 'Loshusan', src: 'Loshusan Supermarket online', date: 'Oct 2026', conf: 'store' },
+        mackerel: { u: '155 g tin (Grace)', g: 155, pr: 126, store: 'Shoppers Fair (Mandeville)', src: 'Owner\'s shelf photo, Shoppers Fair: Grace mackerel 155 g J$125.96 (classic and hot & spicy). CAC survey Jul 2026: J$120–144', date: '28 Oct 2026', conf: 'store' },
+        sardines: { u: '106 g tin (Grace)', g: 106, pr: 211, store: 'Shoppers Fair (Mandeville)', src: 'Owner\'s shelf photo, Shoppers Fair: Grace sardines 106 g J$210.58 (with peppers in oil, or in water). CAC survey Jul 2026: J$211–242', date: '28 Oct 2026', conf: 'store' },
+        tuna: { u: '142 g tin (Grace shredded light)', g: 142, pr: 223, store: 'Shoppers Fair (Mandeville)', src: 'Owner\'s shelf photo, Shoppers Fair: Grace shredded light tuna 142 g J$193.58 + GCT (about J$223). Grace chunk light 142 g J$283.44 + GCT (J$263.90 on special to 31 Oct); Brunswick 142 g J$277.24 + GCT', date: '28 Oct 2026', conf: 'store' },
+        pb: { u: '40 oz jar (Members Select)', g: 1134, pr: 1273, store: 'Loshusan', src: 'Loshusan Supermarket online. Shoppers Fair (28 Oct 2026): Jif 16 oz J$770 + GCT, Skippy 426 g J$987 + GCT, so the big jar is cheaper per spoon', date: 'Oct 2026', conf: 'store' },
         oil: { u: '500 ml bottle (Lider)', g: 460, pr: 455, store: 'Kingston supermarkets incl. Hi-Lo', src: 'CAC survey J$431–477', date: 'Jul 2026', conf: 'survey' },
         milk: { u: '1 L carton', g: 1030, pr: 700, store: 'Estimate', src: 'Price guide, March 2026; check your supermarket', date: 'Mar 2026', conf: 'estimate' },
         callaloo: { u: '1 bundle (about 450 g)', g: 450, pr: 290, store: 'Estimate', src: 'MyVoice crop tracker J$638/kg retail', date: '13 Oct 2026', conf: 'estimate' },
@@ -503,7 +503,7 @@ var OM = (function () {
         turkey: { u: '1 lb frozen pack (imported)', g: 454, pr: 1300, tier: 3, store: 'Estimate', src: 'US price (US$5.46 per 1.2 lb) × import costs; PriceSmart is the likeliest stockist', date: 'Oct 2026', conf: 'estimate' },
         salmon: { u: '1 lb frozen fillets', g: 454, pr: 3000, tier: 3, store: 'Estimate', src: 'US price (US$13.44 per lb) × import costs; PriceSmart and Hi-Lo freezers', date: 'Oct 2026', conf: 'estimate' },
         pasta: { u: '400 g pack spaghetti', g: 400, pr: 280, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
-        wwbread: { u: '1.5 lb whole-wheat loaf', g: 680, pr: 650, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
+        wwbread: { u: '2 lb bran loaf (National natural bran, sliced)', g: 907, pr: 590, tier: 2, store: 'Shoppers Fair (Mandeville)', src: 'Owner\'s shelf photo, Shoppers Fair: National natural bran hard dough, sliced, 907 g J$590. Bran bread is the usual brown loaf in Jamaica', date: '28 Oct 2026', conf: 'store' },
         berries: { u: '3 lb frozen bag (PriceSmart size)', g: 1361, pr: 3600, tier: 3, store: 'Estimate', src: 'US price (US$11.28 for 48 oz) × import costs. Local fruit (guava, papaya, June plum) is the cheaper swap', date: 'Oct 2026', conf: 'estimate' },
         broccoli: { u: '1 lb frozen bag', g: 454, pr: 650, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
         mixveg: { u: '1 lb frozen bag', g: 454, pr: 550, tier: 2, store: 'Estimate', src: 'Typical supermarket price; check your store', date: 'Oct 2026', conf: 'estimate' },
@@ -511,7 +511,7 @@ var OM = (function () {
         tortilla: { u: '10 wraps, 8-inch (about 450 g)', g: 450, pr: 750, tier: 2, store: 'Estimate', src: 'No Jamaican shelf price found online; US price (US$2.50 for 10) × import costs. PriceSmart, Hi-Lo and Loshusan usually stock wraps: check your store', date: 'Oct 2026', conf: 'estimate' },
         tofu: { u: '14 oz block (396 g)', g: 396, pr: 750, store: 'Estimate', src: 'No Jamaican shelf price found online; usually in the chiller at PriceSmart, Hi-Lo and the larger Loshusan stores. Check the price', date: 'Oct 2026', conf: 'estimate' },
         quinoa: { u: '500 g bag (Grace)', g: 500, pr: 1400, tier: 3, store: 'Estimate', src: 'Loshusan stocks Grace quinoa 500 g but its price is not readable online. Check your store', date: 'Oct 2026', conf: 'estimate' },
-        cornbeef: { u: '340 g tin', g: 340, pr: 950, store: 'Estimate', src: 'No current shelf price found online. Check your store', date: 'Oct 2026', conf: 'estimate' },
+        cornbeef: { u: '198 g tin (Eve)', g: 198, pr: 459, store: 'Shoppers Fair (Mandeville)', src: 'Owner\'s shelf photo, Shoppers Fair: Eve corned beef 198 g J$399.11 + GCT (about J$459). The 340 g Eve tin is also on the shelf', date: '28 Oct 2026', conf: 'store' },
         liver: { u: 'per lb, weighed', g: 454, pr: 250, weighed: true, store: 'JDJR Farms (Trelawny)', src: 'JDJR Farms price list, beef liver J$250/lb (list updated weekly, no date shown). Supermarket prices may be higher', date: 'Oct 2026', conf: 'store' },
         kidney: { u: 'per lb, weighed', g: 454, pr: 400, weighed: true, store: 'Estimate', src: 'No price found online; ask at the meat counter', date: 'Oct 2026', conf: 'estimate' },
         stewbeef: { u: '1 kg pack, boneless stew beef', g: 1000, pr: 1900, tier: 2, store: 'Hi-Lo, Loshusan, PriceSmart and other Kingston supermarkets', src: 'Agriculture ministry survey via CAC: boneless beef stew J$1,850–1,949/kg before GCT (week ending 21 Feb 2026)', date: 'Feb 2026', conf: 'survey' },
@@ -642,6 +642,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-28', t: 'Real shelf prices from Shoppers Fair', b: ['Thanks to your photos: hard dough bread J$580 (Holsum 2 lb), bran bread J$590, Grace mackerel J$126, Grace sardines J$211, Grace tuna about J$223 and Eve corned beef (198 g) about J$459, with GCT where the shelf adds it.', 'Shoppers Fair is now a store you can pick when you edit a price.', 'Peanut butter stays on the big 40 oz jar: it is cheaper per spoon than Jif or Skippy.'] },
     { d: '2026-10-26', t: 'Bigger, bolder text', b: ['New on Plan: Text size. Pick Large to make the words about 15% bigger and the headings, numbers and buttons bolder.', 'It is saved on this phone only, so each phone can have its own size. Your plan and logs are not touched.', 'Prices: the Bank of Jamaica rate for PRO invoices is now J$159.65 per US$ (23 Oct).'] },
     { d: '2026-10-26', t: 'More Jamaican dishes', b: ['New: stew beef with rice & peas, baked chicken with baked or mashed potato and garden salad, corned beef & cabbage with white rice, corned beef with hard dough bread, liver & onions, and stewed kidney.', 'Brown stew mackerel is now brown stew fish (snapper), cooked the proper way. Stir-fry chicken now shows on Jamaican plans too, and brown stew chicken can come with mashed potato.', 'For plant-based plans: curry tofu and tofu stir-fry. Quinoa and sourdough show up on Premium.'] },
     { d: '2026-10-25', t: 'How to use OMGym', b: ['New ? button at the top: a short step-by-step tour of every tab, with a Show me button that takes you there.', 'First time on OMGym? A New here? card on Today offers the tour.', 'Spelling: hardo is now hard dough.'] },

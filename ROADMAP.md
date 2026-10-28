@@ -1,7 +1,7 @@
 # OMGym roadmap
 
 ## Owner and app
-- Owner: lives in Jamaica, uses an iPhone, shops at **PriceSmart, Hi-Lo and Loshusan**. Wants affordable meals and 45-minute sessions, and works on the app with Claude every day.
+- Owner: lives in Jamaica, uses an iPhone, shops at **PriceSmart, Hi-Lo, Loshusan and Shoppers Fair (Mandeville)**. Wants affordable meals and 45-minute sessions, and works on the app with Claude every day.
 - Live app: https://876lab.github.io/omgym/ (GitHub Pages from `main`, file `index.html`, built from `src/` by `python3 scripts/build.py`).
 - claude.ai artifact: https://claude.ai/artifact/7afMFqTRyUmBr7j7DHyr8W (same app; saves to the owner's Claude account). Republish it from `dist/artifact.html` after changes, when the session can.
 - Research and test report: OMGym project doc `claude/omgym-v1-research-and-test-report.md`.
@@ -42,7 +42,7 @@
 - PRO top-up (`proTopUp`) only runs when PRO is active. Never let likes override diet or allergies.
 
 ## Backlog
-- [ ] Owner: shelf prices for tofu, quinoa (Grace 500 g), corned beef (340 g tin), cow kidney, sourdough and cucumber, which are estimates since 2026-10-26; and a current price for beef liver at a supermarket.
+- [ ] Owner: shelf prices for tofu, quinoa (Grace 500 g, plain), cow kidney, sourdough and cucumber (corned beef done 2026-10-28: Eve 198 g at Shoppers Fair), which are estimates since 2026-10-26; and a current price for beef liver at a supermarket.
 - [x] (2026-10-25) User feedback: Build my own meal (free taste; Fit to my goal, Add to plan and Save in PRO, owner's decision).
 - [x] (2026-10-26) **Owner request, do first (2026-10-25, user feedback): bigger, bolder text.** A Text size setting (Normal / Large) on the Plan tab, saved per device; Large raises body text about 15% and makes headings, numbers and buttons bolder. Check every tab at 390 px in both themes; nothing may overflow.
 - [ ] **Owner request (2026-10-25, user feedback): clear goal picker.** In setup, ask "What's your goal? Lose fat / Build muscle / Stay the same" before goal weight, and show it at the top of Plan. Keep the safety floors and existing maths; the goal weight still decides direction and is checked against the choice (e.g. Build muscle with a lower goal weight gets a plain warning). Saved data: add `goalPick`, missing = worked out from goal weight.
@@ -85,3 +85,4 @@
 - 2026-10-24 (night): Picked the owner's "do first" What's new button ahead of the vegetarian-protein item (the owner asked for it first). New Market Bag (23 Oct, Coronation Market) used for 6 produce prices. The Observer Forex tag page's newest post is 15 Oct, so the rate came from boj.org.jm directly (22 Oct, still the latest on 24 Oct). Environmental levy went to 0.85% on 1 Oct (JIS). Amazon: no dated, readable current price (Slickdeals results were old deals). PriceSmart, Hi-Lo and Loshusan not tried again (blocked on earlier runs); CAC: no newer survey found. The PRO browser test failed on weekends (Today is a rest day for the test profile); fixed the test. npm registry not used; tests ran with the global Playwright.
 - 2026-10-25 (night): Price check found nothing newer: Market Bag newest is still 23 Oct (used); no newer CAC survey; no customs, GCT or fee changes. boj.org.jm permission request timed out and the Observer Forex tag page failed to load, so the rate came from Jamaica Homes News' repost of the Observer Forex report (BOJ 22 Oct: J$157.87 / J$159.59), still the latest; rates unchanged. Loshusan's chickpea page loads without a price; no Jamaican soya chunk price found online, so both JM prices are estimates. Amazon not tried (blocked on earlier runs; Store paused). Tests ran with the global Playwright.
 - 2026-10-26 (night): Built the owner's "do first" text size. Price check: boj.org.jm read directly (23 Oct: J$158.1879 / J$159.6487), so PRO.boj moved to J$159.65; Store FX stays J$162. The Observer Forex tag page's newest post is still 15 Oct; Market Bag newest is 23 Oct (used); no newer CAC survey; no customs, GCT or fee changes found. PriceSmart, Hi-Lo, Loshusan and Amazon not tried (blocked on earlier runs; Store paused). Tests ran with the global Playwright.
+- 2026-10-28 (daytime): Owner sent Shoppers Fair (Mandeville) shelf photos; bread, bran bread, mackerel, sardines, tuna and corned beef updated (see CHANGELOG). Prices tagged "+ GCT" are stored with 15% GCT added.
