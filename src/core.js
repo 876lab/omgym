@@ -190,7 +190,15 @@ var OM = (function () {
     ['birddog', 'Bird dog', 'core', 'gdb', '', 't', 'On hands and knees, reach opposite arm and leg, pause, switch.'],
     ['pallof', 'Pallof press', 'core', 'g', '', 't', 'Cable at chest height, press straight out and resist the twist.'],
     ['farmer', 'Farmer carry', 'carry', 'gd', '', 'm', 'Heavy dumbbells at your sides, walk tall with short steps.'],
-    ['suitcase', 'Suitcase carry (one hand)', 'carry', 'gd', '', 'm', 'One weight on one side, stay upright, do not lean.']
+    ['suitcase', 'Suitcase carry (one hand)', 'carry', 'gd', '', 'm', 'One weight on one side, stay upright, do not lean.'],
+    // arm isolation (added 2026-10-30): only on upper and full-body days, after the compound work (see armWork in buildWorkout)
+    ['dbcurl', 'Dumbbell curl', 'bi', 'gd', '', 'a', 'Elbows pinned to your sides, curl up, then lower slowly for 2–3 seconds. No swinging.'],
+    ['hammer', 'Hammer curl', 'bi', 'gd', '', 'a', 'Palms face each other like holding a hammer. Elbows still, lower slowly.'],
+    ['cablecurl', 'Cable or EZ-bar curl', 'bi', 'g', '', 'a', 'Stand tall, elbows by your ribs, curl to the chest and lower all the way down.'],
+    ['bagcurl', 'Backpack curl', 'bi', 'b', '', 'a', 'Hold a loaded backpack by the top handle or straps, elbows at your sides, curl up and lower slowly.'],
+    ['ohext', 'Overhead triceps extension (dumbbell or cable)', 'tri', 'gd', 's', 'a', 'Hold the weight overhead, elbows pointing up, lower behind your head for a deep stretch, then straighten.'],
+    ['pushdown', 'Rope pushdown', 'tri', 'g', '', 'a', 'Elbows pinned to your sides, push the rope down and apart, pause, come back up slowly.'],
+    ['cgpush', 'Close-grip push-up', 'tri', 'gdb', '', 'a', 'Hands under your shoulders, elbows brush your ribs. Hands on a bench to make it easier.']
   ].map(function (r) { return { id: r[0], name: r[1], patterns: r[2].split(' '), eq: r[3], avoid: r[4], kind: r[5], cue: r[6] }; });
   var EXBY = {}; EX.forEach(function (e) { EXBY[e.id] = e; });
 
@@ -290,7 +298,7 @@ var OM = (function () {
     return { key: key, week: week, cycle: cycle, altShift: altShift, indexInWeek: idx };
   }
 
-  function buildWorkout(dateStr, p, startDate, caution, pro) {
+  function buildWorkout(dateStr, p, startDate, caution, pro, noArms) { // noArms: tests only
     pro = proPlanOk(pro) ? pro : null;
     var s = sessionFor(dateStr, p, startDate);
     if (!s) {
@@ -336,6 +344,7 @@ var OM = (function () {
       if (!cand.length) { if (items.length > 3) { items.pop(); continue; } break; }
       cand.sort(function (a, b) { return b.sets - a.sets; })[0].sets--;
     }
+    var arms = armWork();
     guard = 0;
     var cap = exp === 'beginner' ? 4 : 5;
     while (total() < budgetMain - 150 && guard++ < 20 && !phase.deload) {
@@ -344,20 +353,77 @@ var OM = (function () {
       c2.sort(function (a, b) { return a.sets - b.sets; })[0].sets++;
       if (total() > budgetMain) { c2[0].sets--; break; }
     }
+    // spare time after the extra compound sets: arm work can go to 3 sets
+    arms.forEach(function (it) { if (!phase.deload && it.sets < 3 && total() + (45 + it.rest) <= budgetMain) it.sets++; });
     // fill spare time with accessory work (mostly matters for weights-only sessions)
     var FILL = ['glute', 'delt', 'core', 'carry', 'lunge', 'pull_h', 'push_h', 'core'];
     var fi = 0;
-    while (total() < budgetMain - 240 && fi < FILL.length && items.length < 8 && !tpl.cond) {
+    while (total() < budgetMain - 240 && fi < FILL.length && items.length - arms.length < 8 && !tpl.cond) {
       var fl = candidates(FILL[fi], p).filter(function (e) { return !used[e.id]; });
       fi++;
       if (!fl.length) continue;
       var fe = fl[(s.cycle + fi) % fl.length]; used[fe.id] = 1;
-      var fit = { ex: fe, sets: phase.deload ? 2 : (fe.kind === 'c' ? 3 : (fe.kind === 'a' ? 3 : 2)), reps: repsFor(fe, exp, pro), rest: style === 'cardio' ? 30 : restFor(fe, exp), rir: phase.rir, circuit: style === 'cardio' };
+      var fit = { ex: fe, sets: phase.deload ? 2 : (fe.kind === 'c' ? 3 : (fe.kind === 'a' ? 3 : 2)), reps: repsFor(fe, exp, pro), rest: style === 'cardio' ? 30 : restFor(fe, exp), rir: phase.rir, circuit: style === 'cardio', fill: true };
       if (fe.kind === 'c') { fit.reps = '10–15'; fit.rest = Math.min(fit.rest, 60); }
       items.push(fit);
       while (total() > budgetMain + 30 && fit.sets > 1) fit.sets--;
       if (total() > budgetMain + 30) { items.pop(); break; }
     }
+    // Arm isolation (biceps, triceps). Compound lifts come first and keep their sets; arm work only uses the
+    // time that is left. Upper-only days may give the core slot's time to arms (core is trained on the other days).
+    // Beginners: at most 1, optional. Intermediate and up: 1 biceps + 1 triceps. PRO: done as a superset.
+    function armWork() {
+      var upperOnly = !tpl.slots.some(function (sl) { return /^(squat|hinge|lunge)$/.test(sl[0]); }); // a glute accessory (Pull day) still counts as upper
+      var hasUpper = tpl.slots.some(function (sl) { return /^(push|pull)_/.test(sl[0]); });
+      if (tpl.cond || !hasUpper || noArms) return [];
+      var beginner = exp === 'beginner';
+      // push days start with triceps, pull days with biceps; A and B days swap, and they swap again each week,
+      // so when only one fits, a week still gets both
+      var triFirst = s.key === 'PUSH' ? true : s.key === 'PULL' ? false : ((/_B$/.test(s.key) ? 1 : 0) + s.week) % 2 === 1;
+      var order = triFirst ? ['tri', 'bi'] : ['bi', 'tri'];
+      var picks = [];
+      order.forEach(function (pt) {
+        var l = candidates(pt, p).filter(function (e) { return !used[e.id]; });
+        if (l.length) picks.push(l[(s.cycle + s.altShift + Math.floor(s.indexInWeek / 2)) % l.length]);
+      });
+      if (beginner) picks = picks.slice(0, 1);
+      if (!picks.length) return [];
+      var circuit = style === 'cardio';
+      var mk = function (e) { return { ex: e, sets: phase.deload ? 1 : 2, reps: '10–15', rest: circuit ? 30 : 60, rir: phase.rir, circuit: circuit, arm: true, optional: beginner || undefined }; };
+      var snapshot = items.slice();
+      var limit = budgetMain + 60; // may run the session to 46 min, never longer
+      var tryAdd = function (list, superset) {
+        var add = list.map(mk);
+        if (superset && add.length === 2 && !circuit) { add[0].rest = 0; add[0].superset = add[1].superset = true; }
+        items.push.apply(items, add);
+        if (total() <= limit) return add;
+        items.length = snapshot.length;
+        return null;
+      };
+      var attempts = [];
+      if (beginner) attempts.push([picks, false]);
+      else {
+        if (!pro) attempts.push([picks, false]);
+        attempts.push([picks, true]);
+      }
+      var r = null, i;
+      for (i = 0; i < attempts.length && !r; i++) r = tryAdd(attempts[i][0], attempts[i][1]);
+      if (!r && upperOnly && !beginner) {
+        // give the core slot's time to arm work on upper-only days
+        var core = items.filter(function (it) { return it.ex.kind === 't'; })[0];
+        if (core) {
+          items.splice(items.indexOf(core), 1); snapshot = items.slice();
+          for (i = 0; i < attempts.length && !r; i++) r = tryAdd(attempts[i][0], attempts[i][1]);
+          if (!r) r = tryAdd(picks.slice(0, 1), false);
+          if (!r) { items.push(core); snapshot = items.slice(); }
+        }
+      }
+      if (!r && picks.length > 1) r = tryAdd(picks.slice(0, 1), false);
+      if (r) r.forEach(function (it) { used[it.ex.id] = 1; });
+      return r || [];
+    }
+    // arm work goes last, after the compound lifts and any extra accessory work
+    if (arms.length) items = items.filter(function (it) { return !it.arm; }).concat(arms);
     var mainMin = Math.round(total() / 60);
     var blocks = [];
     blocks.push({ title: 'Warm-up', minutes: 6, lines: ['3 min brisk walk, skipping or easy bike', 'Leg swings ×10 / side, arm circles ×10, hip hinges ×10, inchworms ×5', '1–2 light ramp-up sets of your first exercise'] });
@@ -374,7 +440,7 @@ var OM = (function () {
     return { rest: false, key: s.key, title: tpl.name, week: s.week + 1, phase: phase, minutes: minutes, blocks: blocks, caution: !!caution, pro: !!pro };
   }
   // Hard sets per muscle group over one week (ACSM 2026: about 10+ sets per muscle a week for growth).
-  var MUSCLES = { squat: ['Quads'], lunge: ['Quads', 'Glutes'], hinge: ['Hamstrings', 'Glutes'], glute: ['Glutes'], push_h: ['Chest', 'Triceps'], push_v: ['Shoulders', 'Triceps'], delt: ['Shoulders'], pull_h: ['Back', 'Biceps'], pull_v: ['Back', 'Biceps'] };
+  var MUSCLES = { squat: ['Quads'], lunge: ['Quads', 'Glutes'], hinge: ['Hamstrings', 'Glutes'], glute: ['Glutes'], push_h: ['Chest', 'Triceps'], push_v: ['Shoulders', 'Triceps'], delt: ['Shoulders'], pull_h: ['Back', 'Biceps'], pull_v: ['Back', 'Biceps'], bi: ['Biceps'], tri: ['Triceps'] };
   var MUSCLE_ORDER = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps'];
   function weeklyVolume(mondayStr, p, startDate, caution, pro) {
     var out = {}; MUSCLE_ORDER.forEach(function (m) { out[m] = 0; });
@@ -642,6 +708,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-10-30', t: 'Biceps and triceps work', b: ['Upper-body days (Upper, Push, Pull) now end with arm work: curls (dumbbell, hammer, cable or a loaded backpack) and triceps (overhead extension, rope pushdown or close-grip push-up). Each one has a short how-to.', 'Big lifts still come first and keep all their sets. Presses and rows already train your arms, so the arm work only uses the time that is left, and sessions stay at 45 minutes. When only one fits, the next upper day does the other, so each week gets both.', 'Beginners get at most one, marked Optional. PRO does the two back to back as a superset when they fit. With a sore shoulder you get pushdowns or close-grip push-ups instead of overhead work.', 'PRO invoices now use the Bank of Jamaica rate of J$159.67 per US$ (29 Oct).'] },
     { d: '2026-10-28', t: 'Real shelf prices from Shoppers Fair', b: ['Thanks to your photos: hard dough bread J$580 (Holsum 2 lb), bran bread J$590, Grace mackerel J$126, Grace sardines J$211, Grace tuna about J$223 and Eve corned beef (198 g) about J$459, with GCT where the shelf adds it.', 'Shoppers Fair is now a store you can pick when you edit a price.', 'Peanut butter stays on the big 40 oz jar: it is cheaper per spoon than Jif or Skippy.'] },
     { d: '2026-10-26', t: 'Bigger, bolder text', b: ['New on Plan: Text size. Pick Large to make the words about 15% bigger and the headings, numbers and buttons bolder.', 'It is saved on this phone only, so each phone can have its own size. Your plan and logs are not touched.', 'Prices: the Bank of Jamaica rate for PRO invoices is now J$159.65 per US$ (23 Oct).'] },
     { d: '2026-10-26', t: 'More Jamaican dishes', b: ['New: stew beef with rice & peas, baked chicken with baked or mashed potato and garden salad, corned beef & cabbage with white rice, corned beef with hard dough bread, liver & onions, and stewed kidney.', 'Brown stew mackerel is now brown stew fish (snapper), cooked the proper way. Stir-fry chicken now shows on Jamaican plans too, and brown stew chicken can come with mashed potato.', 'For plant-based plans: curry tofu and tofu stir-fry. Quinoa and sourdough show up on Premium.'] },
@@ -963,7 +1030,7 @@ var OM = (function () {
   // Pricing per item: Amazon price + US sales tax, converted to J$; freight per lb; Jamaica Customs charges on CIF;
   // then the seller's markup on the landed cost, rounded up.
   var STORE = {
-    fx: 162, fxDate: '2026-10-23', fxNote: 'J$158.92 per US$ (Bank of Jamaica, 23 Oct 2026, the latest published rate on 26 Oct: midpoint of J$158.19 buying and J$159.65 selling) plus about 2% card fee',
+    fx: 162, fxDate: '2026-10-29', fxNote: 'J$158.85 per US$ (Bank of Jamaica, 29 Oct 2026, the latest published rate on 30 Oct: midpoint of J$158.03 buying and J$159.67 selling) plus about 2% card fee',
     freightPerLb: 600, freightNote: 'Freight forwarder rate, J$600 per lb (owner)',
     usSalesTax: 0.07, usTaxNote: 'Miami-Dade sales tax 7% on Amazon orders to a Florida forwarder; refundable through tax-exempt@amazon.com with the airway bill',
     duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.0085, stampDuty: 100, stampOver: 5500,
@@ -1095,7 +1162,7 @@ var OM = (function () {
   // The app checks the signature with this public key, so links cannot be made up or edited.
   var PRO = {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
-    boj: { rate: 159.65, date: '2026-10-23', note: 'Bank of Jamaica selling rate, 23 Oct 2026 (the latest published on 26 Oct)' },
+    boj: { rate: 159.67, date: '2026-10-29', note: 'Bank of Jamaica selling rate, 29 Oct 2026 (the latest published on 30 Oct)' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
     paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
     lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first

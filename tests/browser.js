@@ -389,6 +389,38 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(await page.isVisible('text=You are looking at an example plan'), 'reset returns to example');
   // desktop width
   await page.setViewportSize({ width: 1280, height: 900 }); ok(!(await overflow()), 'desktop no overflow');
+  // arm isolation (2026-10-30): an intermediate 6-day gym plan shows a curl and a triceps exercise on upper days, with cues
+  for (const variant of [{ inj: [], tag: 'arms' }, { inj: ['shoulders'], tag: 'arms-shoulder' }]) {
+    const actx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    await actx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    const sd = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+    await actx.addInitScript(([inj, sd]) => { if (!localStorage.getItem('omgym-state-v1')) localStorage.setItem('omgym-state-v1', JSON.stringify({ v: 1, profile: { name: 'Arms', units: 'metric', sex: 'male', age: 30, heightCm: 178, weightKg: 85, goalKg: 85, neckCm: 40, waistCm: 90, activity: 'light', experience: 'intermediate', days: [1, 2, 3, 4, 5, 6], style: 'weights', equipment: 'gym', pace: 'standard', injuries: inj, parq: [false, false, false, false, false, false, false], pregnant: false, region: 'JM', diet: 'none', allergies: [] }, startDate: sd, weights: [{ d: sd, kg: 85 }], days: {}, loads: {}, swaps: {}, prices: {}, shopTicks: {}, cart: {} })); localStorage.setItem('omgym-guide-seen', '1'); }, [variant.inj, sd]);
+    const ap = await actx.newPage(); const aerr = []; ap.on('pageerror', e => aerr.push(e.message));
+    await ap.goto(url);
+    const days = await ap.locator('.wd').evaluateAll(els => els.map(e => e.getAttribute('data-d')));
+    let curl = false, tri = false, cue = false, note = false, legsClean = true, overhead = false, shot = false, wide = false;
+    for (const d of days) {
+      await ap.click('.wd[data-d="' + d + '"]');
+      const title = await ap.innerText('.dayhead h1');
+      const names = (await ap.locator('.ex.arm .name').allInnerTexts()).join('|');
+      if (/Legs|Lower|recovery/i.test(title)) { if (names) legsClean = false; continue; }
+      if (/curl/i.test(names)) curl = true;
+      if (/triceps|pushdown|close-grip/i.test(names)) tri = true;
+      if (/Overhead triceps/i.test(names)) overhead = true;
+      if (names && await ap.isVisible('.armnote') && /after the main lifts/.test(await ap.innerText('.armnote'))) note = true;
+      if (names) { const det = ap.locator('.ex.arm details').first(); await det.locator('summary').click(); if (/elbows?/i.test(await det.innerText())) cue = true; }
+      if (names && !shot && variant.tag === 'arms') { await ap.screenshot({ path: OUT + '/shot-arms.png', fullPage: true }); await ap.emulateMedia({ colorScheme: 'dark' }); await ap.screenshot({ path: OUT + '/shot-arms-dark.png', fullPage: true }); await ap.emulateMedia({ colorScheme: 'light' }); shot = true; }
+      if (await ap.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) wide = true;
+    }
+    ok(curl && tri, `${variant.tag}: upper days show a curl and a triceps exercise`);
+    ok(cue, `${variant.tag}: arm exercises have a plain cue`);
+    ok(note, `${variant.tag}: arm work note says it comes after the main lifts`);
+    ok(legsClean, `${variant.tag}: no arm isolation on leg days`);
+    if (variant.inj.includes('shoulders')) ok(!overhead, 'shoulder injury: no overhead triceps extension');
+    ok(!wide, `${variant.tag}: nothing overflows at 390 px`);
+    ok(aerr.length === 0, `${variant.tag}: no page errors ` + aerr.join('; '));
+    await actx.close();
+  }
   // the real build: Store paused
   if (!process.env.SITE && fs.readFileSync(INDEX, 'utf8').includes('paused: true,')) {
     const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });

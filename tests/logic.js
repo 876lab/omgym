@@ -78,6 +78,74 @@ const a1 = OM.buildWorkout('2026-10-19', base, '2026-10-19').blocks[1].items.map
 const a2 = OM.buildWorkout(OM.addDays('2026-10-19', 42), base, '2026-10-19').blocks[1].items.map(i => i.ex.id).join();
 ok(a1 !== a2, 'exercise selection rotates each 6-week cycle');
 
+// 4b. Arm isolation (2026-10-30): compound first, arms only from time left, upper and full-body days only
+{
+  const ARM = ['dbcurl', 'hammer', 'cablecurl', 'bagcurl', 'ohext', 'pushdown', 'cgpush'];
+  for (const id of ARM) { const e = OM.EX.find(x => x.id === id); ok(e && e.kind === 'a' && e.cue && e.cue.length > 20, 'arm exercise with a plain cue: ' + id); }
+  ok(OM.EX.find(x => x.id === 'ohext').avoid.includes('s'), 'overhead extension avoided with a shoulder injury');
+  ok(!OM.EX.some(x => /dip/i.test(x.name)), 'no bench dips');
+  const UPPER_ONLY = ['UP_A', 'UP_B', 'PUSH', 'PULL'], LOWER = ['LO_A', 'LO_B', 'LEGS', 'COND'];
+  let armSessions = 0, upperChecked = 0, biWeeks = 0, triWeeks = 0, weeks = 0, supersets = 0;
+  for (const n of Object.keys(dayPatterns)) for (const eq of eqs) for (const st of styles) for (const xp of exps) for (const inj of [[], ['shoulders'], ['knees', 'back', 'shoulders']]) for (const pro of [null, { phase: 'cut' }, { phase: 'bulk' }]) {
+    if (pro && xp !== 'advanced') continue;
+    const p = { ...base, days: dayPatterns[n], equipment: eq, style: st, experience: xp, injuries: inj };
+    for (let wk = 0; wk < 7; wk++) {
+      let wkBi = 0, wkTri = 0, wkUpper = 0;
+      for (let d = 0; d < 7; d++) {
+        const date = OM.addDays('2026-10-19', wk * 7 + d);
+        const w = OM.buildWorkout(date, p, '2026-10-19', false, pro);
+        if (w.rest) continue;
+        const items = w.blocks.flatMap(b => b.items || []);
+        const arms = items.filter(it => it.arm);
+        ok(arms.every(it => ARM.includes(it.ex.id)), 'only arm exercises are flagged arm');
+        ok(items.filter(it => ARM.includes(it.ex.id)).every(it => it.arm), 'arm exercises only come from arm work');
+        if (LOWER.includes(w.key)) ok(arms.length === 0, `no arm isolation on lower or conditioning days (${w.key})`);
+        if (inj.includes('shoulders')) ok(!arms.some(it => it.ex.id === 'ohext'), 'no overhead extension with a shoulder injury');
+        if (eq === 'bodyweight') ok(arms.every(it => it.ex.id === 'bagcurl' || it.ex.id === 'cgpush'), 'bodyweight plans: backpack curl or close-grip push-up');
+        if (xp === 'beginner' && !pro) ok(arms.length <= 1 && arms.every(it => it.optional), 'beginners: at most one arm exercise, marked optional');
+        ok(arms.length <= 2 && arms.filter(it => it.ex.patterns[0] === 'bi').length <= 1 && arms.filter(it => it.ex.patterns[0] === 'tri').length <= 1, 'at most 1 biceps + 1 triceps');
+        ok(arms.every(it => it.reps === '10–15' && it.sets >= 1 && it.sets <= 3), 'arm work 1–3 sets of 10–15');
+        if (w.phase.deload) ok(arms.every(it => it.sets <= 2), 'deload: arm work 1–2 sets');
+        else ok(arms.every(it => it.sets >= 2), 'arm work 2–3 sets outside deload');
+        // compound first: arm work comes after every compound lift
+        const lastC = items.map(it => it.ex.kind).lastIndexOf('c'), firstA = items.findIndex(it => it.arm);
+        if (firstA >= 0) ok(firstA > lastC && items.slice(firstA).every(it => it.arm), 'arm work comes last, after the compound lifts');
+        // compound lifts keep the sets they would have had without arm work (only extra top-up sets can go)
+        const noArm = OM.buildWorkout(date, p, '2026-10-19', false, pro, true).blocks.flatMap(b => b.items || []);
+        const target = it => { const exp = pro ? 'advanced' : xp; const bc = exp === 'advanced' ? 4 : exp === 'intermediate' ? 3 : (w.week - 1 < 2 ? 2 : 3); return Math.max(w.phase.deload ? 1 : 2, Math.min(5, bc + w.phase.addSet)); };
+        for (const it of noArm.filter(it => it.ex.kind === 'c' && !it.fill)) {
+          const m = items.find(x => x.ex.id === it.ex.id);
+          ok(m && m.sets >= Math.min(it.sets, target(it)), `compound sets kept with arm work ${it.ex.id} ${w.key} ${eq} ${st} ${xp}`);
+        }
+        if (arms.length) { armSessions++; ok(w.minutes >= 40 && w.minutes <= 46, `session with arm work ${w.minutes} min (40–46)`); }
+        ok(w.minutes <= 46, 'no session over 46 min');
+        if (arms.some(it => it.superset)) {
+          supersets++;
+          ok(!!pro || xp !== 'beginner', 'supersets are for intermediate+ or PRO');
+          ok(arms.length === 2 && arms[0].rest === 0 && arms[1].rest > 0, 'superset: straight into the second exercise, then rest');
+        }
+        if (pro && arms.length === 2 && !arms[0].circuit) ok(arms[0].superset, 'PRO does both arm exercises as a superset');
+        if (UPPER_ONLY.includes(w.key) && xp !== 'beginner' && eq !== 'bodyweight' && st !== 'cardio') { upperChecked++; ok(arms.length >= 1, `upper day for intermediate+ has arm work ${w.key} ${eq} ${st} ${xp} ${inj}`); }
+        if (UPPER_ONLY.includes(w.key) || /^FB/.test(w.key)) wkUpper++;
+        wkBi += arms.filter(it => it.ex.patterns[0] === 'bi').length; wkTri += arms.filter(it => it.ex.patterns[0] === 'tri').length;
+      }
+      if (xp !== 'beginner' && eq === 'gym' && wkUpper >= 2 && ['4', '6'].includes(n)) { weeks++; if (wkBi) biWeeks++; if (wkTri) triWeeks++; }
+    }
+  }
+  ok(armSessions > 1000, 'arm work appears in many sessions: ' + armSessions);
+  ok(upperChecked > 500, 'upper days checked: ' + upperChecked);
+  ok(biWeeks === weeks && triWeeks === weeks, `4- and 6-day gym weeks get both biceps and triceps work (${biWeeks}/${triWeeks} of ${weeks})`);
+  ok(supersets > 0, 'supersets appear when both fit');
+  // weekly sets count direct arm sets one each
+  const p4 = { ...base, days: [1, 2, 4, 5], experience: 'intermediate' };
+  const vol = OM.weeklyVolume('2026-10-19', p4, '2026-10-19', false, null), volNo = {};
+  let bi = 0, tri = 0, biC = 0, triC = 0;
+  for (let d = 0; d < 7; d++) { const w = OM.buildWorkout(OM.addDays('2026-10-19', d), p4, '2026-10-19', false, null); if (w.rest) continue; w.blocks.flatMap(b => b.items || []).forEach(it => { const pt = it.ex.patterns; if (pt.includes('bi')) bi += it.sets; if (pt.includes('tri')) tri += it.sets; if (pt.some(x => x === 'pull_h' || x === 'pull_v')) biC += it.sets; if (pt.some(x => x === 'push_h' || x === 'push_v')) triC += it.sets; }); }
+  ok(bi > 0 && tri > 0, 'intermediate 4-day week has direct biceps and triceps sets');
+  ok(vol.find(v => v.muscle === 'Biceps').sets === bi + biC, 'weekly Biceps sets = pulls + direct curls');
+  ok(vol.find(v => v.muscle === 'Triceps').sets === tri + triC, 'weekly Triceps sets = presses + direct triceps work');
+}
+
 // 5. Meals: diets x allergies x regions
 const diets = ['none', 'pescatarian', 'vegetarian', 'vegan'];
 const allergySets = [[], ['egg'], ['fish'], ['shellfish'], ['peanut'], ['dairy'], ['gluten'], ['egg', 'gluten'], ['fish', 'shellfish'], ['soy']];
