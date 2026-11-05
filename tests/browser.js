@@ -346,6 +346,33 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
     ok(st3.profile.name === 'Cargill', 'data pasted again for the rest of the walk-through');
     await page.emulateMedia({ colorScheme: 'dark' }); await page.click('[data-act=datacopy]'); await page.screenshot({ path: OUT + '/shot-data-dark.png', fullPage: false }); await page.click('[data-act=dataclose]'); await page.emulateMedia({ colorScheme: 'light' });
   }
+  // Backup file: save, lose everything, restore from the file
+  { await page.click('nav [data-tab=me]');
+    ok(await page.isVisible('#bklast') && /No backup file yet/.test(await page.innerText('#bklast')), 'Your data shows there is no backup yet');
+    const before = await page.evaluate(() => localStorage.getItem('omgym-state-v1'));
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-act=backupsave]')]);
+    const bf = path.join(OUT, 'omgym-backup.txt'); await dl.saveAs(bf);
+    ok(/^omgym-backup-\d{4}-\d\d-\d\d\.txt$/.test(dl.suggestedFilename()), 'backup file named with the date: ' + dl.suggestedFilename());
+    const txt = fs.readFileSync(bf, 'utf8');
+    ok(/^OMGym backup, saved /.test(txt) && /Restore from a backup/.test(txt) && /\nOMGYM1:/.test(txt), 'backup file explains itself and holds the data code');
+    ok(/Last backup: today/.test(await page.innerText('#bklast')), 'last backup shows today');
+    await page.click('[data-act=reset1]'); await page.click('[data-act=reset2]');
+    await page.click('nav [data-tab=me]');
+    ok(await page.isVisible('#datanew [data-act=restoreopen]'), 'a fresh start offers Restore from a backup');
+    await page.click('#datanew [data-act=restoreopen]');
+    ok(await page.isVisible('#datafile'), 'restore offers Choose backup file');
+    fs.writeFileSync(path.join(OUT, 'not-omgym.txt'), 'hello');
+    await page.setInputFiles('#datafile', path.join(OUT, 'not-omgym.txt')); await page.waitForSelector('#datapastebox .err');
+    ok(/isn't an OMGym data code/.test(await page.locator('#datapastebox').innerText()), 'a wrong file gets a plain message');
+    await page.setInputFiles('#datafile', bf); await page.waitForSelector('#dataconfirm');
+    ok(/Cargill/.test(await page.locator('#dataconfirm').innerText()), 'the backup file shows what it contains before anything changes');
+    await page.click('[data-act=dataapply]');
+    const after = await page.evaluate(() => localStorage.getItem('omgym-state-v1'));
+    ok(JSON.stringify(JSON.parse(after).days) === JSON.stringify(JSON.parse(before).days) && JSON.parse(after).weights.length === JSON.parse(before).weights.length && JSON.parse(after).profile.name === JSON.parse(before).profile.name, 'restoring the file brings back the plan, weigh-ins and logs');
+    ok(await page.isVisible('#dataundo'), 'undo still offered after a restore');
+    ok(!(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)), 'Your data: no sideways scrolling');
+    await page.screenshot({ path: OUT + '/shot-backup.png', fullPage: false });
+  }
   // imperial + vegan + other region profile edit
   await page.click('nav [data-tab=me]'); await page.click('[data-act=setup]');
   await page.click('[data-k=units][data-v=imperial]');

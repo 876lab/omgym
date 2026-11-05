@@ -10,7 +10,7 @@ Open the app: https://876lab.github.io/omgym/
 - **Mac:** Safari → File → **Add to Dock**. Chrome or Edge: the install icon at the right of the address bar.
 - **Windows:** Chrome or Edge → install icon in the address bar, then pin it to the taskbar or Start.
 
-The Home Screen app works offline at the gym. Your data is saved in the browser you use, on that device. The claude.ai version of the app saves to your Claude account instead.
+The Home Screen app works offline at the gym. Your data is saved in the browser you use, on that device, and a Home Screen app keeps its own copy that is deleted with its icon. So go to **Plan → Your data → Save backup file** now and then (choose Save to Files), and use **Restore from a backup** on a new icon or phone. The claude.ai version of the app saves to your Claude account instead.
 
 ## OMGym PRO
 Tap **PRO** at the top of the app. Create your invoice, pay US$10 by Scotiabank transfer (J$ at the Bank of Jamaica rate) or PayPal, and send the proof on WhatsApp. PRO opens for 3 days while OMGym checks the payment, then runs for the month you paid. If you use OMGym from your Home Screen, paste the unlock link OMGym sends you under "Already paid?".

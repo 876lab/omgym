@@ -274,6 +274,11 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 .datarow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
 .databox { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
 .codebox { font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem; word-break: break-all; }
+.bklast { margin: 10px 0 0; font-weight: 700; color: var(--good, #1a7f4b); }
+.bklast.stale { color: var(--warn, #b45309); }
+.filebtn { position: relative; overflow: hidden; cursor: pointer; display: inline-flex; align-items: center; margin-bottom: 8px; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.filebtn:focus-within { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
 .sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.88rem; }
 /* Text size: Large (Plan tab, saved per device). The root grows 15%, so every rem-based size follows. */
 html[data-text="large"] { font-size: 115%; }

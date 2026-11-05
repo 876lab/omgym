@@ -191,15 +191,50 @@
     var pc = Math.min(130, v / target * 100);
     return '<div class="macro"><div class="blockhead"><span class="small"><strong>' + label + '</strong></span><span class="small num muted">' + Math.round(v) + ' / ' + target + ' ' + unit + '</span></div><div class="bar' + (pc > 110 ? ' over' : '') + '"><i style="width:' + Math.min(100, pc) + '%"></i></div></div>';
   }
+  // Backup file: the same data code inside a dated .txt file, saved to Files (share sheet) or downloaded.
+  // The claude.ai version keeps data in the Claude account and can't save files, so it offers Copy my data only.
+  var BKKEY = 'omgym-lastBackup';
+  function inFrame() { try { return window.self !== window.top; } catch (e) { return true; } }
+  function backupAge() {
+    var b = null; try { b = JSON.parse(localStorage.getItem(BKKEY) || 'null'); } catch (e) { }
+    if (!b || !b.at) return { t: 'No backup file yet', stale: true };
+    var days = OM.dayNum(TODAY) - OM.dayNum(OM.ymd(new Date(b.at)));
+    return { t: 'Last backup: ' + (days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago'), stale: days >= 7 };
+  }
+  function backupText() {
+    return 'OMGym backup, saved ' + new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) + '.\n' +
+      'To restore: open OMGym, go to Plan, tap Restore from a backup and choose this file.\n' +
+      'Keep the code below in one piece.\n\n' + OM.exportCode(S) + '\n';
+  }
+  function saveBackupFile() {
+    var name = 'omgym-backup-' + TODAY + '.txt', blob = new Blob([backupText()], { type: 'text/plain' });
+    function done() { try { localStorage.setItem(BKKEY, JSON.stringify({ at: Date.now() })); } catch (e) { } render(); toast('Backup saved: ' + name); }
+    function download() { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000); done(); }
+    var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (touch && navigator.canShare && typeof File === 'function') {
+      try {
+        var f = new File([blob], name, { type: 'text/plain' });
+        if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: 'OMGym backup' }).then(done, function (e) { if (!e || e.name !== 'AbortError') download(); }); return; }
+      } catch (e) { }
+    }
+    download();
+  }
+  function backupRow() {
+    if (inFrame()) return '';
+    var a = backupAge();
+    return '<p class="small bklast' + (a.stale ? ' stale' : '') + '" id="bklast">' + esc(a.t) + '</p><div class="datarow"><button class="btn small" data-act="backupsave">Save backup file</button><button class="btn ghost small" data-act="restoreopen">Restore from a backup</button></div>';
+  }
   // Move my data between the Home Screen app, Safari and the claude.ai version: a text code the person copies themselves.
-  function dataCard() {
-    var h = '<p class="small muted">To move your plan to another version of OMGym (Home Screen app, Safari or claude.ai), tap Copy my data here, then Paste my data there. Nothing is uploaded; only you can see it.</p>';
+  function dataCard(withBackup) {
+    var h = inFrame() ? '<p class="small muted">To move your plan to another version of OMGym (Home Screen app, Safari or claude.ai), tap Copy my data here, then Paste my data there. Nothing is uploaded; only you can see it.</p>'
+      : '<p class="small muted">Your plan, weigh-ins and logs are saved only inside this app on this device. Removing its Home Screen icon or clearing website data deletes them, so save a backup file now and then (choose Save to Files). Restore from a backup brings everything back. Copy my data moves your plan to another version as a text code. Nothing is uploaded.</p>';
+    if (withBackup) h += backupRow();
     if (dataUndo) h += '<div class="flag info" id="dataundo">Your data was replaced. <button class="linkbtn" data-act="dataundo">Undo</button></div>';
     if (dataMode === 'copy') {
       h += '<div class="databox" id="datacopybox"><label class="f" for="datacode">Your data code</label><textarea id="datacode" class="codebox" readonly rows="4" autocapitalize="off" autocorrect="off" spellcheck="false">' + esc(OM.exportCode(S)) + '</textarea><p class="small muted">If it didn\'t copy by itself, press and hold the code, Select All, then Copy. Then open the other version, go to Plan, tap Paste my data.</p><button class="linkbtn" data-act="dataclose">Done</button></div>';
     }
     if (dataMode === 'paste') {
-      h += '<div class="databox" id="datapastebox"><label class="f" for="datain">Paste your data code</label><textarea id="datain" class="codebox" rows="4" placeholder="OMGYM1:..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>';
+      h += '<div class="databox" id="datapastebox">' + (inFrame() ? '' : '<label class="btn small filebtn">Choose backup file<input type="file" id="datafile" accept=".txt,text/plain"></label><p class="small muted">Pick the omgym-backup file you saved, or paste a data code below.</p>') + '<label class="f" for="datain">Paste your data code</label><textarea id="datain" class="codebox" rows="4" placeholder="OMGYM1:..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>';
       if (dataCheck && !dataCheck.ok) h += '<p class="err" role="alert">' + esc(dataCheck.msg) + '</p>';
       if (dataCheck && dataCheck.ok) {
         var sm = dataCheck.summary;
@@ -723,11 +758,11 @@
       '<p class="small muted">OMGym gives general fitness guidance, not medical advice.</p></section>';
     if (!isExample()) {
       h += '<section class="card"><h3>Your data</h3><p class="small muted">' + (store.kind === 'db' ? 'Saved privately to your Claude account, so it follows you to any device where you open this page.' : 'Saved in this browser.') + '</p>';
-      h += dataCard();
+      h += dataCard(true);
       h += confirmReset ? '<div class="confirm"><span>Delete your profile, weigh-ins and logs?</span><button class="btn warn small" data-act="reset2">Delete everything</button><button class="linkbtn" data-act="reset0">Keep</button></div>' : '<div class="datarow"><button class="btn ghost small" data-act="datacopy"' + (S.profile ? '' : ' disabled') + '>Copy my data</button><button class="btn ghost small" data-act="datapaste">Paste my data</button><button class="btn ghost small" data-act="reset1">Start over</button></div>';
       h += '</section>';
     } else {
-      h += '<section class="card" id="datanew"><h3>Already use OMGym?</h3>' + dataCard() + (dataMode ? '' : '<div class="datarow"><button class="btn ghost small" data-act="datapaste">Paste my data</button></div>') + '</section>';
+      h += '<section class="card" id="datanew"><h3>Already use OMGym?</h3>' + dataCard() + (dataMode ? '' : '<div class="datarow">' + (inFrame() ? '' : '<button class="btn small" data-act="restoreopen">Restore from a backup</button>') + '<button class="btn ghost small" data-act="datapaste">Paste my data</button></div>') + '</section>';
     }
     return h;
   }
@@ -999,6 +1034,8 @@
         try { navigator.clipboard.writeText(OM.exportCode(S)).then(function () { toast('Data copied. Paste it in the other version.'); }, function () { var ta = $('#datacode'); if (ta) ta.select(); toast('Press and hold the code to copy'); }); } catch (e) { toast('Press and hold the code to copy'); }
         break;
       case 'datapaste': dataMode = 'paste'; dataCheck = null; render(); var din = $('#datain'); if (din) din.focus(); break;
+      case 'backupsave': if (!S.profile) { toast('Set up your plan first'); break; } saveBackupFile(); break;
+      case 'restoreopen': dataMode = 'paste'; dataCheck = null; render(); var dbx = $('#datapastebox'); if (dbx) dbx.scrollIntoView({ block: 'center' }); break;
       case 'datacheck': var dv0 = ($('#datain') || {}).value; dataCheck = OM.parseDataCode(dv0); render(); if (!dataCheck.ok) { var d2 = $('#datain'); if (d2) d2.value = dv0 || ''; } break;
       case 'dataclose': dataMode = null; dataCheck = null; render(); break;
       case 'dataapply':
@@ -1055,6 +1092,15 @@
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    if (t.id === 'datafile' && t.files && t.files[0]) {
+      var file = t.files[0];
+      if (file.size > 20 * 1024 * 1024) { dataCheck = { ok: false, msg: 'That file is too big to be an OMGym backup.' }; render(); return; }
+      var rd = new FileReader();
+      rd.onload = function () { var txt = String(rd.result || ''); dataCheck = OM.parseDataCode(txt); if (!dataCheck.ok && dataCheck.msg.indexOf('Paste') === 0) dataCheck = { ok: false, msg: 'That file is empty.' }; render(); var cf = $('#dataconfirm'); if (cf) cf.scrollIntoView({ block: 'center' }); };
+      rd.onerror = function () { dataCheck = { ok: false, msg: 'Couldn\'t read that file. Try choosing it again.' }; render(); };
+      rd.readAsText(file);
+      return;
+    }
     if (t.dataset && t.dataset.act === 'pickvar') { pickVar[t.dataset.id] = t.value; render(); var el = document.getElementById('var-' + t.dataset.id); if (el) el.focus(); return; }
     if (t.dataset && t.dataset.act === 'ordtick' && ORDER) { var all = orderTicks(), mine = all[ORDER.id] = all[ORDER.id] || {}; mine[t.dataset.key] = t.checked; try { localStorage.setItem('omgym-orders', JSON.stringify(all)); } catch (e) { } render(); return; }
     if (t.dataset && t.dataset.act === 'load') {

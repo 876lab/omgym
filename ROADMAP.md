@@ -87,6 +87,7 @@
 - [ ] Live sync between the Home Screen app and the claude.ai version: owner decided (2026-10-25) a one-off move is enough for now (see "Move my data"); automatic sync would need a server and accounts, which the rules don't allow.
 
 ## Notes from runs
+- 2026-11-05 (daytime): Owner asked for backup and restore in all three apps. OMGym got a backup file (Save to Files) and restore from file on Plan → Your data, reusing the data-code check and undo. Keep the `OMGYM1:` code format readable by every future version.
 - 2026-10-23: Store added. Amazon, PriceSmart and the Jamaica trade portal's 9506 (exercise equipment) and 4203 (gloves) pages could not be read, so gym gear uses the standard 20% duty (conservative). Protein powder 2106.90 rates confirmed on the Jamaica Trade Information Portal.
 - 2026-10-23: Store sites checked. PriceSmart (robots block), Hi-Lo online shop (not reachable), Loshusan (prices load by script, not readable). Used Loshusan prices from earlier indexed pages, the CAC survey (outlets include Hi-Lo Constant Spring) and the agriculture ministry's supermarket survey (includes Hi-Lo, Loshusan, PriceSmart).
 - 2026-10-23 (night): Price check found no newer dated grocery prices. PriceSmart (permission request timed out / robots), Loshusan and Hi-Lo not readable; Observer Market Bag tag page newest is 9 Oct (16 Oct already used). Amazon blocks robots and camelcamelcamel failed, so Store prices came from WheyIndex (Amazon tracker), Vitacost, Walmart and ON's own store. npm could not reach the registry; tests ran with the global Playwright.
