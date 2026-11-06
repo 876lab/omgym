@@ -545,6 +545,44 @@ const proSig = (async () => {
   ok(!(await OM.proVerify({ ...g, sig: 'abcd' }, pub)), 'short signature rejected');
   ok(OM.parseProLink('?o=x') === null, 'not a PRO link');
 })();
+// Goal picker (2026-11-06): the pick is checked against the goal weight; targets never change because of it
+(() => {
+  const gb = { ...base, weightKg: 90, goalKg: 80, age: 34, pregnant: false, parq: [false, false, false, false, false, false, false] };
+  ok(['lose', 'gain', 'maintain'].every(k => OM.GOAL_PICKS[k] && OM.GOAL_PICKS[k].label && OM.GOAL_PICKS[k].hint), 'three goal picks with labels and hints');
+  ok(OM.GOAL_PICKS.lose.label === 'Lose fat' && OM.GOAL_PICKS.gain.label === 'Build muscle' && OM.GOAL_PICKS.maintain.label === 'Stay the same', 'goal labels as the owner asked');
+  ok(OM.goalFromWeight(gb) === 'lose' && OM.goalFromWeight({ ...gb, goalKg: 92 }) === 'gain' && OM.goalFromWeight({ ...gb, goalKg: 90.8 }) === 'maintain' && OM.goalFromWeight({ ...gb, goalKg: 89 }) === 'maintain', 'goal weight direction uses the 1 kg band');
+  ok(OM.goalFromWeight({ weightKg: 90 }) === null, 'no direction without a goal weight');
+  // missing pick (saved before the picker) = worked out from the goal weight
+  ok(OM.goalPickOf(gb) === 'lose' && OM.goalPickOf({ ...gb, goalKg: 95 }) === 'gain' && OM.goalPickOf({ ...gb, goalKg: 90 }) === 'maintain', 'missing goalPick is worked out from goal weight');
+  ok(OM.goalPickOf({ ...gb, goalPick: 'gain' }) === 'gain' && OM.goalPickOf({ ...gb, goalPick: 'bogus' }) === 'lose', 'saved pick used; unknown values ignored');
+  ok(OM.goalPickOf(null) === 'maintain', 'no profile: Stay the same');
+  // agreement = no message
+  ok(OM.goalCheck({ ...gb, goalPick: 'lose' }) === null && OM.goalCheck({ ...gb, goalPick: 'gain', goalKg: 93 }) === null && OM.goalCheck({ ...gb, goalPick: 'maintain', goalKg: 90 }) === null, 'matching pick and goal weight: no warning');
+  ok(OM.goalCheck(gb) === null, 'no pick saved: no warning');
+  // mismatches
+  const c1 = OM.goalCheck({ ...gb, goalPick: 'gain' });
+  ok(c1 && c1.level === 'warn' && c1.key === 'gain-lower' && /Build muscle/.test(c1.text) && /10 kg lower/.test(c1.text) && /deficit/.test(c1.text), 'Build muscle with a lower goal weight warns plainly');
+  const c2 = OM.goalCheck({ ...gb, goalPick: 'lose', goalKg: 95 });
+  ok(c2 && c2.level === 'warn' && c2.key === 'lose-higher' && /5 kg higher/.test(c2.text), 'Lose fat with a higher goal weight warns');
+  const c3 = OM.goalCheck({ ...gb, goalPick: 'lose', goalKg: 90 });
+  ok(c3 && c3.key === 'lose-same' && /maintenance/.test(c3.text), 'Lose fat at the same weight warns');
+  const c4 = OM.goalCheck({ ...gb, goalPick: 'gain', goalKg: 90 });
+  ok(c4 && c4.level === 'info' && c4.key === 'gain-same' && /maintenance/.test(c4.text), 'Build muscle at the same weight: info about recomposition');
+  const c5 = OM.goalCheck({ ...gb, goalPick: 'maintain' }), c6 = OM.goalCheck({ ...gb, goalPick: 'maintain', goalKg: 95 });
+  ok(c5 && c5.key === 'same-lose' && /lower/.test(c5.text) && c6 && c6.key === 'same-gain' && /higher/.test(c6.text), 'Stay the same with a different goal weight warns');
+  ok(/22\.0 lb/.test(OM.goalCheck({ ...gb, goalPick: 'gain' }, null, kg => (kg * 2.20462).toFixed(1) + ' lb').text), 'amount shown in the person\'s units');
+  // guardrails decide instead: no extra message for PRO, under-18 or pregnancy
+  ok(OM.goalCheck({ ...gb, goalPick: 'gain', age: 16 }, OM.calcTargets({ ...gb, age: 16 })) === null, 'under-18: no goal message (maintenance guardrail speaks)');
+  ok(OM.goalCheck({ ...gb, sex: 'female', goalPick: 'gain', pregnant: true }, OM.calcTargets({ ...gb, sex: 'female', pregnant: true })) === null, 'pregnancy: no goal message');
+  ok(OM.goalCheck({ ...gb, goalPick: 'gain' }, OM.calcTargets(gb, 0, { phase: 'cut', rate: 0.0075 })) === null, 'PRO phase decides: no goal message');
+  // the pick never changes calories, macros, floors or the direction
+  let same = true;
+  for (const sex of ['male', 'female']) for (const w of [55, 70, 90, 130]) for (const g of [w - 15, w - 1, w, w + 0.5, w + 4]) for (const pick of [undefined, 'lose', 'gain', 'maintain']) for (const age of [16, 30, 60]) {
+    const p0 = { ...gb, sex, weightKg: w, goalKg: g, age }, a = OM.calcTargets(p0), b = OM.calcTargets({ ...p0, goalPick: pick });
+    if (a.kcal !== b.kcal || a.protein !== b.protein || a.goalType !== b.goalType || a.fat !== b.fat || b.kcal < (sex === 'male' ? 1500 : 1200)) same = false;
+  }
+  ok(same, 'goal pick never changes targets; safety floors hold');
+})();
 // Exchange rates: PRO uses the BOJ selling rate (no card fee); the Store uses the BOJ midpoint plus about 2%
 ok(OM.PRO.boj.rate > 140 && OM.PRO.boj.rate < 180 && /^\d{4}-\d{2}-\d{2}$/.test(OM.PRO.boj.date), 'PRO.boj is a plausible dated BOJ rate');
 ok(OM.STORE.fx >= OM.PRO.boj.rate && OM.STORE.fx <= OM.PRO.boj.rate * 1.04, 'Store FX is the BOJ rate plus a small card fee');

@@ -56,7 +56,25 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('[data-act=next]');
   await page.fill('#neckCm', '40'); await page.fill('#waistCm', '102');
   await page.click('[data-act=next]');
+  // goal picker: asked before goal weight, required, checked against the goal weight
+  ok(await page.isVisible('[data-k=goalPick][data-v=lose]') && await page.isVisible('[data-k=goalPick][data-v=gain]') && await page.isVisible('[data-k=goalPick][data-v=maintain]'), 'goal picker shows Lose fat / Build muscle / Stay the same');
+  ok(await page.evaluate(() => { const a = document.querySelector('[data-k=goalPick]'), b = document.getElementById('goalKg'); return !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); }), 'goal picker comes before goal weight');
+  await page.fill('#goalKg', '80'); await page.click('[data-act=next]');
+  ok(/Choose your goal/.test(await page.textContent('.err') || ''), 'setup asks for a goal pick');
+  await page.click('[data-k=goalPick][data-v=maintain]');
+  ok(await page.locator('[data-goalcheck=same-lose]').count() === 1, 'Stay the same with a lower goal weight warns');
+  await page.click('[data-k=goalPick][data-v=gain]');
+  ok(await page.locator('[data-goalcheck=gain-lower]').count() === 1 && /12 kg lower/.test(await page.textContent('[data-goalcheck]')), 'Build muscle with a lower goal weight warns with the gap');
+  await page.screenshot({ path: OUT + '/shot-goal-warn.png' });
+  await page.fill('#goalKg', '92');
+  ok(await page.locator('[data-goalcheck=gain-same]').count() === 1, 'Build muscle at the same weight: recomposition note');
+  await page.fill('#goalKg', '95');
+  ok(await page.locator('[data-goalcheck]').count() === 0, 'warning clears live when the goal weight matches');
   await page.fill('#goalKg', '80');
+  await page.click('[data-k=goalPick][data-v=lose]');
+  ok(await page.locator('[data-goalcheck]').count() === 0, 'Lose fat with a lower goal weight: no warning');
+  ok(/below what you weigh now/.test(await page.textContent('#sheet')), 'hint follows the goal picked');
+  ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'goal step fits the phone width');
   await page.click('#goalKg'); await page.click('[data-k=activity][data-v=light]');
   ok(await page.isVisible('[data-k=pace]'), 'pace shown for loss goal');
   await page.click('[data-k=days][data-v="6"]'); // add Saturday -> 4 days
@@ -74,6 +92,7 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(!(await page.isVisible('text=You are looking at an example plan')), 'example banner gone');
   const prof = await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')).profile);
   ok(prof.sex === 'male' && prof.weightKg === 92 && prof.days.length === 4 && prof.injuries[0] === 'knees', 'profile saved ' + JSON.stringify(prof.days));
+  ok(prof.goalPick === 'lose', 'goal pick saved');
   // workout interactions (today may be a rest day)
   const sets = page.locator('.setbox');
   if (await sets.count()) {
@@ -274,6 +293,25 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   ok(await page.isVisible("text=What's new"), "what's new section");
   ok(!(await overflow()), 'no overflow plan tab');
   await page.screenshot({ path: OUT + '/shot-plan.png', fullPage: true });
+  // goal picker on Plan: shown at the top; old saved plans without a pick still work
+  ok(/Your goal: Lose fat/.test(await page.textContent('#goalpick')), 'Plan shows the goal at the top');
+  { const keep = await page.evaluate(() => localStorage.getItem('omgym-state-v1'));
+    const kcal0 = await page.evaluate(() => document.querySelector('#view').innerText.match(/([\d,]+) kcal/) && document.querySelector('#view').innerText.match(/([\d,]+) kcal/)[1]);
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('omgym-state-v1')); delete s.profile.goalPick; localStorage.setItem('omgym-state-v1', JSON.stringify(s)); });
+    await page.reload(); await page.click('nav [data-tab=me]');
+    ok(/Your goal: Lose fat/.test(await page.textContent('#goalpick')) && await page.locator('#view [data-goalcheck]').count() === 0, 'saved plan without a pick: goal worked out from goal weight, no warning');
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('omgym-state-v1')); s.profile.goalPick = 'gain'; localStorage.setItem('omgym-state-v1', JSON.stringify(s)); });
+    await page.reload(); await page.click('nav [data-tab=me]');
+    ok(/Your goal: Build muscle/.test(await page.textContent('#goalpick')) && await page.locator('#view [data-goalcheck=gain-lower]').count() === 1, 'Plan warns when Build muscle has a lower goal weight');
+    const kcal1 = await page.evaluate(() => document.querySelector('#view').innerText.match(/([\d,]+) kcal/) && document.querySelector('#view').innerText.match(/([\d,]+) kcal/)[1]);
+    ok(kcal0 === kcal1, 'goal pick does not change calories (' + kcal0 + ' / ' + kcal1 + ')');
+    ok(!(await overflow()), 'no overflow plan tab with goal warning');
+    await page.emulateMedia({ colorScheme: 'dark' }); await page.screenshot({ path: OUT + '/shot-plan-goal-dark.png' });
+    await page.emulateMedia({ colorScheme: 'light' }); await page.screenshot({ path: OUT + '/shot-plan-goal-light.png' });
+    await page.click('[data-act=setup]'); await page.click('[data-act=next]'); await page.click('[data-act=next]');
+    ok(await page.getAttribute('[data-k=goalPick][data-v=gain]', 'aria-pressed') === 'true', 'Edit my details keeps the saved pick');
+    await page.click('[data-act=closesetup]');
+    await page.evaluate(k => localStorage.setItem('omgym-state-v1', k), keep); await page.reload(); }
   // persistence across reload
   await page.reload();
   ok(await page.isVisible('text=Workout logged') || true, 'reload');

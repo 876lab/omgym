@@ -58,6 +58,40 @@ var OM = (function () {
     maintain: { goalType: 'maintain', label: 'Maintain', rates: [0], def: 0, ppk: 2.2 }
   };
   function proPlanOk(pro) { return !!(pro && PRO_PHASES[pro.phase]); }
+  // Goal picker (owner request 2026-10-25). The goal weight still decides the calorie direction
+  // (calcTargets is unchanged); the pick is what the person says they want, and is checked against it.
+  var GOAL_PICKS = {
+    lose: { label: 'Lose fat', short: 'Lose fat', hint: 'Pick a goal weight below what you weigh now.' },
+    gain: { label: 'Build muscle', short: 'Build muscle', hint: 'Pick a goal weight the same as now or a little above (1–5 kg).' },
+    maintain: { label: 'Stay the same', short: 'Stay the same', hint: 'Your goal weight is what you weigh now.' }
+  };
+  // Direction the goal weight points to, using the same 1 kg band as calcTargets.
+  function goalFromWeight(p) {
+    if (!p || !(p.weightKg > 0) || !(p.goalKg > 0)) return null;
+    var diff = p.goalKg - p.weightKg;
+    return diff < -1 ? 'lose' : diff > 1 ? 'gain' : 'maintain';
+  }
+  // The person's pick; missing (saved before the picker existed) = worked out from the goal weight.
+  function goalPickOf(p) {
+    if (p && GOAL_PICKS[p.goalPick]) return p.goalPick;
+    return goalFromWeight(p) || 'maintain';
+  }
+  // Plain check of the pick against the goal weight. Returns null when they agree (or when PRO,
+  // under-18 or pregnancy decide the direction instead), otherwise { level, key, text }.
+  function goalCheck(p, T, unitFn) {
+    if (!p || !GOAL_PICKS[p.goalPick]) return null;
+    var dir = goalFromWeight(p); if (!dir) return null;
+    if (T && (T.pro || p.age < 18 || p.pregnant)) return null;
+    var pick = p.goalPick, gap = Math.abs(p.goalKg - p.weightKg);
+    var amt = unitFn ? unitFn(gap) : (Math.round(gap * 10) / 10 + ' kg');
+    if (pick === dir) return null;
+    if (pick === 'gain' && dir === 'lose') return { level: 'warn', key: 'gain-lower', text: 'You picked Build muscle, but your goal weight is ' + amt + ' lower than you weigh now, so the plan sets a calorie deficit. To build muscle, set a goal weight at or a little above your current weight, or pick Lose fat.' };
+    if (pick === 'gain' && dir === 'maintain') return { level: 'info', key: 'gain-same', text: 'Build muscle at the same weight: the plan keeps you at maintenance calories with plenty of protein. If you are new to lifting or coming back, you can build some muscle while losing a little fat this way. To build muscle faster, set a goal weight 1–5 kg above now.' };
+    if (pick === 'lose' && dir === 'gain') return { level: 'warn', key: 'lose-higher', text: 'You picked Lose fat, but your goal weight is ' + amt + ' higher than you weigh now, so the plan adds calories. Set a goal weight below your current weight, or pick Build muscle.' };
+    if (pick === 'lose' && dir === 'maintain') return { level: 'warn', key: 'lose-same', text: 'You picked Lose fat, but your goal weight is about what you weigh now, so the plan keeps you at maintenance calories. Set a goal weight below your current weight to lose fat.' };
+    if (pick === 'maintain') return { level: 'warn', key: 'same-' + dir, text: 'You picked Stay the same, but your goal weight is ' + amt + (dir === 'lose' ? ' lower' : ' higher') + ' than you weigh now, so the plan will ' + (dir === 'lose' ? 'cut' : 'add') + ' calories. Set your goal weight to your current weight to stay the same.' };
+    return null;
+  }
   function calcTargets(p, kcalAdj, pro) {
     kcalAdj = kcalAdj || 0;
     var w = p.weightKg, h = p.heightCm, a = p.age, male = p.sex === 'male';
@@ -708,6 +742,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-11-06', t: 'Pick your goal', b: ['Setting up your plan now starts with one clear question: Lose fat, Build muscle or Stay the same. Then you enter your goal weight.', 'Plan shows your goal at the top. If your goal weight points the other way (say Build muscle with a lower goal weight), you get a plain note on how to fix it.', 'Your calories are worked out the same way as before, and plans saved earlier keep working: the goal is read from your goal weight until you pick one.', 'PRO invoices now use the Bank of Jamaica rate of J$159.62 per US$ (3 Nov).'] },
     { d: '2026-11-05', t: 'Back up your data to a file', b: ['Plan → Your data → Save backup file. On iPhone or iPad choose Save to Files (iCloud Drive is safest).', 'Restore from a backup brings your plan, weigh-ins and logs back on a new Home Screen icon or another phone. It shows what it found and asks first, and you can undo.', 'The card shows when you last saved a backup.'] },
     { d: '2026-10-30', t: 'Biceps and triceps work', b: ['Upper-body days (Upper, Push, Pull) now end with arm work: curls (dumbbell, hammer, cable or a loaded backpack) and triceps (overhead extension, rope pushdown or close-grip push-up). Each one has a short how-to.', 'Big lifts still come first and keep all their sets. Presses and rows already train your arms, so the arm work only uses the time that is left, and sessions stay at 45 minutes. When only one fits, the next upper day does the other, so each week gets both.', 'Beginners get at most one, marked Optional. PRO does the two back to back as a superset when they fit. With a sore shoulder you get pushdowns or close-grip push-ups instead of overhead work.', 'PRO invoices now use the Bank of Jamaica rate of J$159.67 per US$ (29 Oct).'] },
     { d: '2026-10-28', t: 'Real shelf prices from Shoppers Fair', b: ['Thanks to your photos: hard dough bread J$580 (Holsum 2 lb), bran bread J$590, Grace mackerel J$126, Grace sardines J$211, Grace tuna about J$223 and Eve corned beef (198 g) about J$459, with GCT where the shelf adds it.', 'Shoppers Fair is now a store you can pick when you edit a price.', 'Peanut butter stays on the big 40 oz jar: it is cheaper per spoon than Jif or Skippy.'] },
@@ -1031,7 +1066,7 @@ var OM = (function () {
   // Pricing per item: Amazon price + US sales tax, converted to J$; freight per lb; Jamaica Customs charges on CIF;
   // then the seller's markup on the landed cost, rounded up.
   var STORE = {
-    fx: 162, fxDate: '2026-10-29', fxNote: 'J$158.85 per US$ (Bank of Jamaica, 29 Oct 2026, the latest published rate on 30 Oct: midpoint of J$158.03 buying and J$159.67 selling) plus about 2% card fee',
+    fx: 162, fxDate: '2026-11-03', fxNote: 'J$158.8 per US$ (Bank of Jamaica, 3 Nov 2026, the latest published rate on 6 Nov: weighted average selling J$159.62 per the Jamaica Observer Forex report; buying not given, so the midpoint uses the usual ~J$1.6 buy/sell spread) plus about 2% card fee',
     freightPerLb: 600, freightNote: 'Freight forwarder rate, J$600 per lb (owner)',
     usSalesTax: 0.07, usTaxNote: 'Miami-Dade sales tax 7% on Amazon orders to a Florida forwarder; refundable through tax-exempt@amazon.com with the airway bill',
     duty: 0.20, gct: 0.15, scf: 0.003, envLevy: 0.0085, stampDuty: 100, stampOver: 5500,
@@ -1163,7 +1198,7 @@ var OM = (function () {
   // The app checks the signature with this public key, so links cannot be made up or edited.
   var PRO = {
     priceUsd: 10, graceDays: 3, graceEveryDays: 30, remindDays: 5,
-    boj: { rate: 159.67, date: '2026-10-29', note: 'Bank of Jamaica selling rate, 29 Oct 2026 (the latest published on 30 Oct)' },
+    boj: { rate: 159.62, date: '2026-11-03', note: 'Bank of Jamaica weighted average selling rate, 3 Nov 2026 (the latest published on 6 Nov, via the Jamaica Observer Forex report)' },
     bank: { holder: 'CARGILL BROWN', bank: 'Scotiabank', type: 'Chequing', number: '90605 000606999', currency: 'JMD' },
     paypal: 'Cargill.brown@gmail.com', // owner's PayPal (US$)
     lynk: '', // owner's Lynk username (J$ at the BOJ rate); when set, Lynk is offered first
@@ -1419,7 +1454,7 @@ var OM = (function () {
     candidates: candidates, EX: EX, ING: ING, PRICES: PRICES, MEALS: MEALS, SLOTS: SLOTS, TOPUP: TOPUP,
     BUDGETS: BUDGETS, LIKEABLE: LIKEABLE, budgetTier: budgetTier, cuisineOf: cuisineOf, ingName: ingName, weekCostByTier: weekCostByTier, mealCtx: mealCtx,
     priceTable: priceTable, planDay: planDay, shoppingList: shoppingList, excludedTags: excludedTags,
-    trend: trend, suggestAdjust: suggestAdjust, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, BUILD: BUILD, buildChoices: buildChoices, cleanDef: cleanDef, builtMeal: builtMeal, exportCode: exportCode, parseDataCode: parseDataCode, dataSummary: dataSummary, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
+    trend: trend, suggestAdjust: suggestAdjust, GOAL_PICKS: GOAL_PICKS, goalFromWeight: goalFromWeight, goalPickOf: goalPickOf, goalCheck: goalCheck, CHANGES: CHANGES, changeKey: changeKey, unseenChanges: unseenChanges, BUILD: BUILD, buildChoices: buildChoices, cleanDef: cleanDef, builtMeal: builtMeal, exportCode: exportCode, parseDataCode: parseDataCode, dataSummary: dataSummary, PRO_PHASES: PRO_PHASES, weeklyVolume: weeklyVolume, PRO: PRO, PRO_METHODS: PRO_METHODS, addMonths: addMonths, newProId: newProId, proJmd: proJmd, invoiceNo: invoiceNo, proProofText: proProofText, parseProof: parseProof, proCanon: proCanon, proLink: proLink, parseProLink: parseProLink, proVerify: proVerify, proSign: proSign, proStatus: proStatus, graceAllowed: graceAllowed, nextPeriod: nextPeriod, compactDate: compact, proPayMethods: proPayMethods, expandDate: expand, niceDay: niceDay, PRO_FIELDS: PRO_FIELDS,
     STORE: STORE, PRODUCTS: PRODUCTS, productById: productById, variantOf: variantOf, cartKey: cartKey, parseKey: parseKey, normalizeCart: normalizeCart, amazonLink: amazonLink, itemTitle: itemTitle, orderId: orderId, orderUrl: orderUrl, parseOrder: parseOrder, orderSummary: orderSummary, waSafe: waSafe, PRODUCT_PRICES_NOTE: PRODUCT_PRICES_NOTE, PRICE_CONF: PRICE_CONF, priceCheck: priceCheck, landed: landed, productView: productView, orderText: orderText, slotOptions: slotOptions, LOSS_RATE: LOSS_RATE
   };
 })();

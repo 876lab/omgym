@@ -723,8 +723,10 @@
   function renderMe() {
     var p = P(), T = targets(), pt = prices();
     var h = exampleBanner() + flagsHtml(T);
-    h += '<section class="dayhead"><span class="label">' + (p.name && !isExample() ? esc(p.name) + '\'s plan' : 'The plan') + '</span><h1>' + ({ lose: 'Lose', gain: 'Gain', maintain: 'Hold' }[T.goalType]) + ' to ' + wt(T.goalKg) + '</h1>';
+    var gp = OM.goalPickOf(p), gc = OM.goalCheck(p, T, function (kg) { return wt(kg); });
+    h += '<section class="dayhead"><span class="label">' + (p.name && !isExample() ? esc(p.name) + '\'s plan' : 'The plan') + '</span><p class="goalpick" id="goalpick">Your goal: <strong>' + esc(OM.GOAL_PICKS[gp].label) + '</strong>' + (T.pro ? ' <span class="small muted">· PRO ' + esc(OM.PRO_PHASES[T.pro].label) + ' sets your calories</span>' : '') + '</p><h1>' + ({ lose: 'Lose', gain: 'Gain', maintain: 'Hold' }[T.goalType]) + ' to ' + wt(T.goalKg) + '</h1>';
     if (T.weeksToGoal) h += '<p class="muted">About ' + Math.round(T.weeksToGoal) + ' weeks at ' + wt(Math.abs(T.plannedWeeklyKg), 2) + ' a week, so around <strong>' + esc(niceDate(OM.addDays(TODAY, Math.round(T.weeksToGoal * 7)), { month: 'long', year: 'numeric' })) + '</strong> if the scale follows the plan.</p>';
+    if (gc) h += '<div class="flag ' + gc.level + '" data-goalcheck="' + gc.key + '">' + esc(gc.text) + '</div>';
     h += '<div><button class="btn ghost small" data-act="setup">Edit my details</button></div></section>';
     h += '<section class="card"><h3>Your body today</h3><div class="stats">';
     h += '<div class="stat"><span class="label">Weight</span><span class="v num">' + wt(p.weightKg) + '</span><span class="small muted">Height ' + len(p.heightCm) + '</span></div>';
@@ -794,6 +796,7 @@
   ];
   function openSetup() {
     draft = JSON.parse(JSON.stringify(S.profile || { units: 'metric', sex: '', days: [1, 3, 5], style: 'mix', equipment: 'gym', experience: 'beginner', activity: 'desk', pace: 'standard', injuries: [], parq: [false, false, false, false, false, false, false], pregnant: false, region: 'JM', diet: 'none', allergies: [], currencySymbol: '$', regionName: '' }));
+    if (S.profile && !OM.GOAL_PICKS[draft.goalPick]) draft.goalPick = OM.goalPickOf(S.profile);
     step = 0; stepErr = ''; renderSheet(); $('#sheet').hidden = false; document.body.style.overflow = 'hidden';
   }
   function closeSetup() { $('#sheet').hidden = true; document.body.style.overflow = ''; }
@@ -820,7 +823,9 @@
       if (d.sex !== 'male') h += numIn('hipCm', 'Hips (' + lu + ')', cv(d.hipCm), 'Around the widest part of your bottom');
       h += '</div><p class="small muted">You can skip this step and add measurements later, but the plan is more accurate with them.</p>';
     } else if (step === 2) {
-      h += '<div class="formgrid">' + numIn('goalKg', 'Goal weight (' + wu + ')', kv(d.goalKg), '', '0.1') + '</div>';
+      h += '<div class="formrow"><span class="f">What\'s your goal?</span>' + seg('goalPick', [['lose', OM.GOAL_PICKS.lose.label], ['gain', OM.GOAL_PICKS.gain.label], ['maintain', OM.GOAL_PICKS.maintain.label]], d.goalPick || '') + '</div>';
+      h += '<div class="formgrid">' + numIn('goalKg', 'Goal weight (' + wu + ')', kv(d.goalKg), d.goalPick ? OM.GOAL_PICKS[d.goalPick].hint : 'Pick your goal first, then the weight you are aiming for.', '0.1') + '</div>';
+      h += '<div id="goalcheck">' + setupGoalCheck() + '</div>';
       if (d.goalKg && d.weightKg && d.goalKg < d.weightKg - 1) h += '<div class="formrow"><span class="f">Pace</span>' + seg('pace', [['steady', 'Steady · 0.5%/wk'], ['standard', 'Standard · 0.75%/wk'], ['faster', 'Faster · 1%/wk']], d.pace) + '<span class="f-hint">Percent of body weight per week. Slower keeps more muscle and is easier to stick with.</span></div>';
       h += '<div class="formrow"><span class="f">Outside of workouts, your day is mostly…</span>' + seg('activity', [['desk', 'Sitting'], ['light', 'Some walking'], ['onfeet', 'On my feet'], ['manual', 'Heavy physical work']], d.activity) + '</div>';
       h += '<div class="formrow"><span class="f">Training experience</span>' + seg('experience', [['beginner', 'New or returning'], ['intermediate', '1–3 years'], ['advanced', '3+ years']], d.experience) + '</div>';
@@ -848,6 +853,12 @@
     if (stepErr) h += '<p class="err" role="alert">' + esc(stepErr) + '</p>';
     h += '<div class="sheetfoot"><button class="btn ghost" data-act="back"' + (step === 0 ? ' disabled' : '') + '>Back</button><button class="btn" data-act="next">' + (step === 4 ? 'Build my plan' : 'Next') + '</button></div></div>';
     $('#sheet').innerHTML = h;
+  }
+  // Setup step 2: does the goal weight match the goal picked? Shown live under the goal weight.
+  function setupGoalCheck() {
+    var d = draft, wu = d.units === 'imperial' ? 'lb' : 'kg';
+    var c = OM.goalCheck(d, null, function (kg) { return kv(kg) + ' ' + wu; });
+    return c ? '<div class="flag ' + c.level + '" data-goalcheck="' + c.key + '">' + esc(c.text) + '</div>' : '';
   }
   function readSheet() {
     var imp = draft.units === 'imperial';
@@ -881,6 +892,7 @@
       if (d.waistCm && (d.waistCm < 45 || d.waistCm > 200)) return 'That waist measurement looks off. Check the units.';
     }
     if (step === 2) {
+      if (!d.goalPick) return 'Choose your goal: Lose fat, Build muscle or Stay the same.';
       if (!d.goalKg || d.goalKg < 35 || d.goalKg > 300) return 'Enter a goal weight.';
       if (!d.days || !d.days.length) return 'Pick at least one training day.';
     }
@@ -954,6 +966,7 @@
         else if (k === 'pregnant') draft.pregnant = v === 'yes';
         else if (k === 'budget') draft.budget = +v;
         else draft[k] = v;
+        if (k === 'goalPick' && v === 'maintain' && !draft.goalKg && draft.weightKg) draft.goalKg = Math.round(draft.weightKg * 10) / 10;
         renderSheet(); break;
       case 'multi': readSheet();
         var mk = t.dataset.k, mv = mk === 'days' ? Number(t.dataset.v) : t.dataset.v;
@@ -1083,6 +1096,7 @@
   });
   document.addEventListener('input', function (ev) {
     var t = ev.target;
+    if (t.id === 'goalKg' && draft && !$('#sheet').hidden) { readSheet(); var gc = document.getElementById('goalcheck'); if (gc) gc.innerHTML = setupGoalCheck(); }
     if (t.id === 'order-name') {
       S.orderName = t.value; save();
       var ord = OM.orderText(S.cart || {}, OM.STORE, S.orderName, TODAY), a = document.getElementById('wa-link'), ta = document.getElementById('order-text');
