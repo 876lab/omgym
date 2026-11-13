@@ -724,9 +724,10 @@
     var p = P(), T = targets(), pt = prices();
     var h = exampleBanner() + flagsHtml(T);
     var gp = OM.goalPickOf(p), gc = OM.goalCheck(p, T, function (kg) { return wt(kg); });
-    h += '<section class="dayhead"><span class="label">' + (p.name && !isExample() ? esc(p.name) + '\'s plan' : 'The plan') + '</span><p class="goalpick" id="goalpick">Your goal: <strong>' + esc(OM.GOAL_PICKS[gp].label) + '</strong>' + (T.pro ? ' <span class="small muted">· PRO ' + esc(OM.PRO_PHASES[T.pro].label) + ' sets your calories</span>' : '') + '</p><h1>' + ({ lose: 'Lose', gain: 'Gain', maintain: 'Hold' }[T.goalType]) + ' to ' + wt(T.goalKg) + '</h1>';
+    h += '<section class="dayhead"><span class="label">' + (p.name && !isExample() ? esc(p.name) + '\'s plan' : 'The plan') + '</span><p class="goalpick" id="goalpick">Your goal: <strong>' + esc(OM.GOAL_PICKS[gp].label) + '</strong>' + (T.pro ? ' <span class="small muted">· PRO ' + esc(OM.PRO_PHASES[T.pro].label) + ' sets your calories</span>' : '') + '</p><h1>' + (T.slowGain ? 'Slow gain from ' + wt(p.weightKg) : ({ lose: 'Lose', gain: 'Gain', maintain: 'Hold' }[T.goalType]) + ' to ' + wt(T.goalKg)) + '</h1>';
+    if (T.slowGain) h += '<p class="muted">About ' + wt(T.plannedWeeklyKg, 2) + ' a week (' + wt(T.plannedWeeklyKg * 4.345, 1) + ' a month): a small surplus so training keeps building muscle.</p>';
     if (T.weeksToGoal) h += '<p class="muted">About ' + Math.round(T.weeksToGoal) + ' weeks at ' + wt(Math.abs(T.plannedWeeklyKg), 2) + ' a week, so around <strong>' + esc(niceDate(OM.addDays(TODAY, Math.round(T.weeksToGoal * 7)), { month: 'long', year: 'numeric' })) + '</strong> if the scale follows the plan.</p>';
-    if (gc) h += '<div class="flag ' + gc.level + '" data-goalcheck="' + gc.key + '">' + esc(gc.text) + '</div>';
+    if (gc) h += goalNote(isExample() ? { level: gc.level, key: gc.key, text: gc.text } : gc, 'plan');
     h += '<div><button class="btn ghost small" data-act="setup">Edit my details</button></div></section>';
     h += '<section class="card"><h3>Your body today</h3><div class="stats">';
     h += '<div class="stat"><span class="label">Weight</span><span class="v num">' + wt(p.weightKg) + '</span><span class="small muted">Height ' + len(p.heightCm) + '</span></div>';
@@ -858,7 +859,27 @@
   function setupGoalCheck() {
     var d = draft, wu = d.units === 'imperial' ? 'lb' : 'kg';
     var c = OM.goalCheck(d, null, function (kg) { return kv(kg) + ' ' + wu; });
-    return c ? '<div class="flag ' + c.level + '" data-goalcheck="' + c.key + '">' + esc(c.text) + '</div>' : '';
+    return goalNote(c, 'setup');
+  }
+  // The goal note with one-tap fixes (set the goal weight or switch the goal). where: 'setup' (the draft) or 'plan' (the saved plan).
+  var goalFixes = { setup: [], plan: [] };
+  function goalNote(c, where) {
+    goalFixes[where] = (c && c.fixes) || [];
+    if (!c) return '';
+    return '<div class="flag ' + c.level + '" data-goalcheck="' + c.key + '">' + esc(c.text) + (goalFixes[where].length ? '<div class="goalfix">' + goalFixes[where].map(function (f, i) { return '<button type="button" class="btn small ghost" data-act="goalfix" data-where="' + where + '" data-i="' + i + '">' + esc(f.label) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+  }
+  function applyGoalFix(where, i) {
+    var f = goalFixes[where][i]; if (!f) return;
+    if (where === 'setup') {
+      readSheet();
+      if (f.goalPick) draft.goalPick = f.goalPick;
+      if (f.goalKg) draft.goalKg = f.goalKg;
+      renderSheet(); return;
+    }
+    if (!S.profile) return;
+    if (f.goalPick) S.profile.goalPick = f.goalPick;
+    if (f.goalKg) S.profile.goalKg = f.goalKg;
+    save(); render(); toast(f.goalPick ? 'Goal changed to ' + OM.GOAL_PICKS[f.goalPick].label : 'Goal weight set to ' + wt(f.goalKg));
   }
   function readSheet() {
     var imp = draft.units === 'imperial';
@@ -960,6 +981,7 @@
       case 'guidedismiss': setGuideSeen(); render(); break;
       case 'guidego': var gto = t.dataset.to; $('#guide').hidden = true; document.body.style.overflow = ''; if (gto === 'setup') openSetup(); else go(gto); break;
       case 'closenews': closeNews(); break;
+      case 'goalfix': applyGoalFix(t.dataset.where, +t.dataset.i); break;
       case 'seg': readSheet();
         var k = t.dataset.k, v = t.dataset.v;
         if (k.indexOf('parq') === 0) draft.parq[+k.slice(4)] = v === 'yes';

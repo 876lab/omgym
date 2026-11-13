@@ -583,6 +583,56 @@ const proSig = (async () => {
   }
   ok(same, 'goal pick never changes targets; safety floors hold');
 })();
+// Goal picker, next step (2026-11-13, owner OK): one-tap fixes, and a slow gain for trained lifters who pick Build muscle at the same weight
+(() => {
+  const gb = { ...base, weightKg: 90, goalKg: 90, age: 34, pregnant: false, parq: [false, false, false, false, false, false, false] };
+  // slow gain: intermediate and advanced only, goal within 1 kg, Build muscle picked
+  for (const ex of ['intermediate', 'advanced']) for (const g of [89.2, 90, 90.9]) for (const sex of ['male', 'female']) {
+    const p0 = { ...gb, sex, experience: ex, goalKg: g }, A = OM.calcTargets(p0), B = OM.calcTargets({ ...p0, goalPick: 'gain' });
+    const want = Math.max(150, Math.min(450, 90 * { intermediate: 0.0025, advanced: 0.0015 }[ex] * 7700 / 7));
+    ok(A.goalType === 'maintain' && !A.slowGain, 'no pick: maintenance as before (' + ex + ')');
+    ok(B.goalType === 'gain' && B.slowGain === true && B.weeksToGoal === null, 'Build muscle at the same weight, ' + ex + ': slow gain with no goal date');
+    near(B.kcal - B.tdee, want, 6, 'slow gain surplus uses the gain rate for ' + ex);
+    ok(B.kcal - B.tdee >= 145 && B.kcal - B.tdee <= 455 && B.plannedWeeklyKg > 0 && B.plannedWeeklyKg <= 0.0026 * 90, 'slow gain stays small (' + ex + ')');
+    ok(B.ppk === 1.8, 'slow gain uses the gain protein target');
+  }
+  ok(OM.calcTargets({ ...gb, experience: 'intermediate', goalPick: 'gain' }).kcal - OM.calcTargets({ ...gb, experience: 'intermediate' }).tdee <= 0.15 * OM.calcTargets(gb).tdee, 'slow gain under 15% above maintenance');
+  // who does NOT get it
+  const same = (a, b) => a.kcal === b.kcal && a.goalType === b.goalType && a.protein === b.protein;
+  ok(same(OM.calcTargets({ ...gb, goalPick: 'gain' }), OM.calcTargets(gb)) && !OM.calcTargets({ ...gb, goalPick: 'gain' }).slowGain, 'beginners stay at maintenance (recomposition)');
+  for (const pick of ['lose', 'maintain', undefined]) ok(same(OM.calcTargets({ ...gb, experience: 'advanced', goalPick: pick }), OM.calcTargets({ ...gb, experience: 'advanced' })), 'pick ' + pick + ': no slow gain');
+  ok(OM.calcTargets({ ...gb, experience: 'advanced', goalPick: 'gain', age: 16 }).goalType === 'maintain', 'under-18 stays at maintenance');
+  ok(OM.calcTargets({ ...gb, sex: 'female', experience: 'advanced', goalPick: 'gain', pregnant: true }).goalType === 'maintain', 'pregnancy stays at maintenance');
+  ok(same(OM.calcTargets({ ...gb, experience: 'advanced', goalPick: 'gain' }, 0, { phase: 'maintain', rate: 0 }), OM.calcTargets({ ...gb, experience: 'advanced' }, 0, { phase: 'maintain', rate: 0 })), 'PRO phase decides, not the pick');
+  ok(same(OM.calcTargets({ ...gb, experience: 'advanced', goalPick: 'gain', goalKg: 80 }), OM.calcTargets({ ...gb, experience: 'advanced', goalKg: 80 })), 'goal weight lower: still a cut (warning shown)');
+  ok(same(OM.calcTargets({ ...gb, experience: 'advanced', goalPick: 'gain', goalKg: 95 }), OM.calcTargets({ ...gb, experience: 'advanced', goalKg: 95 })), 'goal weight higher: the usual gain');
+  // floors still hold everywhere with a pick
+  let floors = true;
+  for (const sex of ['male', 'female']) for (const w of [45, 60, 90, 140]) for (const ex of ['beginner', 'intermediate', 'advanced']) for (const pick of ['lose', 'gain', 'maintain']) for (const d of [-20, -1, 0, 1, 5]) {
+    const T2 = OM.calcTargets({ ...gb, sex, weightKg: w, goalKg: w + d, experience: ex, goalPick: pick, age: 70, activity: 'desk', days: [] });
+    if (T2.kcal < (sex === 'male' ? 1500 : 1200) || (T2.goalType === 'lose' && T2.tdee - T2.kcal > Math.min(1000, T2.tdee * 0.25) + 5 && !T2.floorApplied)) floors = false;
+  }
+  ok(floors, 'floors and deficit caps hold with every goal pick');
+  // goal message for trained lifters
+  const s1 = OM.goalCheck({ ...gb, experience: 'intermediate', goalPick: 'gain' });
+  ok(s1 && s1.level === 'info' && s1.key === 'gain-slow' && /small calorie surplus/.test(s1.text), 'trained lifter: slow-gain note');
+  ok(OM.goalCheck({ ...gb, goalPick: 'gain' }).key === 'gain-same', 'beginner: recomposition note');
+  // one-tap fixes: every mismatch offers at least one, and applying any fix leaves no warning
+  const cases = [{ goalPick: 'gain', goalKg: 80 }, { goalPick: 'lose', goalKg: 95 }, { goalPick: 'lose', goalKg: 90 }, { goalPick: 'maintain', goalKg: 80 }, { goalPick: 'maintain', goalKg: 95 }, { goalPick: 'gain', goalKg: 90 }];
+  for (const ex of ['beginner', 'advanced']) for (const c of cases) {
+    const p0 = { ...gb, experience: ex, ...c }, chk = OM.goalCheck(p0);
+    ok(chk && Array.isArray(chk.fixes) && chk.fixes.length >= 1 && chk.fixes.every(f => f.label && (f.goalPick || f.goalKg)), 'fixes offered for ' + JSON.stringify(c));
+    for (const f of chk.fixes) {
+      const after = OM.goalCheck({ ...p0, ...(f.goalPick ? { goalPick: f.goalPick } : {}), ...(f.goalKg ? { goalKg: f.goalKg } : {}) });
+      ok(!after || after.level === 'info', 'fix "' + f.label + '" clears the warning for ' + JSON.stringify(c));
+      if (f.goalKg) ok(f.goalKg >= 35 && f.goalKg <= 300 && Math.round(f.goalKg * 10) / 10 === f.goalKg, 'fix goal weight valid');
+    }
+  }
+  const fx = OM.goalCheck({ ...gb, goalPick: 'gain', goalKg: 80 }).fixes;
+  ok(fx[0].goalKg === 92 && /92 kg/.test(fx[0].label) && fx[1].goalPick === 'lose', 'Build muscle with a lower goal: set goal +2 kg or switch to Lose fat');
+  ok(OM.goalCheck({ ...gb, goalPick: 'maintain', goalKg: 80 }).fixes[0].goalKg === 90, 'Stay the same: use my current weight');
+  ok(/198\.4 lb/.test(OM.goalCheck({ ...gb, goalPick: 'maintain', goalKg: 80 }, null, kg => (kg * 2.20462).toFixed(1) + ' lb').fixes[0].label), 'fix label in the person\'s units');
+})();
 // Exchange rates: PRO uses the BOJ selling rate (no card fee); the Store uses the BOJ midpoint plus about 2%
 ok(OM.PRO.boj.rate > 140 && OM.PRO.boj.rate < 180 && /^\d{4}-\d{2}-\d{2}$/.test(OM.PRO.boj.date), 'PRO.boj is a plausible dated BOJ rate');
 ok(OM.STORE.fx >= OM.PRO.boj.rate && OM.STORE.fx <= OM.PRO.boj.rate * 1.04, 'Store FX is the BOJ rate plus a small card fee');

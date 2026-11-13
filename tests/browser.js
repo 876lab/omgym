@@ -66,6 +66,9 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   await page.click('[data-k=goalPick][data-v=gain]');
   ok(await page.locator('[data-goalcheck=gain-lower]').count() === 1 && /12 kg lower/.test(await page.textContent('[data-goalcheck]')), 'Build muscle with a lower goal weight warns with the gap');
   await page.screenshot({ path: OUT + '/shot-goal-warn.png' });
+  ok(await page.locator('[data-goalcheck=gain-lower] [data-act=goalfix]').count() === 2, 'two one-tap fixes on the setup note');
+  await page.click('[data-act=goalfix] >> text=Set goal to');
+  ok(await page.inputValue('#goalKg') === '94' && await page.locator('[data-goalcheck]').count() === 0, 'setup fix sets the goal weight to +2 kg and clears the note');
   await page.fill('#goalKg', '92');
   ok(await page.locator('[data-goalcheck=gain-same]').count() === 1, 'Build muscle at the same weight: recomposition note');
   await page.fill('#goalKg', '95');
@@ -306,8 +309,19 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
     const kcal1 = await page.evaluate(() => document.querySelector('#view').innerText.match(/([\d,]+) kcal/) && document.querySelector('#view').innerText.match(/([\d,]+) kcal/)[1]);
     ok(kcal0 === kcal1, 'goal pick does not change calories (' + kcal0 + ' / ' + kcal1 + ')');
     ok(!(await overflow()), 'no overflow plan tab with goal warning');
+    ok(await page.locator('#view [data-goalcheck] [data-act=goalfix]').count() === 2, 'Plan note offers two one-tap fixes');
     await page.emulateMedia({ colorScheme: 'dark' }); await page.screenshot({ path: OUT + '/shot-plan-goal-dark.png' });
     await page.emulateMedia({ colorScheme: 'light' }); await page.screenshot({ path: OUT + '/shot-plan-goal-light.png' });
+    await page.click('#view [data-act=goalfix] >> text=Switch to Lose fat');
+    ok(/Your goal: Lose fat/.test(await page.textContent('#goalpick')) && await page.locator('#view [data-goalcheck]').count() === 0 && (await page.evaluate(() => JSON.parse(localStorage.getItem('omgym-state-v1')).profile.goalPick)) === 'lose', 'Plan fix switches the goal, saves it and clears the note');
+    // trained lifter, Build muscle at the same weight: slow gain
+    await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('omgym-state-v1')); s.profile.goalPick = 'gain'; s.profile.experience = 'intermediate'; s.profile.goalKg = s.profile.weightKg; localStorage.setItem('omgym-state-v1', JSON.stringify(s)); });
+    await page.reload(); await page.click('nav [data-tab=me]');
+    ok(/Slow gain from/.test(await page.textContent('#view h1')) && await page.locator('#view [data-goalcheck=gain-slow]').count() === 1 && /Surplus/.test(await page.textContent('#view')), 'trained lifter: slow gain heading, note and surplus');
+    ok(!(await overflow()), 'no overflow with slow gain');
+    await page.screenshot({ path: OUT + '/shot-plan-slowgain.png' });
+    await page.click('#view [data-act=goalfix] >> text=Set goal to');
+    ok((await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('omgym-state-v1')).profile; return Math.round((p.goalKg - p.weightKg) * 10) / 10; })) === 2 && /Gain to/.test(await page.textContent('#view h1')), 'Set goal +2 kg turns it into a normal gain');
     await page.click('[data-act=setup]'); await page.click('[data-act=next]'); await page.click('[data-act=next]');
     ok(await page.getAttribute('[data-k=goalPick][data-v=gain]', 'aria-pressed') === 'true', 'Edit my details keeps the saved pick');
     await page.click('[data-act=closesetup]');

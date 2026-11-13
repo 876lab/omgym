@@ -84,12 +84,15 @@ var OM = (function () {
     if (T && (T.pro || p.age < 18 || p.pregnant)) return null;
     var pick = p.goalPick, gap = Math.abs(p.goalKg - p.weightKg);
     var amt = unitFn ? unitFn(gap) : (Math.round(gap * 10) / 10 + ' kg');
+    var up2 = Math.round((p.weightKg + 2) * 10) / 10, now = Math.round(p.weightKg * 10) / 10;
+    var lbl = function (kg) { return unitFn ? unitFn(kg) : kg + ' kg'; };
+    if (pick === 'gain' && dir === 'maintain' && (p.experience === 'intermediate' || p.experience === 'advanced')) return { level: 'info', key: 'gain-slow', text: 'Build muscle at about the same weight: with your training experience the plan adds a small calorie surplus for a slow gain, because muscle comes slowly at maintenance once you have trained a while. When you weigh more than 1 kg over your goal weight, raise it to keep building.', fixes: [{ label: 'Set goal to ' + lbl(up2), goalKg: up2 }] };
     if (pick === dir) return null;
-    if (pick === 'gain' && dir === 'lose') return { level: 'warn', key: 'gain-lower', text: 'You picked Build muscle, but your goal weight is ' + amt + ' lower than you weigh now, so the plan sets a calorie deficit. To build muscle, set a goal weight at or a little above your current weight, or pick Lose fat.' };
-    if (pick === 'gain' && dir === 'maintain') return { level: 'info', key: 'gain-same', text: 'Build muscle at the same weight: the plan keeps you at maintenance calories with plenty of protein. If you are new to lifting or coming back, you can build some muscle while losing a little fat this way. To build muscle faster, set a goal weight 1–5 kg above now.' };
-    if (pick === 'lose' && dir === 'gain') return { level: 'warn', key: 'lose-higher', text: 'You picked Lose fat, but your goal weight is ' + amt + ' higher than you weigh now, so the plan adds calories. Set a goal weight below your current weight, or pick Build muscle.' };
-    if (pick === 'lose' && dir === 'maintain') return { level: 'warn', key: 'lose-same', text: 'You picked Lose fat, but your goal weight is about what you weigh now, so the plan keeps you at maintenance calories. Set a goal weight below your current weight to lose fat.' };
-    if (pick === 'maintain') return { level: 'warn', key: 'same-' + dir, text: 'You picked Stay the same, but your goal weight is ' + amt + (dir === 'lose' ? ' lower' : ' higher') + ' than you weigh now, so the plan will ' + (dir === 'lose' ? 'cut' : 'add') + ' calories. Set your goal weight to your current weight to stay the same.' };
+    if (pick === 'gain' && dir === 'lose') return { level: 'warn', key: 'gain-lower', text: 'You picked Build muscle, but your goal weight is ' + amt + ' lower than you weigh now, so the plan sets a calorie deficit. To build muscle, set a goal weight at or a little above your current weight, or pick Lose fat.', fixes: [{ label: 'Set goal to ' + lbl(up2), goalKg: up2 }, { label: 'Switch to Lose fat', goalPick: 'lose' }] };
+    if (pick === 'gain' && dir === 'maintain') return { level: 'info', key: 'gain-same', text: 'Build muscle at the same weight: the plan keeps you at maintenance calories with plenty of protein. If you are new to lifting or coming back, you can build some muscle while losing a little fat this way. To build muscle faster, set a goal weight 1–5 kg above now.', fixes: [{ label: 'Set goal to ' + lbl(up2), goalKg: up2 }] };
+    if (pick === 'lose' && dir === 'gain') return { level: 'warn', key: 'lose-higher', text: 'You picked Lose fat, but your goal weight is ' + amt + ' higher than you weigh now, so the plan adds calories. Set a goal weight below your current weight, or pick Build muscle.', fixes: [{ label: 'Switch to Build muscle', goalPick: 'gain' }] };
+    if (pick === 'lose' && dir === 'maintain') return { level: 'warn', key: 'lose-same', text: 'You picked Lose fat, but your goal weight is about what you weigh now, so the plan keeps you at maintenance calories. Set a goal weight below your current weight to lose fat.', fixes: [{ label: 'Switch to Stay the same', goalPick: 'maintain' }] };
+    if (pick === 'maintain') return { level: 'warn', key: 'same-' + dir, text: 'You picked Stay the same, but your goal weight is ' + amt + (dir === 'lose' ? ' lower' : ' higher') + ' than you weigh now, so the plan will ' + (dir === 'lose' ? 'cut' : 'add') + ' calories. Set your goal weight to your current weight to stay the same.', fixes: [{ label: 'Use my current weight (' + lbl(now) + ')', goalKg: now }, { label: dir === 'lose' ? 'Switch to Lose fat' : 'Switch to Build muscle', goalPick: dir }] };
     return null;
   }
   function calcTargets(p, kcalAdj, pro) {
@@ -128,6 +131,12 @@ var OM = (function () {
       goalType = ph.goalType;
       proRate = ph.rates.indexOf(pro.rate) >= 0 ? pro.rate : ph.def;
     }
+    // Build muscle at about the same weight (goal within 1 kg): beginners and people coming back stay at maintenance
+    // (recomposition works best for them: Barakat 2020; Slater 2019), but intermediate and advanced lifters get the
+    // small, conservative surplus of a slow gain (Slater 2019: recomposition is less evident in trained lifters;
+    // Iraki 2019: trained lifters keep the surplus and weekly gain small). Uses the same GAIN_RATE and caps as any gain.
+    var slowGain = false;
+    if (!forceMaintain && !proPhase && goalType === 'maintain' && p.goalPick === 'gain' && (p.experience === 'intermediate' || p.experience === 'advanced')) { goalType = 'gain'; slowGain = true; }
     var floor = male ? 1500 : 1200;
     var kcal, plannedRate = 0, floorApplied = false, deficit = 0;
 
@@ -165,7 +174,7 @@ var OM = (function () {
     if (goalType === 'lose' && plannedRate < 0) {
       var rr = -plannedRate / w;
       weeks = Math.log(goal / w) / Math.log(1 - rr);
-    } else if (goalType === 'gain' && plannedRate > 0) {
+    } else if (goalType === 'gain' && plannedRate > 0 && !slowGain) {
       weeks = (goal - w) / plannedRate;
     }
     if (floorApplied) flags.push({ level: 'info', text: 'Calories are held at the safe minimum of ' + floor + ' kcal so you are not under-eating. Progress will be a little slower than the pace you picked.' });
@@ -178,7 +187,7 @@ var OM = (function () {
       leanKg: bf != null ? w * (1 - bf / 100) : null,
       goalType: goalType, pro: proPhase, proRate: proRate, goalKg: goal, kcal: kcal, protein: protein, fat: fat, carbs: carbs,
       plannedWeeklyKg: plannedRate, weeksToGoal: weeks, floorApplied: floorApplied, flags: flags, caution: parqYes || !!p.pregnant,
-      refW: refW, ppk: ppk
+      refW: refW, ppk: ppk, slowGain: slowGain
     };
   }
 
@@ -742,6 +751,7 @@ var OM = (function () {
   ];
   // What's new, newest first. The nightly improvement run adds an entry here.
   var CHANGES = [
+    { d: '2026-11-13', t: 'Goal fixes in one tap', b: ['When your goal and goal weight don\'t match, the note now has buttons to fix it: for example Set goal to 94 kg, Switch to Lose fat, or Use my current weight.', 'Lifted for a year or more and picked Build muscle at about the same weight? The plan now adds a small calorie surplus (usually 150–300 kcal a day) for a slow gain, because muscle comes slowly at maintenance once you have trained a while. New or returning lifters still build at maintenance.', 'When you pass your goal weight by more than 1 kg, tap Set goal to raise it and keep building.'] },
     { d: '2026-11-06', t: 'Pick your goal', b: ['Setting up your plan now starts with one clear question: Lose fat, Build muscle or Stay the same. Then you enter your goal weight.', 'Plan shows your goal at the top. If your goal weight points the other way (say Build muscle with a lower goal weight), you get a plain note on how to fix it.', 'Your calories are worked out the same way as before, and plans saved earlier keep working: the goal is read from your goal weight until you pick one.', 'PRO invoices now use the Bank of Jamaica rate of J$159.62 per US$ (3 Nov).'] },
     { d: '2026-11-05', t: 'Back up your data to a file', b: ['Plan → Your data → Save backup file. On iPhone or iPad choose Save to Files (iCloud Drive is safest).', 'Restore from a backup brings your plan, weigh-ins and logs back on a new Home Screen icon or another phone. It shows what it found and asks first, and you can undo.', 'The card shows when you last saved a backup.'] },
     { d: '2026-10-30', t: 'Biceps and triceps work', b: ['Upper-body days (Upper, Push, Pull) now end with arm work: curls (dumbbell, hammer, cable or a loaded backpack) and triceps (overhead extension, rope pushdown or close-grip push-up). Each one has a short how-to.', 'Big lifts still come first and keep all their sets. Presses and rows already train your arms, so the arm work only uses the time that is left, and sessions stay at 45 minutes. When only one fits, the next upper day does the other, so each week gets both.', 'Beginners get at most one, marked Optional. PRO does the two back to back as a superset when they fit. With a sore shoulder you get pushdowns or close-grip push-ups instead of overhead work.', 'PRO invoices now use the Bank of Jamaica rate of J$159.67 per US$ (29 Oct).'] },
