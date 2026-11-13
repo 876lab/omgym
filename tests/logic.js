@@ -633,6 +633,22 @@ const proSig = (async () => {
   ok(OM.goalCheck({ ...gb, goalPick: 'maintain', goalKg: 80 }).fixes[0].goalKg === 90, 'Stay the same: use my current weight');
   ok(/198\.4 lb/.test(OM.goalCheck({ ...gb, goalPick: 'maintain', goalKg: 80 }, null, kg => (kg * 2.20462).toFixed(1) + ' lb').fixes[0].label), 'fix label in the person\'s units');
 })();
+// Food pictures (2026-11-13 night): every dish and every builder base has one of our own drawn pictures
+(function () {
+  const types = Object.keys(OM.DISH_PICS);
+  for (const t of ['bowl', 'wrap', 'plate', 'porridge', 'sandwich', 'stew', 'pasta', 'salad']) ok(types.includes(t), 'dish picture type ' + t);
+  for (const m of OM.MEALS) ok(types.includes(OM.DISH_PIC[m.id]), 'meal ' + m.id + ' has a dish picture');
+  for (const b of OM.BUILD.bases) ok(types.includes(OM.BASE_PIC[b.id]) && OM.dishPic({ def: { base: b.id } }) === OM.BASE_PIC[b.id], 'builder base ' + b.id + ' has a dish picture');
+  ok(OM.dishPic({ def: { base: 'wrap' } }) === 'wrap' && OM.dishPic('pasta') === 'pasta' && OM.dishPic({ tpl: { id: 'b_oats' } }) === 'porridge' && OM.dishPic(null) === 'plate' && OM.dishPic({ tpl: { id: 'nope' } }) === 'plate', 'dishPic picks by template, base or falls back to plate');
+  ok(OM.dishPic({ tpl: { id: 'm_curry' } }) === 'stew' && OM.dishPic({ tpl: { id: 'm_beefpasta' } }) === 'pasta' && OM.dishPic({ tpl: { id: 'm_tunasalad' } }) === 'salad' && OM.dishPic({ tpl: { id: 's_shake' } }) === 'shake', 'pictures match the dish');
+  // planned meals across regions and diets all get a known picture
+  let n = 0;
+  for (const region of ['JM', 'US']) for (const diet of ['none', 'vegetarian', 'vegan', 'pescatarian']) {
+    const p0 = { ...base, region, diet }, T0 = OM.calcTargets(p0), pt0 = OM.priceTable(p0, {});
+    for (let i = 0; i < 7; i++) { const plan = OM.planDay(OM.addDays('2026-11-16', i), p0, T0, pt0, {}); for (const m of plan.meals) if (!m.empty) { n++; ok(types.includes(OM.dishPic(m)), 'planned meal picture ' + m.tpl.id); } }
+  }
+  ok(n > 100, 'checked pictures for ' + n + ' planned meals');
+})();
 // Exchange rates: PRO uses the BOJ selling rate (no card fee); the Store uses the BOJ midpoint plus about 2%
 ok(OM.PRO.boj.rate > 140 && OM.PRO.boj.rate < 180 && /^\d{4}-\d{2}-\d{2}$/.test(OM.PRO.boj.date), 'PRO.boj is a plausible dated BOJ rate');
 ok(OM.STORE.fx >= OM.PRO.boj.rate && OM.STORE.fx <= OM.PRO.boj.rate * 1.04, 'Store FX is the BOJ rate plus a small card fee');

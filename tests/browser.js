@@ -167,6 +167,8 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
     ok(/\(2 wraps\)/.test(r) && /Pack you buy/i.test(r) && /How to make it/.test(r), 'builder shows amounts, packs to buy and how to make it');
     ok(!/costs about|per serving/i.test(r), 'builder never shows per-serving cost');
     ok(await page.isVisible('#bkcal') && await page.isVisible('#bprot'), 'builder says whether it fits the goal');
+    ok(await page.isVisible('#bresult .dishpic[data-pic=wrap]'), 'builder shows a wrap picture for a wrap');
+    ok(await page.locator('[data-act=bpick][data-g=base] .dishpic').count() === await page.locator('[data-act=bpick][data-g=base]').count(), 'every base chip has a picture');
     await page.click('[data-act=bsize][data-k=bs][data-v="1.4"]'); ok(/\(3 wraps\)/.test(await page.innerText('#bresult')), 'Large base: 3 wraps');
     await page.click('[data-act=bpick][data-g=prot][data-v=tuna]'); await page.click('[data-act=bpick][data-g=prot][data-v=egg]');
     ok(await page.locator('[data-act=bpick][data-g=prot][aria-pressed=true]').count() === 2, 'at most 2 proteins');
@@ -186,6 +188,18 @@ const OUT = require('path').resolve(__dirname, 'out'); require('fs').mkdirSync(O
   const after = await page.locator('.card:not(.builder) h3').nth(0).innerText();
   ok(before !== after, 'swap breakfast: ' + before + ' -> ' + after);
   await page.click('[data-act=fd][data-n="1"]'); ok(await page.isVisible('text=Recipes') || true, 'next day');
+  { const cards = await page.locator('.card:not(.builder):has([data-act=swap]), .card:not(.builder):has([data-act=custrm])').count(), pics = await page.locator('.card:not(.builder) .mhead .dishpic').count();
+    ok(cards >= 4 && pics === cards, 'every meal card has a food picture (' + pics + '/' + cards + ')');
+    ok(await page.locator('.dishpic:not([aria-hidden=true])').count() === 0, 'food pictures are hidden from screen readers (the name says it)');
+    const kinds = await page.$$eval('.card:not(.builder) .mhead .dishpic', a => a.map(x => x.getAttribute('data-pic')));
+    ok(kinds.every(k => ['bowl', 'wrap', 'plate', 'porridge', 'sandwich', 'stew', 'pasta', 'salad', 'fruit', 'shake'].includes(k)), 'known picture types: ' + kinds.join(','));
+    const box = await page.locator('.card:not(.builder) .mhead .dishpic').first().boundingBox(); ok(box && box.width >= 44 && box.width <= 60, 'picture is a small thumbnail');
+    const fills = await page.$eval('.card:not(.builder) .dishpic .k-dish, .card:not(.builder) .dishpic .k-rice', e => getComputedStyle(e).fill);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    const fillsD = await page.$eval('.card:not(.builder) .dishpic .k-dish, .card:not(.builder) .dishpic .k-rice', e => getComputedStyle(e).fill);
+    ok(fills !== fillsD, 'food pictures follow the dark theme');
+    await page.locator('.card:not(.builder) .mhead').first().scrollIntoViewIfNeeded(); await page.screenshot({ path: OUT + '/shot-meals-dark.png', fullPage: false });
+    await page.emulateMedia({ colorScheme: 'light' }); }
   ok(!(await overflow()), 'no horizontal overflow on meals');
   await page.screenshot({ path: OUT + '/shot-meals.png', fullPage: true });
   // shop + price edit

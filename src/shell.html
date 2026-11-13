@@ -13,14 +13,17 @@
   --display: 'Big Shoulders Display', 'Arial Narrow', 'Roboto Condensed', Impact, sans-serif;
   --body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --r: 10px;
+  --pic-bg: #E9F0EA; --pic-dish: #FFFFFF; --pic-line: #AEB9B1; --pic-rice: #F3E6C8; --pic-meat: #9A5A2C; --pic-green: #3F8F43; --pic-red: #D24B3A; --pic-yellow: #E5AE2F; --pic-bread: #D39A50; --pic-sauce: #B0502A; --pic-white: #FFFDF5;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0E1512; --surface: #16201C; --sunk: #1D2924; --fg: #E6EEE9; --muted: #9AABA3; --line: #29372F;
   --iron: #5BBE97; --on-iron: #06120D; --mango: #F2A93B; --mango-ink: #F6C67A;
+  --pic-bg: #1F2C26; --pic-dish: #33433C; --pic-line: #6B7F74; --pic-rice: #DCCFAE; --pic-meat: #A9693A; --pic-green: #5BAA57; --pic-red: #E26B58; --pic-yellow: #E8B94C; --pic-bread: #C99456; --pic-sauce: #BE6538; --pic-white: #ECE6D6;
   --good: #6CC58F; --warn: #E3A94A; --bad: #EE7A6C; --good-bg: #15291E; --warn-bg: #2D2414; --bad-bg: #33191A; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0E1512; --surface: #16201C; --sunk: #1D2924; --fg: #E6EEE9; --muted: #9AABA3; --line: #29372F;
   --iron: #5BBE97; --on-iron: #06120D; --mango: #F2A93B; --mango-ink: #F6C67A;
+  --pic-bg: #1F2C26; --pic-dish: #33433C; --pic-line: #6B7F74; --pic-rice: #DCCFAE; --pic-meat: #A9693A; --pic-green: #5BAA57; --pic-red: #E26B58; --pic-yellow: #E8B94C; --pic-bread: #C99456; --pic-sauce: #BE6538; --pic-white: #ECE6D6;
   --good: #6CC58F; --warn: #E3A94A; --bad: #EE7A6C; --good-bg: #15291E; --warn-bg: #2D2414; --bad-bg: #33191A; color-scheme: dark; }
 
 * { box-sizing: border-box; }
@@ -268,6 +271,17 @@ textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 10px; border
 .seg.small { display: inline-flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
 .seg.small button { appearance: none; font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
 .seg.small button[aria-pressed="true"] { background: var(--iron); border-color: var(--iron); color: var(--on-iron); font-weight: 700; }
+/* Food pictures: our own flat drawings, one per dish type; colours follow the theme tokens */
+.mhead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mhead > div, .mhead > h3 { min-width: 0; }
+.dishpic { flex: none; width: 52px; height: 52px; border-radius: 14px; background: var(--pic-bg); }
+.chip .dishpic { width: 22px; height: 22px; border-radius: 6px; vertical-align: -6px; margin: -2px 6px -2px -6px; }
+.dishpic .k-dish { fill: var(--pic-dish); stroke: var(--pic-line); stroke-width: 1.5; }
+.dishpic .k-line { fill: none; stroke: var(--pic-line); stroke-width: 1.5; stroke-linecap: round; }
+.dishpic .k-rice { fill: var(--pic-rice); } .dishpic .k-meat { fill: var(--pic-meat); } .dishpic .k-green { fill: var(--pic-green); }
+.dishpic .k-red { fill: var(--pic-red); } .dishpic .k-yellow { fill: var(--pic-yellow); } .dishpic .k-bread { fill: var(--pic-bread); }
+.dishpic .k-sauce { fill: var(--pic-sauce); } .dishpic .k-white { fill: var(--pic-white); }
+.dishpic .k-noodle { fill: none; stroke: var(--pic-yellow); stroke-width: 2.4; stroke-linecap: round; }
 .bresult { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
 .bnums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .bnums div { background: var(--surface); border-radius: 10px; padding: 8px 4px; text-align: center; display: grid; }
